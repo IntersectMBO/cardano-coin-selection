@@ -1,13 +1,10 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingStrategies #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications #-}
 
 -- |
 -- Copyright: © 2018-2020 IOHK
@@ -20,48 +17,20 @@
 module Data.Quantity
     ( -- * Polymorphic Quantity
       Quantity(..)
-
-      -- * Percentage
-    , Percentage
-    , MkPercentageError(..)
-    , mkPercentage
-    , getPercentage
     ) where
 
 import Prelude
 
-import Control.Arrow
-    ( left )
 import Control.DeepSeq
     ( NFData )
-import Control.Monad
-    ( unless )
-import Data.Aeson
-    ( FromJSON (..)
-    , ToJSON (..)
-    , Value (String)
-    , object
-    , withObject
-    , (.:)
-    , (.=)
-    )
-import Data.Aeson.Types
-    ( Parser )
 import Data.Proxy
     ( Proxy (..) )
-import Data.Text.Class
-    ( FromText (..), TextDecodingError (..), ToText (..) )
-import Data.Text.Read
-    ( decimal )
 import Fmt
     ( Buildable (..), fmt )
 import GHC.Generics
     ( Generic )
 import GHC.TypeLits
     ( KnownSymbol, Symbol, symbolVal )
-
-import qualified Data.Text as T
-
 
 -- | @Quantity (unit :: Symbol) a@ is a primitive @a@  multiplied by an @unit@.
 --
@@ -95,89 +64,8 @@ instance Functor (Quantity any) where
 
 instance NFData a => NFData (Quantity unit a)
 
-instance (KnownSymbol unit, ToJSON a) => ToJSON (Quantity unit a) where
-    toJSON (Quantity a) = object
-        [ "unit"     .= symbolVal (Proxy :: Proxy unit)
-        , "quantity" .= toJSON a
-        ]
-
-instance (KnownSymbol unit, FromJSON a) => FromJSON (Quantity unit a) where
-    parseJSON = withObject "Quantity" $ \o -> do
-        verifyUnit (Proxy :: Proxy unit) =<< o .: "unit"
-        Quantity <$> o .: "quantity"
-      where
-        verifyUnit :: Proxy (unit :: Symbol) -> Value -> Parser ()
-        verifyUnit proxy = \case
-            String u' | u' == T.pack u -> pure ()
-            _ -> fail $
-                "failed to parse quantified value. Expected value in '" <> u
-                <> "' (e.g. { \"unit\": \"" <> u <> "\", \"quantity\": ... })"
-                <> " but got something else."
-          where
-            u = symbolVal proxy
-
-instance FromText b => FromText (Quantity sym b) where
-    fromText = fmap Quantity . fromText
-
-instance ToText b => ToText (Quantity sym b) where
-    toText (Quantity b) = toText b
-
 -- Builds (Quantity "lovelace" Word64) as "42 lovelace"
 instance (KnownSymbol unit, Buildable a) => Buildable (Quantity unit a) where
     build (Quantity a) = build a <> fmt " " <> build u
       where
         u = symbolVal (Proxy :: Proxy unit)
-
-{-------------------------------------------------------------------------------
-                                Percentage
--------------------------------------------------------------------------------}
-
--- | Opaque Haskell type to represent values between 0 and 100 (incl).
-newtype Percentage = Percentage
-    { getPercentage :: Word }
-    deriving stock (Generic, Show, Eq, Ord)
-    deriving newtype (ToJSON)
-
-instance NFData Percentage
-
-instance FromJSON Percentage where
-    parseJSON x = do
-        n <- parseJSON x
-        either (fail . show) return (mkPercentage @Int n)
-
-instance Bounded Percentage where
-    minBound = Percentage 0
-    maxBound = Percentage 100
-
-instance Enum Percentage where
-    fromEnum (Percentage p) = fromEnum p
-    toEnum = either (error . ("toEnum: " <>) . show) id . mkPercentage
-
-instance ToText Percentage where
-    toText (Percentage p) = T.pack (show p) <> "%"
-
-instance FromText Percentage where
-    fromText txt = do
-        (p, u) <- left (const err) $ decimal txt
-        unless (u == "%") $ Left err
-        left (const err) $ mkPercentage @Integer p
-      where
-        err = TextDecodingError
-            "expected a value between 0 and 100 with a '%' suffix (e.g. '14%')"
-
--- | Safe constructor for 'Percentage'
-mkPercentage
-    :: Integral i
-    => i
-    -> Either MkPercentageError Percentage
-mkPercentage i
-    | let Percentage inf = minBound in i < fromIntegral inf =
-        Left PercentageOutOfBoundsError
-    | let Percentage sup = maxBound in i > fromIntegral sup =
-        Left PercentageOutOfBoundsError
-    | otherwise =
-        pure $ Percentage $ fromIntegral i
-
-data MkPercentageError
-    = PercentageOutOfBoundsError
-    deriving (Show, Eq)
