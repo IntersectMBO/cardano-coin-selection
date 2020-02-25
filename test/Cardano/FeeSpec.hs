@@ -6,19 +6,19 @@
 {-# LANGUAGE StandaloneDeriving #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
-module Cardano.Wallet.Primitive.FeeSpec
+module Cardano.FeeSpec
     ( spec
     ) where
 
 import Prelude
 
-import Cardano.Wallet.Primitive.CoinSelection
+import Cardano.CoinSelection
     ( CoinSelection (..) )
-import Cardano.Wallet.Primitive.CoinSelection.LargestFirst
+import Cardano.CoinSelection.LargestFirst
     ( largestFirst )
-import Cardano.Wallet.Primitive.Fee
+import Cardano.Fee
     ( ErrAdjustForFee (..), Fee (..), FeeOptions (..), adjustForFee, divvyFee )
-import Cardano.Wallet.Primitive.Types
+import Cardano.Types
     ( Address (..)
     , Coin (..)
     , Hash (..)
@@ -72,7 +72,7 @@ import Test.QuickCheck
 import Test.QuickCheck.Monadic
     ( monadicIO )
 
-import qualified Cardano.Wallet.Primitive.CoinSelection as CS
+import qualified Cardano.CoinSelection as CS
 import qualified Data.ByteString as BS
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map.Strict as Map

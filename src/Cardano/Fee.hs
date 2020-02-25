@@ -15,7 +15,7 @@
 -- For more information refer to:
 -- https://iohk.io/blog/self-organisation-in-coin-selection/
 
-module Cardano.Wallet.Primitive.Fee
+module Cardano.Fee
     (
       -- * Types
       Fee (..)
@@ -33,9 +33,9 @@ module Cardano.Wallet.Primitive.Fee
 
 import Prelude
 
-import Cardano.Wallet.Primitive.CoinSelection
+import Cardano.CoinSelection
     ( CoinSelection (..), changeBalance, inputBalance, outputBalance )
-import Cardano.Wallet.Primitive.Types
+import Cardano.Types
     ( Coin (..)
     , FeePolicy (..)
     , TxIn

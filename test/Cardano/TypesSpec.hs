@@ -6,13 +6,13 @@
 {-# LANGUAGE TypeApplications #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
-module Cardano.Wallet.Primitive.TypesSpec
+module Cardano.TypesSpec
     ( spec
     ) where
 
 import Prelude
 
-import Cardano.Wallet.Primitive.Types
+import Cardano.Types
     ( Address (..)
     , Coin (..)
     , Dom (..)
@@ -28,7 +28,7 @@ import Cardano.Wallet.Primitive.Types
     , restrictedBy
     , restrictedTo
     )
-import Cardano.Wallet.Unsafe
+import Cardano.Unsafe
     ( unsafeFromHex )
 import Data.Set
     ( Set, (\\) )

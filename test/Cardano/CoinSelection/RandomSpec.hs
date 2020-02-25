@@ -2,19 +2,19 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
-module Cardano.Wallet.Primitive.CoinSelection.RandomSpec
+module Cardano.CoinSelection.RandomSpec
     ( spec
     ) where
 
 import Prelude
 
-import Cardano.Wallet.Primitive.CoinSelection
+import Cardano.CoinSelection
     ( CoinSelection (..), CoinSelectionOptions (..), ErrCoinSelection (..) )
-import Cardano.Wallet.Primitive.CoinSelection.LargestFirst
+import Cardano.CoinSelection.LargestFirst
     ( largestFirst )
-import Cardano.Wallet.Primitive.CoinSelection.Random
+import Cardano.CoinSelection.Random
     ( random )
-import Cardano.Wallet.Primitive.CoinSelectionSpec
+import Cardano.CoinSelectionSpec
     ( CoinSelProp (..)
     , CoinSelectionFixture (..)
     , CoinSelectionResult (..)

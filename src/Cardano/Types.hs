@@ -13,7 +13,7 @@
 -- Copyright: © 2018-2020 IOHK
 -- License: Apache-2.0
 --
-module Cardano.Wallet.Primitive.Types
+module Cardano.Types
     (
     -- * Tx
       TxIn(..)
@@ -251,7 +251,7 @@ restrictedTo (UTxO utxo) outs =
 -- | Allows us to define the "domain" of any type — @UTxO@ in particular — and
 -- use 'dom' to refer to the /inputs/ of an /utxo/.
 --
--- This is the terminology used in the [Formal Specification for a Cardano Wallet](https://github.com/input-output-hk/cardano-wallet/blob/master/specifications/wallet/formal-specification-for-a-cardano-wallet.pdf)
+-- This is the terminology used in the [Formal Specification for a Cardano](https://github.com/input-output-hk/cardano-wallet/blob/master/specifications/wallet/formal-specification-for-a-cardano-wallet.pdf)
 -- uses.
 class Dom a where
     type DomElem a :: *

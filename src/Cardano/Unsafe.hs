@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeApplications #-}
 
-module Cardano.Wallet.Unsafe
+module Cardano.Unsafe
     ( unsafeFromHex
     ) where
 

@@ -4,7 +4,7 @@
 {-# LANGUAGE StandaloneDeriving #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
-module Cardano.Wallet.Primitive.CoinSelectionSpec
+module Cardano.CoinSelectionSpec
     ( spec
 
     -- * Export used to test various coin selection implementations
@@ -24,9 +24,9 @@ module Cardano.Wallet.Primitive.CoinSelectionSpec
 
 import Prelude
 
-import Cardano.Wallet.Primitive.CoinSelection
+import Cardano.CoinSelection
     ( CoinSelection (..), CoinSelectionOptions (..), ErrCoinSelection (..) )
-import Cardano.Wallet.Primitive.Types
+import Cardano.Types
     ( Address (..)
     , Coin (..)
     , Hash (..)
