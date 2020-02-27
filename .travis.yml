@@ -5,7 +5,6 @@ os: linux
 dist: xenial
 
 env:
- - GHCVER=8.4.4
  - GHCVER=8.6.5
  - GHCVER=8.8.1
 
@@ -19,6 +18,8 @@ install:
  - cabal-3.0 update
 
 script:
+ - bash scripts/hlint.sh
+ - bash scripts/stylish-haskell.sh
  - cabal-3.0 configure --enable-tests
  - cabal-3.0 check
  - cabal-3.0 build all
