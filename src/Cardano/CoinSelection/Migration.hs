@@ -50,8 +50,6 @@ import Cardano.Types
     ( Coin (..), TxIn (..), TxOut (..), UTxO (..) )
 import Control.Monad.Trans.State
     ( State, evalState, get, put )
-import Data.List
-    ( splitAt )
 import Data.List.NonEmpty
     ( NonEmpty ((:|)) )
 import Data.Maybe
