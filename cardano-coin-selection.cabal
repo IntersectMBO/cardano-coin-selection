@@ -19,8 +19,8 @@ source-repository head
   type:     git
   location: https://github.com/input-output-hk/cardano-coin-selection.git
 
-flag development
-    description: Disable `-Werror`
+flag werror
+    description: Enable `-Werror`
     default: False
     manual: True
 
@@ -34,7 +34,7 @@ library
       -Wall
       -Wcompat
       -fwarn-redundant-constraints
-  if (!flag(development))
+  if (flag(werror))
     ghc-options:
       -Werror
   build-depends:
@@ -72,9 +72,8 @@ test-suite unit
   ghc-options:
       -threaded -rtsopts
       -Wall
-  if (!flag(development))
+  if (flag(werror))
     ghc-options:
-      -O2
       -Werror
   build-depends:
       base
