@@ -18,6 +18,7 @@ install:
  - cabal-3.0 update
 
 script:
+ - bash scripts/hlint.sh
  - cabal-3.0 configure --enable-tests
  - cabal-3.0 check
  - cabal-3.0 build all
