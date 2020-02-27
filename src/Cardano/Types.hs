@@ -61,6 +61,8 @@ import Data.ByteArray.Encoding
     ( Base (Base16), convertToBase )
 import Data.ByteString
     ( ByteString )
+import Data.Kind
+    ( Type )
 import Data.Map.Strict
     ( Map )
 import Data.Quantity
@@ -254,7 +256,7 @@ restrictedTo (UTxO utxo) outs =
 -- This is the terminology used in the [Formal Specification for a Cardano](https://github.com/input-output-hk/cardano-wallet/blob/master/specifications/wallet/formal-specification-for-a-cardano-wallet.pdf)
 -- uses.
 class Dom a where
-    type DomElem a :: *
+    type DomElem a :: Type
     dom :: a -> Set (DomElem a)
 
 newtype Hash (tag :: Symbol) = Hash { getHash :: ByteString }
