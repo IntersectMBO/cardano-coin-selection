@@ -1,19 +1,26 @@
 name:                cardano-coin-selection
 version:             0.0.1
 synopsis:            Algorithms for coin selection and fee balancing.
-description:         Please see README.md
+description:         A selection of algorithms for coin selection and fee
+                     balancing, used in the Cardano ecosystem. Please see
+                     README.md for further details.
 homepage:            https://github.com/input-output-hk/cardano-coin-selection
 author:              IOHK Engineering Team
 maintainer:          operations@iohk.io
 copyright:           2018-2020 IOHK
 license:             Apache-2.0
+license-file:        LICENSE
 category:            Web
 build-type:          Simple
 extra-source-files:  README.md
 cabal-version:       >=1.10
 
-flag development
-    description: Disable `-Werror`
+source-repository head
+  type:     git
+  location: https://github.com/input-output-hk/cardano-coin-selection.git
+
+flag werror
+    description: Enable `-Werror`
     default: False
     manual: True
 
@@ -27,11 +34,11 @@ library
       -Wall
       -Wcompat
       -fwarn-redundant-constraints
-  if (!flag(development))
+  if (flag(werror))
     ghc-options:
       -Werror
   build-depends:
-      base
+      base < 4.14
     , bytestring
     , containers
     , cryptonite
@@ -65,9 +72,8 @@ test-suite unit
   ghc-options:
       -threaded -rtsopts
       -Wall
-  if (!flag(development))
+  if (flag(werror))
     ghc-options:
-      -O2
       -Werror
   build-depends:
       base
