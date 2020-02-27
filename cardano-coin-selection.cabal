@@ -12,6 +12,10 @@ build-type:          Simple
 extra-source-files:  README.md
 cabal-version:       >=1.10
 
+source-repository head
+  type:     git
+  location: https://github.com/input-output-hk/cardano-coin-selection.git
+
 flag development
     description: Disable `-Werror`
     default: False
