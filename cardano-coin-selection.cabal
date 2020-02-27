@@ -38,7 +38,7 @@ library
     ghc-options:
       -Werror
   build-depends:
-      base
+      base < 4.14
     , bytestring
     , containers
     , cryptonite
