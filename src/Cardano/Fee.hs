@@ -15,7 +15,7 @@
 -- For more information refer to:
 -- https://iohk.io/blog/self-organisation-in-coin-selection/
 
-module Cardano.Wallet.Primitive.Fee
+module Cardano.Fee
     (
       -- * Types
       Fee (..)
@@ -23,7 +23,6 @@ module Cardano.Wallet.Primitive.Fee
 
       -- * Fee Calculation
     , computeFee
-    , computeCertFee
     , divvyFee
 
       -- * Fee Adjustment
@@ -34,9 +33,9 @@ module Cardano.Wallet.Primitive.Fee
 
 import Prelude
 
-import Cardano.Wallet.Primitive.CoinSelection
+import Cardano.CoinSelection
     ( CoinSelection (..), changeBalance, inputBalance, outputBalance )
-import Cardano.Wallet.Primitive.Types
+import Cardano.Types
     ( Coin (..)
     , FeePolicy (..)
     , TxIn
@@ -96,25 +95,6 @@ computeFee policy (Quantity sz) =
     Fee $ ceiling (a + b*fromIntegral sz)
   where
     LinearFee (Quantity a) (Quantity b) (Quantity _c) = policy
-
--- | Compute fee for a delegation certificate. One need to take into
--- consideration that "regular tx" fee calculation still holds. There
--- is additional flat fee inscribed on top of that:
---
--- @
---     f = a + size * b + c
--- @
---
--- where @a@ & @b@ are values fixed by the protocol.
-computeCertFee
-    :: Word64
-    -> FeePolicy
-    -> Quantity "byte" Int
-    -> Fee
-computeCertFee certNum policy (Quantity sz) =
-    Fee $ ceiling (a + b*fromIntegral sz + c*fromIntegral certNum)
-  where
-    LinearFee (Quantity a) (Quantity b) (Quantity c) = policy
 
 {-------------------------------------------------------------------------------
                                 Fee Adjustment

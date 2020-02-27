@@ -12,7 +12,7 @@
 -- For more information refer to:
 -- https://iohk.io/blog/self-organisation-in-coin-selection/
 
-module Cardano.Wallet.Primitive.CoinSelection
+module Cardano.CoinSelection
     (
       -- * Coin Selection
       CoinSelection(..)
@@ -26,7 +26,7 @@ module Cardano.Wallet.Primitive.CoinSelection
 
 import Prelude
 
-import Cardano.Wallet.Primitive.Types
+import Cardano.Types
     ( Coin (..), TxIn, TxOut (..) )
 import Data.List
     ( foldl' )

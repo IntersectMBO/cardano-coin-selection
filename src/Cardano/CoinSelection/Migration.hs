@@ -31,22 +31,22 @@
 -- for the previous ones to be inserted before making new ones (we also say
 -- that a wallet is not "fragmented enough").
 
-module Cardano.Wallet.Primitive.CoinSelection.Migration
+module Cardano.CoinSelection.Migration
     ( depleteUTxO
     , idealBatchSize
     ) where
 
 import Prelude
 
-import Cardano.Wallet.Primitive.CoinSelection
+import Cardano.CoinSelection
     ( CoinSelection (..)
     , CoinSelectionOptions (..)
     , changeBalance
     , inputBalance
     )
-import Cardano.Wallet.Primitive.Fee
+import Cardano.Fee
     ( Fee (..), FeeOptions (..) )
-import Cardano.Wallet.Primitive.Types
+import Cardano.Types
     ( Coin (..), TxIn (..), TxOut (..), UTxO (..) )
 import Control.Monad.Trans.State
     ( State, evalState, get, put )

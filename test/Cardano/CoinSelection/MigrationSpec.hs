@@ -2,23 +2,23 @@
 
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
-module Cardano.Wallet.Primitive.CoinSelection.MigrationSpec
+module Cardano.CoinSelection.MigrationSpec
     ( spec
     ) where
 
 import Prelude
 
-import Cardano.Wallet.Primitive.CoinSelection
+import Cardano.CoinSelection
     ( CoinSelection (..), changeBalance, inputBalance )
-import Cardano.Wallet.Primitive.CoinSelection.Migration
+import Cardano.CoinSelection.Migration
     ( depleteUTxO, idealBatchSize )
-import Cardano.Wallet.Primitive.CoinSelectionSpec
+import Cardano.CoinSelectionSpec
     ()
-import Cardano.Wallet.Primitive.Fee
+import Cardano.Fee
     ( Fee (..), FeeOptions (..) )
-import Cardano.Wallet.Primitive.FeeSpec
+import Cardano.FeeSpec
     ()
-import Cardano.Wallet.Primitive.Types
+import Cardano.Types
     ( Address (..)
     , Coin (..)
     , Hash (..)
