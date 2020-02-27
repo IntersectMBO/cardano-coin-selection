@@ -1,7 +1,9 @@
 name:                cardano-coin-selection
 version:             0.0.1
 synopsis:            Algorithms for coin selection and fee balancing.
-description:         Please see README.md
+description:         A selection of algorithms for coin selection and fee
+                     balancing, used in the Cardano ecosystem. Please see
+                     README.md for further details.
 homepage:            https://github.com/input-output-hk/cardano-coin-selection
 author:              IOHK Engineering Team
 maintainer:          operations@iohk.io
