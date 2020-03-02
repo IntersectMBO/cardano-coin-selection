@@ -9,7 +9,6 @@
 -- This module contains the implementation of random
 -- input selection algorithm
 
-
 module Cardano.CoinSelection.Random
     ( random
     ) where
@@ -53,7 +52,6 @@ import Data.Word
 
 import qualified Data.List as L
 import qualified Data.List.NonEmpty as NE
-
 
 -- | Target range for picking inputs
 data TargetRange = TargetRange

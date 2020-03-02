@@ -1,13 +1,11 @@
 {-# LANGUAGE RankNTypes #-}
 
-
 -- |
 -- Copyright: © 2018-2020 IOHK
 -- License: Apache-2.0
 --
 -- This module contains the implementation of largestFirst
 -- input selection algorithm
-
 
 module Cardano.CoinSelection.LargestFirst (
     largestFirst
@@ -35,7 +33,6 @@ import Data.Ord
 import qualified Data.List as L
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map.Strict as Map
-
 
 -- | Largest-first input selection policy
 largestFirst

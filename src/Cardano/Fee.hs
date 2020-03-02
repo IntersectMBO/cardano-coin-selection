@@ -318,7 +318,6 @@ remainingFee opts s = do
     Fee fee = estimateFee opts s
     diff = inputBalance s - (outputBalance s + changeBalance s)
 
-
 -- Equally split the extra change obtained when picking new inputs across all
 -- other change. Note that, it may create an extra change output if:
 --
