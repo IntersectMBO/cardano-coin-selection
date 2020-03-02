@@ -41,8 +41,6 @@ import Data.List.NonEmpty
     ( NonEmpty (..) )
 import Data.Maybe
     ( catMaybes )
-import Data.Vector.Shuffle
-    ( shuffle )
 import Data.Word
     ( Word64, Word8 )
 import Fmt
@@ -65,6 +63,8 @@ import Test.QuickCheck
     )
 import Test.QuickCheck.Monadic
     ( monadicIO )
+import Test.Vector.Shuffle
+    ( shuffle )
 
 import qualified Data.ByteString as BS
 import qualified Data.List.NonEmpty as NE

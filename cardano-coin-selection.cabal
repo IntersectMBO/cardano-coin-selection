@@ -49,7 +49,6 @@ library
     , random
     , text
     , transformers
-    , vector
   hs-source-dirs:
       src
   exposed-modules:
@@ -60,7 +59,6 @@ library
       Cardano.Fee
       Cardano.Types
       Data.Quantity
-      Data.Vector.Shuffle
 
 test-suite unit
   default-language:
@@ -105,5 +103,6 @@ test-suite unit
       Cardano.CoinSelectionSpec
       Cardano.FeeSpec
       Cardano.TypesSpec
-      Data.Vector.ShuffleSpec
       Test.Unsafe
+      Test.Vector.Shuffle
+      Test.Vector.ShuffleSpec
