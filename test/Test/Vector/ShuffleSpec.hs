@@ -1,13 +1,11 @@
 {-# LANGUAGE TypeApplications #-}
 
-module Data.Vector.ShuffleSpec
+module Test.Vector.ShuffleSpec
     ( spec
     ) where
 
 import Prelude
 
-import Data.Vector.Shuffle
-    ( mkSeed, shuffle, shuffleWith )
 import Test.Hspec
     ( Spec, describe, it )
 import Test.QuickCheck
@@ -25,6 +23,8 @@ import Test.QuickCheck
     )
 import Test.QuickCheck.Monadic
     ( assert, monadicIO, monitor, pick, run )
+import Test.Vector.Shuffle
+    ( mkSeed, shuffle, shuffleWith )
 
 import qualified Data.List as L
 import qualified Data.Text as T

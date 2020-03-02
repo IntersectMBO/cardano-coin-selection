@@ -1,7 +1,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeApplications #-}
 
-module Data.Vector.Shuffle
+module Test.Vector.Shuffle
     ( -- * Simple
       shuffle
 
