@@ -59,7 +59,6 @@ library
       Cardano.CoinSelection.Random
       Cardano.Fee
       Cardano.Types
-      Cardano.Unsafe
       Data.Quantity
       Data.Vector.Shuffle
 
@@ -107,3 +106,4 @@ test-suite unit
       Cardano.FeeSpec
       Cardano.TypesSpec
       Data.Vector.ShuffleSpec
+      Test.Unsafe

@@ -27,8 +27,6 @@ import Cardano.Types
     , restrictedBy
     , restrictedTo
     )
-import Cardano.Unsafe
-    ( unsafeFromHex )
 import Data.Set
     ( Set, (\\) )
 import Test.Hspec
@@ -45,6 +43,8 @@ import Test.QuickCheck
     , vectorOf
     , (===)
     )
+import Test.Unsafe
+    ( unsafeFromHex )
 
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
