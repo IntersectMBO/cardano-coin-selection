@@ -72,19 +72,22 @@ largestFirst opt outs utxo = do
 
 -- Selecting coins to cover at least the specified value
 -- The details of the algorithm are following:
+--
 -- (a) transaction outputs are processed starting from the largest one
--- (b) `maximumNumberOfInputs` biggest available UTxO inputs are taken
---      into consideration. They constitute a candidate UTxO inputs from
---      which coin selection will be tried. Each output is treated independently
---      with the heuristic described in (c).
+--
+-- (b) `maximumNumberOfInputs` biggest available UTxO inputs are taken into
+--     consideration. They constitute a candidate UTxO inputs from which coin
+--     selection will be tried. Each output is treated independently with the
+--     heuristic described in (c).
+--
 -- (c) the biggest candidate UTxO input is tried first to cover the transaction
 --     output. If the input is not enough, then the next biggest one is added
---     to check if they can cover the transaction output. This process is continued
---     until the output is covered or the candidates UTxO inputs are depleted.
---     In the latter case `MaximumInputsReached` error is triggered. If the transaction
---     output is covered the next biggest one is processed. Here, the biggest
---     UTxO input, not participating in the coverage, is taken. We are back at (b)
---     step as a result
+--     to check if they can cover the transaction output. This process is
+--     continued until the output is covered or the candidates UTxO inputs are
+--     depleted.  In the latter case `MaximumInputsReached` error is triggered.
+--     If the transaction output is covered the next biggest one is processed.
+--     Here, the biggest UTxO input, not participating in the coverage, is
+--     taken. We are back at (b) step as a result
 --
 -- The steps are continued until all transaction are covered.
 atLeast
@@ -104,7 +107,8 @@ atLeast (utxo0, selection) txout =
             , selection <> CoinSelection
                 { inputs = ins
                 , outputs = [txout]
-                , change = filter (/= (Coin 0)) [Coin (fromIntegral $ abs target)]
+                , change =
+                    filter (/= (Coin 0)) [Coin (fromIntegral $ abs target)]
                 }
             )
         | null utxo =

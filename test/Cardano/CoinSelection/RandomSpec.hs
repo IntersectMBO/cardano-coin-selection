@@ -153,7 +153,8 @@ spec = do
                 , txOutputs = 2*oneAda :| [oneAda `div` 2]
                 })
 
-        coinSelectionUnitTest random "enough funds, proper fragmentation, inputs depleted"
+        coinSelectionUnitTest random
+            "enough funds, proper fragmentation, inputs depleted"
             (Left ErrInputsDepleted)
             (CoinSelectionFixture
                 { maxNumOfInputs = 100
@@ -225,13 +226,14 @@ spec = do
                 , txOutputs = 2 :| []
                 })
 
-    before getSystemDRG $ describe "Coin selection properties : random algorithm" $ do
-        it "forall (UTxO, NonEmpty TxOut), \
-           \ running algorithm gives not less UTxO fragmentation than LargestFirst algorithm"
-            (property . propFragmentation)
-        it "forall (UTxO, NonEmpty TxOut), \
-           \ running algorithm gives the same errors as LargestFirst algorithm"
-            (property . propErrors)
+    before getSystemDRG $
+        describe "Coin selection properties : random algorithm" $ do
+            it "forall (UTxO, NonEmpty TxOut), running algorithm gives not \
+                \less UTxO fragmentation than LargestFirst algorithm"
+                (property . propFragmentation)
+            it "forall (UTxO, NonEmpty TxOut), running algorithm gives the \
+                \same errors as LargestFirst algorithm"
+                (property . propErrors)
 
 {-------------------------------------------------------------------------------
                               Properties

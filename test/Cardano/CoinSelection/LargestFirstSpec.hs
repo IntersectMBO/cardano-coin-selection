@@ -120,7 +120,8 @@ spec = do
                 , txOutputs = 40 :| []
                 })
 
-        coinSelectionUnitTest largestFirst "not enough coin & not fragmented enough"
+        coinSelectionUnitTest largestFirst
+            "not enough coin & not fragmented enough"
             (Left $ ErrNotEnoughMoney 39 43)
             (CoinSelectionFixture
                 { maxNumOfInputs = 100
@@ -129,7 +130,8 @@ spec = do
                 , txOutputs = 40 :| [1,1,1]
                 })
 
-        coinSelectionUnitTest largestFirst "enough coins, but not fragmented enough"
+        coinSelectionUnitTest largestFirst
+            "enough coins, but not fragmented enough"
             (Left $ ErrUtxoNotEnoughFragmented 3 4)
             (CoinSelectionFixture
                 { maxNumOfInputs = 100
@@ -139,7 +141,8 @@ spec = do
                 })
 
         coinSelectionUnitTest largestFirst
-            "enough coins, fragmented enough, but one output depletes all inputs"
+            "enough coins, fragmented enough, but one output depletes all \
+            \inputs"
             (Left ErrInputsDepleted)
             (CoinSelectionFixture
                 { maxNumOfInputs = 100
@@ -150,7 +153,8 @@ spec = do
 
         coinSelectionUnitTest
             largestFirst
-            "enough coins, fragmented enough, but the input needed to stay for the next output is depleted"
+            "enough coins, fragmented enough, but the input needed to stay \
+            \for the next output is depleted"
             (Left ErrInputsDepleted)
             (CoinSelectionFixture
                 { maxNumOfInputs = 100
@@ -204,7 +208,8 @@ spec = do
             \inputs as there are requested outputs"
             (property propAtLeast)
         it "forall (UTxO, NonEmpty TxOut), for all selected input, there's no \
-            \bigger input in the UTxO that is not already in the selected inputs"
+            \bigger input in the UTxO that is not already in the selected \
+            \inputs"
             (property propInputDecreasingOrder)
 
 {-------------------------------------------------------------------------------

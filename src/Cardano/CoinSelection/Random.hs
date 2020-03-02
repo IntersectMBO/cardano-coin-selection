@@ -70,13 +70,13 @@ data TargetRange = TargetRange
 --    transaction inputs has been exceeded, fall back on the largest-first
 --    algorithm for this step.)
 --
--- 2. The algorithm first makes a random  selection for each output from the UTxO,
---    processing the biggest output first and proceeding in a descending order.
---    If the selection is not successful largest-first fallback kicks in.
---    If the selection is successful for each output then the
---    improvement is tried for each selection, once again starting from the selection
---    made for the biggest output. The improvement is tried for the next biggest output's
---    selection. An output is considered an improvement when:
+-- 2. The algorithm first makes a random selection for each output from the
+--    UTxO, processing the biggest output first and proceeding in a descending
+--    order.  If the selection is not successful largest-first fallback kicks
+--    in.  If the selection is successful for each output then the improvement
+--    is tried for each selection, once again starting from the selection made
+--    for the biggest output. The improvement is tried for the next biggest
+--    output's selection. An output is considered an improvement when:
 --
 --    (a)  It doesn’t exceed a specified upper limit.
 --    (b)  Adding the new output gets us closer to the ideal change value.
