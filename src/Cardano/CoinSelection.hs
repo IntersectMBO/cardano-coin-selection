@@ -7,8 +7,8 @@
 -- License: Apache-2.0
 --
 -- Provides the API of Coin Selection algorithm and Fee Calculation
--- This module contains the implementation of adjusting coin selection for a fee.
--- The sender pays for the fee and additional inputs are picked randomly.
+-- This module contains the implementation of adjusting coin selection for a
+-- fee.  The sender pays for the fee and additional inputs are picked randomly.
 -- For more information refer to:
 -- https://iohk.io/blog/self-organisation-in-coin-selection/
 
@@ -105,8 +105,8 @@ addCoin total c = total + (fromIntegral (getCoin c))
 data ErrCoinSelection e
     = ErrNotEnoughMoney Word64 Word64
     -- ^ UTxO exhausted during input selection
-    -- We record the balance of the UTxO as well as the size of the payment
-    -- we tried to make.
+    -- We record the balance of the UTxO as well as the size of the payment we
+    -- tried to make.
     | ErrUtxoNotEnoughFragmented Word64 Word64
     -- ^ UTxO is not enough fragmented for the number of transaction outputs
     -- We record the number of UTxO entries as well as the number of the
@@ -115,8 +115,9 @@ data ErrCoinSelection e
     -- ^ When trying to construct a transaction, the max number of allowed
     -- inputs was reached.
     | ErrInputsDepleted
-    -- ^ When trying to construct a transaction, the available inputs are depleted
-    -- even when UTxO is properly fragmented and with enough funds to cover payment
+    -- ^ When trying to construct a transaction, the available inputs are
+    -- depleted even when UTxO is properly fragmented and with enough funds to
+    -- cover payment
     | ErrInvalidSelection e
     -- ^ Somewhat, we ended up generating an invalid coin selection because of
     -- inputs passed down to the coin selection function, or because a target

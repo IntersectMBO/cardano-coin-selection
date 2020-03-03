@@ -212,7 +212,8 @@ spec = do
             , csChngs = [1]
             })
 
-        -- Multiple change output, can select extra inputs to cover fee, no change
+        -- Multiple change output, can select extra inputs to cover fee, no
+        -- change
         feeUnitTest (FeeFixture
             { fInps = [10,10]
             , fOuts = [7,7]
@@ -330,7 +331,8 @@ spec = do
     before getSystemDRG $ describe "Fee Adjustment properties" $ do
         it "Fee adjustment is deterministic when there's no extra inputs"
             (\_ -> property propDeterministic)
-        it "Adjusting for fee (/= 0) reduces the change outputs or increase inputs"
+        it "Adjusting for fee (/= 0) reduces the change outputs or increase \
+            \inputs"
             (property . propReducedChanges)
 
     describe "divvyFee" $ do
@@ -376,12 +378,13 @@ instance Buildable FeeProp where
 propDeterministic
     :: ShowFmt FeeProp
     -> Property
-propDeterministic (ShowFmt (FeeProp coinSel _ (fee, dust))) = monadicIO $ liftIO $ do
-    let feeOpt = feeOptions fee dust
-    let utxo = mempty
-    resultOne <- runExceptT $ adjustForFee feeOpt utxo coinSel
-    resultTwo <- runExceptT $ adjustForFee feeOpt utxo coinSel
-    resultOne `shouldBe` resultTwo
+propDeterministic (ShowFmt (FeeProp coinSel _ (fee, dust))) =
+    monadicIO $ liftIO $ do
+        let feeOpt = feeOptions fee dust
+        let utxo = mempty
+        resultOne <- runExceptT $ adjustForFee feeOpt utxo coinSel
+        resultTwo <- runExceptT $ adjustForFee feeOpt utxo coinSel
+        resultOne `shouldBe` resultTwo
 
 propReducedChanges
     :: SystemDRG
@@ -485,17 +488,18 @@ feeUnitTest
     :: FeeFixture
     -> Either ErrAdjustForFee FeeOutput
     -> SpecWith ()
-feeUnitTest (FeeFixture inpsF outsF chngsF utxoF feeF dustF) expected = it title $ do
-    (utxo, sel) <- setup
-    result <- runExceptT $ do
-        (CoinSelection inps outs chngs) <-
-            adjustForFee (feeOptions feeF dustF) utxo sel
-        return $ FeeOutput
-            { csInps = map (getCoin . coin . snd) inps
-            , csOuts = map (getCoin . coin) outs
-            , csChngs = map getCoin chngs
-            }
-    result `shouldBe` expected
+feeUnitTest (FeeFixture inpsF outsF chngsF utxoF feeF dustF) expected =
+    it title $ do
+        (utxo, sel) <- setup
+        result <- runExceptT $ do
+            (CoinSelection inps outs chngs) <-
+                adjustForFee (feeOptions feeF dustF) utxo sel
+            return $ FeeOutput
+                { csInps = map (getCoin . coin . snd) inps
+                , csOuts = map (getCoin . coin) outs
+                , csChngs = map getCoin chngs
+                }
+        result `shouldBe` expected
   where
     setup :: IO (UTxO, CoinSelection)
     setup = do
@@ -626,12 +630,12 @@ instance Arbitrary CoinSelection where
                 outs' = if length outs > 1 then drop 1 outs else outs
                 chgs' = drop 1 chgs
             in
-                filter (\s -> s /= sel && isValidSelection s)
-                    [ CoinSelection inps' outs' chgs'
-                    , CoinSelection inps' outs chgs
-                    , CoinSelection inps outs' chgs
-                    , CoinSelection inps outs chgs'
-                    ]
+            filter (\s -> s /= sel && isValidSelection s)
+                [ CoinSelection inps' outs' chgs'
+                , CoinSelection inps' outs chgs
+                , CoinSelection inps outs' chgs
+                , CoinSelection inps outs chgs'
+                ]
     arbitrary = do
         outs <- choose (1, 10)
             >>= \n -> vectorOf n arbitrary

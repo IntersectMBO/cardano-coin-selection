@@ -10,8 +10,8 @@
 -- License: Apache-2.0
 --
 -- Provides the API of Coin Selection algorithm and Fee Calculation
--- This module contains the implementation of adjusting coin selection for a fee.
--- The sender pays for the fee and additional inputs are picked randomly.
+-- This module contains the implementation of adjusting coin selection for a
+-- fee.  The sender pays for the fee and additional inputs are picked randomly.
 -- For more information refer to:
 -- https://iohk.io/blog/self-organisation-in-coin-selection/
 
@@ -120,32 +120,31 @@ newtype ErrAdjustForFee
     -- We record what amount missed to cover the fee
     deriving (Show, Eq)
 
--- | Given the coin selection result from a policy run, adjust the outputs
--- for fees, potentially returning additional inputs that we need to cover
--- all fees.
+-- | Given the coin selection result from a policy run, adjust the outputs for
+-- fees, potentially returning additional inputs that we need to cover all
+-- fees.
+--
 -- We lose the relationship between the transaction outputs and their
--- corresponding inputs/change outputs here. This is a decision we
--- may wish to revisit later. For now however note that since
+-- corresponding inputs/change outputs here. This is a decision we may wish to
+-- revisit later. For now however note that since
 --
---      (a) coin selection tries to establish a particular ratio
---          between payment outputs and change outputs (currently it
---          aims for an average of 1:1)
+--  (a) coin selection tries to establish a particular ratio between
+--      payment outputs and change outputs (currently it aims for an average of
+--      1:1)
 --
---      (b) coin selection currently only generates a single change
---          output per payment output, distributing the fee
---          proportionally across all change outputs is roughly
---          equivalent to distributing it proportionally over the
---          payment outputs (roughly, not exactly, because the 1:1
---          proportion is best effort only, and may in some cases be
---          wildly different).
+--  (b) coin selection currently only generates a single change output per
+--      payment output, distributing the fee proportionally across all change
+--      outputs is roughly equivalent to distributing it proportionally over
+--      the payment outputs (roughly, not exactly, because the 1:1 proportion
+--      is best effort only, and may in some cases be wildly different).
 --
--- Note that for (a) we don't need the ratio to be 1:1, the above
--- reasoning will remain true for any proportion 1:n. For (b) however,
--- if coin selection starts creating multiple outputs, and this number
--- may vary, then losing the connection between outputs and change
--- outputs will mean that that some outputs may pay a larger
--- percentage of the fee (depending on how many change outputs the
--- algorithm happened to choose).
+-- Note that for (a) we don't need the ratio to be 1:1, the above reasoning
+-- will remain true for any proportion 1:n. For (b) however, if coin selection
+-- starts creating multiple outputs, and this number may vary, then losing the
+-- connection between outputs and change outputs will mean that that some
+-- outputs may pay a larger percentage of the fee (depending on how many change
+-- outputs the algorithm happened to choose).
+--
 adjustForFee
     :: MonadRandom m
     => FeeOptions
@@ -174,8 +173,8 @@ senderPaysFee opt utxo sel = evalStateT (go sel) utxo where
         -> StateT UTxO (ExceptT ErrAdjustForFee m) CoinSelection
     go coinSel@(CoinSelection inps outs chgs) = do
         -- 1/
-        -- We compute fees using all inputs, outputs and changes since
-        -- all of them have an influence on the fee calculation.
+        -- We compute fees using all inputs, outputs and changes since all of
+        -- them have an influence on the fee calculation.
         let upperBound = estimateFee opt coinSel
         -- 2/
         -- Substract fee from change outputs, proportionally to their value.
@@ -199,8 +198,8 @@ senderPaysFee opt utxo sel = evalStateT (go sel) utxo where
             -- cover what's left. Note that this entry may increase our change
             -- because we may not consume it entirely. So we will just split
             -- the extra change across all changes possibly increasing the
-            -- number of change outputs (if there was none, or if increasing
-            -- a change value causes an overflow).
+            -- number of change outputs (if there was none, or if increasing a
+            -- change value causes an overflow).
             --
             -- Because selecting a new input increases the fee, we need to
             -- re-run the algorithm with this new elements and using the initial
@@ -304,7 +303,8 @@ remainingFee opts s = do
         -- when we have a dangling change output (i.e. adding it costs too much
         -- and we can't afford it, but not having it result in too many coins
         -- left for fees).
-        let Fee feeDangling = estimateFee opts $ s { change = [Coin (diff - fee)] }
+        let Fee feeDangling =
+                estimateFee opts $ s { change = [Coin (diff - fee)] }
         if (feeDangling >= diff)
             then Fee (feeDangling - fee)
             else error $ unwords
@@ -318,7 +318,6 @@ remainingFee opts s = do
     Fee fee = estimateFee opts s
     diff = inputBalance s - (outputBalance s + changeBalance s)
 
-
 -- Equally split the extra change obtained when picking new inputs across all
 -- other change. Note that, it may create an extra change output if:
 --
@@ -326,16 +325,16 @@ remainingFee opts s = do
 --   (b) Adding change to an exiting one would cause an overflow
 --
 -- It makes no attempt to divvy the new output proportionally over the change
--- outputs. This means that if we happen to pick a very large UTxO entry, adding
--- this evenly rather than proportionally might skew the payment:change ratio a
--- lot. Could consider defining this in terms of divvy instead.
+-- outputs. This means that if we happen to pick a very large UTxO entry,
+-- adding this evenly rather than proportionally might skew the payment:change
+-- ratio a lot. Could consider defining this in terms of divvy instead.
 splitChange :: Coin -> [Coin] -> [Coin]
 splitChange = go
   where
     go remaining as | remaining == Coin 0 = as
     go remaining [] = [remaining]
-        -- we only create new change if for whatever reason there is none already
-        -- or if is some overflow happens when we try to add.
+        -- we only create new change if for whatever reason there is none
+        -- already or if is some overflow happens when we try to add.
     go remaining [a] =
         let
             newChange = Coin $ (getCoin remaining) + (getCoin a)
