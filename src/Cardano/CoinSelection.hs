@@ -112,7 +112,7 @@ data ErrCoinSelection e
     -- Records the balance of the UTxO, as well as the size of the payment we
     -- tried to make.
     --
-    | ErrUtxoNotEnoughFragmented Word64 Word64
+    | ErrUtxoNotFragmentedEnough Word64 Word64
     -- ^ The UTxO was not fragmented enough to support the required number of
     -- transaction outputs.
     --

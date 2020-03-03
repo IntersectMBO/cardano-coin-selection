@@ -63,7 +63,7 @@ largestFirst opt outs utxo = do
                 $ throwE $ ErrNotEnoughMoney utxoBalance moneyRequested
 
             when (nUtxo < nOuts)
-                $ throwE $ ErrUtxoNotEnoughFragmented nUtxo nOuts
+                $ throwE $ ErrUtxoNotFragmentedEnough nUtxo nOuts
 
             when (fromIntegral maxN > nUtxo)
                 $ throwE ErrInputsDepleted
