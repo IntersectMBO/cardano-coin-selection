@@ -43,10 +43,8 @@ library
     , containers
     , cryptonite
     , deepseq
-    , extra
     , fmt
     , memory
-    , random
     , text
     , transformers
   hs-source-dirs:
@@ -78,8 +76,6 @@ test-suite unit
     , cardano-coin-selection
     , containers
     , cryptonite
-    , deepseq
-    , extra
     , fmt
     , hspec
     , memory
