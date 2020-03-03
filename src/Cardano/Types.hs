@@ -212,7 +212,7 @@ pickRandom (UTxO utxo)
         ix <- fromEnum <$> generateBetween 0 (toEnum (Map.size utxo - 1))
         return (Just $ Map.elemAt ix utxo, UTxO $ Map.deleteAt ix utxo)
 
--- | Compute the balance of a UTxO
+-- | Compute the balance of a UTxO.
 balance :: UTxO -> Natural
 balance =
     Map.foldl' fn 0 . getUTxO
@@ -220,7 +220,7 @@ balance =
     fn :: Natural -> TxOut -> Natural
     fn tot out = tot + fromIntegral (getCoin (coin out))
 
--- | Compute the balance of a unwrapped UTxO
+-- | Compute the balance of a unwrapped UTxO.
 balance' :: [(TxIn, TxOut)] -> Word64
 balance' =
     fromIntegral . balance . UTxO . Map.fromList
@@ -250,10 +250,10 @@ restrictedTo (UTxO utxo) outs =
 -------------------------------------------------------------------------------}
 
 -- | Allows us to define the "domain" of any type — @UTxO@ in particular — and
--- use 'dom' to refer to the /inputs/ of an /utxo/.
+-- use 'dom' to refer to the /inputs/ of an /UTxO/.
 --
--- This is the terminology used in the [Formal Specification for a Cardano](https://github.com/input-output-hk/cardano-wallet/blob/master/specifications/wallet/formal-specification-for-a-cardano-wallet.pdf)
--- uses.
+-- This is the terminology used in the [Formal Specification for a Cardano
+-- Wallet](https://github.com/input-output-hk/cardano-wallet/blob/master/specifications/wallet/formal-specification-for-a-cardano-wallet.pdf).
 class Dom a where
     type DomElem a :: Type
     dom :: a -> Set (DomElem a)

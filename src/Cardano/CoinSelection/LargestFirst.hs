@@ -4,9 +4,9 @@
 -- Copyright: © 2018-2020 IOHK
 -- License: Apache-2.0
 --
--- This module contains the implementation of largestFirst
--- input selection algorithm
-
+-- This module contains an implementation of the __Largest-First__ coin
+-- selection algorithm.
+--
 module Cardano.CoinSelection.LargestFirst (
     largestFirst
   ) where
@@ -34,7 +34,7 @@ import qualified Data.List as L
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map.Strict as Map
 
--- | Largest-first input selection policy
+-- | Implements the __Largest-First__ coin selection algorithm.
 largestFirst
     :: forall m e. Monad m
     => CoinSelectionOptions e
@@ -70,10 +70,11 @@ largestFirst opt outs utxo = do
 
             throwE $ ErrMaximumInputsReached (fromIntegral maxN)
 
--- Selecting coins to cover at least the specified value
--- The details of the algorithm are following:
+-- Selects coins to cover at least the specified value.
 --
--- (a) transaction outputs are processed starting from the largest one
+-- The details of the algorithm are as follows:
+--
+-- (a) transaction outputs are processed starting from the largest first.
 --
 -- (b) `maximumNumberOfInputs` biggest available UTxO inputs are taken into
 --     consideration. They constitute a candidate UTxO inputs from which coin
