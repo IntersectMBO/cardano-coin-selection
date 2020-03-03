@@ -17,10 +17,10 @@ module Cardano.CoinSelectionSpec
     , alwaysFail
     ) where
 
--- | This module contains shared logic between the coin selection tests. They
--- ought to share the same interface, and therefore, it makes sense for them to
--- also require the same arbitrary instances and instrument testing in a similar
--- way for both.
+-- | This module contains shared functionality for coin selection tests.
+--
+-- Coin selection algorithms share a common interface, and therefore it makes
+-- sense for them to also share arbitrary instances and tests.
 
 import Prelude
 
@@ -128,15 +128,15 @@ data CoinSelectionFixture = CoinSelectionFixture
 -- | A dummy error for testing extra validation
 data ErrValidation = ErrValidation deriving (Eq, Show)
 
--- | Smart constructor for the validation function that always succeed
+-- | Smart constructor for the validation function that always succeeds.
 noValidation :: CoinSelection -> Either ErrValidation ()
 noValidation = const (Right ())
 
--- | Smart constructor for the validation function that always fail
+-- | Smart constructor for the validation function that always fails.
 alwaysFail :: CoinSelection -> Either ErrValidation ()
 alwaysFail = const (Left ErrValidation)
 
--- | Testing-friendly format for 'CoinSelection' results of unit tests
+-- | Testing-friendly format for 'CoinSelection' results of unit tests.
 data CoinSelectionResult = CoinSelectionResult
     { rsInputs :: [Word64]
     , rsChange :: [Word64]
@@ -144,7 +144,7 @@ data CoinSelectionResult = CoinSelectionResult
     } deriving (Eq, Show)
 
 -- | Generate a 'UTxO' and 'TxOut' matching the given 'Fixture', and perform
--- given coin selection on it.
+-- the given coin selection on it.
 coinSelectionUnitTest
     :: ( CoinSelectionOptions ErrValidation
          -> NonEmpty TxOut

@@ -6,12 +6,9 @@
 -- Copyright: © 2018-2020 IOHK
 -- License: Apache-2.0
 --
--- Provides the API of Coin Selection algorithm and Fee Calculation
--- This module contains the implementation of adjusting coin selection for a
--- fee.  The sender pays for the fee and additional inputs are picked randomly.
--- For more information refer to:
--- https://iohk.io/blog/self-organisation-in-coin-selection/
-
+-- Provides general functions and types relating to coin selection and fee
+-- balancing.
+--
 module Cardano.CoinSelection
     (
       -- * Coin Selection
@@ -43,17 +40,21 @@ import GHC.Generics
 
 data CoinSelection = CoinSelection
     { inputs  :: [(TxIn, TxOut)]
-      -- ^ Picked inputs
+      -- ^ Picked inputs.
     , outputs :: [TxOut]
-      -- ^ Picked outputs
+      -- ^ Picked outputs.
     , change  :: [Coin]
-      -- ^ Resulting changes
+      -- ^ Resulting change.
     } deriving (Generic, Show, Eq)
 
--- NOTE
+-- NOTE:
+--
 -- We don't check for duplicates when combining selections because we assume
--- they are constructed from independent elements. In practice, we could nub
--- the list or use a `Set` ?
+-- they are constructed from independent elements.
+--
+-- As an alternative to the current implementation, we could 'nub' the list or
+-- use a 'Set'.
+--
 instance Semigroup CoinSelection where
     a <> b = CoinSelection
         { inputs = inputs a <> inputs b
@@ -75,21 +76,23 @@ instance Buildable CoinSelection where
 data CoinSelectionOptions e = CoinSelectionOptions
     { maximumNumberOfInputs
         :: Word8 -> Word8
-            -- ^ Maximum number of inputs allowed for a given number of outputs
+            -- ^ Calculate the maximum number of inputs allowed for a given
+            -- number of outputs.
     , validate
         :: CoinSelection -> Either e ()
-            -- ^ Returns any backend-specific error regarding coin selection
+            -- ^ Validate the given coin selection, returning a backend-specific
+            -- error.
     } deriving (Generic)
 
--- | Calculate the sum of all input values
+-- | Calculate the sum of all input values.
 inputBalance :: CoinSelection -> Word64
 inputBalance =  foldl' (\total -> addTxOut total . snd) 0 . inputs
 
--- | Calculate the sum of all output values
+-- | Calculate the sum of all output values.
 outputBalance :: CoinSelection -> Word64
 outputBalance = foldl' addTxOut 0 . outputs
 
--- | Calculate the sum of all output values
+-- | Calculate the sum of all output values.
 changeBalance :: CoinSelection -> Word64
 changeBalance = foldl' addCoin 0 . change
 
@@ -104,23 +107,30 @@ addCoin total c = total + (fromIntegral (getCoin c))
 
 data ErrCoinSelection e
     = ErrNotEnoughMoney Word64 Word64
-    -- ^ UTxO exhausted during input selection
-    -- We record the balance of the UTxO as well as the size of the payment we
+    -- ^ The UTxO was exhausted during input selection.
+    --
+    -- Records the balance of the UTxO, as well as the size of the payment we
     -- tried to make.
-    | ErrUtxoNotEnoughFragmented Word64 Word64
-    -- ^ UTxO is not enough fragmented for the number of transaction outputs
-    -- We record the number of UTxO entries as well as the number of the
-    -- outputs of the transaction.
+    --
+    | ErrUtxoNotFragmentedEnough Word64 Word64
+    -- ^ The UTxO was not fragmented enough to support the required number of
+    -- transaction outputs.
+    --
+    -- Records the number of UTxO entries, as well as the number of the
+    -- transaction outputs.
+    --
     | ErrMaximumInputsReached Word64
-    -- ^ When trying to construct a transaction, the max number of allowed
-    -- inputs was reached.
+    -- ^ The maximum number of allowed inputs was not enough to cover the total
+    -- payment amount.
+    --
     | ErrInputsDepleted
-    -- ^ When trying to construct a transaction, the available inputs are
-    -- depleted even when UTxO is properly fragmented and with enough funds to
-    -- cover payment
+    -- ^ All available inputs were depleted, even though the UTxO was
+    -- sufficiently fragmented and with enough funds to cover payment.
+    --
     | ErrInvalidSelection e
-    -- ^ Somewhat, we ended up generating an invalid coin selection because of
-    -- inputs passed down to the coin selection function, or because a target
-    -- backend has extra-limitations not covered by our coin selection
-    -- algorithm.
+    -- ^ The generated coin selection was reported to be invalid by the backend.
+    --
+    -- Records the backend-specific error that occurred while attempting to
+    -- validate the selection.
+    --
     deriving (Show, Eq)

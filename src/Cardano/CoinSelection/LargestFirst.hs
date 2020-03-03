@@ -4,9 +4,9 @@
 -- Copyright: © 2018-2020 IOHK
 -- License: Apache-2.0
 --
--- This module contains the implementation of largestFirst
--- input selection algorithm
-
+-- This module contains an implementation of the __Largest-First__ coin
+-- selection algorithm.
+--
 module Cardano.CoinSelection.LargestFirst (
     largestFirst
   ) where
@@ -34,7 +34,7 @@ import qualified Data.List as L
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map.Strict as Map
 
--- | Largest-first input selection policy
+-- | Implements the __Largest-First__ coin selection algorithm.
 largestFirst
     :: forall m e. Monad m
     => CoinSelectionOptions e
@@ -42,7 +42,7 @@ largestFirst
     -> UTxO
     -> ExceptT (ErrCoinSelection e) m (CoinSelection, UTxO)
 largestFirst opt outs utxo = do
-    let descending = NE.toList . NE.sortBy (flip $ comparing coin)
+    let outsDescending = NE.toList $ NE.sortBy (flip $ comparing coin) outs
     let nOuts = fromIntegral $ NE.length outs
     let maxN = fromIntegral $ maximumNumberOfInputs opt (fromIntegral nOuts)
     let nLargest = take maxN
@@ -51,11 +51,11 @@ largestFirst opt outs utxo = do
             . getUTxO
     let guard = except . left ErrInvalidSelection . validate opt
 
-    case foldM atLeast (nLargest utxo, mempty) (descending outs) of
+    case foldM atLeast (nLargest utxo, mempty) outsDescending of
         Just (utxo', s) ->
             guard s $> (s, UTxO $ Map.fromList utxo')
         Nothing -> do
-            let moneyRequested = sum $ (getCoin . coin) <$> (descending outs)
+            let moneyRequested = sum $ (getCoin . coin) <$> outsDescending
             let utxoBalance = fromIntegral $ balance utxo
             let nUtxo = fromIntegral $ L.length $ (Map.toList . getUTxO) utxo
 
@@ -63,17 +63,18 @@ largestFirst opt outs utxo = do
                 $ throwE $ ErrNotEnoughMoney utxoBalance moneyRequested
 
             when (nUtxo < nOuts)
-                $ throwE $ ErrUtxoNotEnoughFragmented nUtxo nOuts
+                $ throwE $ ErrUtxoNotFragmentedEnough nUtxo nOuts
 
             when (fromIntegral maxN > nUtxo)
                 $ throwE ErrInputsDepleted
 
             throwE $ ErrMaximumInputsReached (fromIntegral maxN)
 
--- Selecting coins to cover at least the specified value
--- The details of the algorithm are following:
+-- Selects coins to cover at least the specified value.
 --
--- (a) transaction outputs are processed starting from the largest one
+-- The details of the algorithm are as follows:
+--
+-- (a) transaction outputs are processed starting from the largest first.
 --
 -- (b) `maximumNumberOfInputs` biggest available UTxO inputs are taken into
 --     consideration. They constitute a candidate UTxO inputs from which coin
@@ -94,28 +95,34 @@ atLeast
     :: ([(TxIn, TxOut)], CoinSelection)
     -> TxOut
     -> Maybe ([(TxIn, TxOut)], CoinSelection)
-atLeast (utxo0, selection) txout =
-    coverOutput (fromIntegral $ getCoin $ coin txout, mempty) utxo0
+atLeast (utxoAvailable, currentSelection) txout =
+    let target = fromIntegral $ getCoin $ coin txout in
+    coverTarget target utxoAvailable mempty
   where
-    coverOutput
-        :: (Integer, [(TxIn, TxOut)])
+    coverTarget
+        :: Integer
+        -> [(TxIn, TxOut)]
         -> [(TxIn, TxOut)]
         -> Maybe ([(TxIn, TxOut)], CoinSelection)
-    coverOutput (target, ins) utxo
+    coverTarget target utxoRemaining utxoSelected
         | target <= 0 = Just
-            ( utxo
-            , selection <> CoinSelection
-                { inputs = ins
+            -- We've selected enough to cover the target, so stop here.
+            ( utxoRemaining
+            , currentSelection <> CoinSelection
+                { inputs  = utxoSelected
                 , outputs = [txout]
-                , change =
-                    filter (/= (Coin 0)) [Coin (fromIntegral $ abs target)]
+                , change  = [Coin $ fromIntegral $ abs target | target < 0]
                 }
             )
-        | null utxo =
-            Nothing
         | otherwise =
-            let
-                (inp, out):utxo' = utxo
-                target' = target - (fromIntegral (getCoin (coin out)))
-            in
-                coverOutput (target', (inp, out):ins) utxo'
+            -- We haven't yet selected enough to cover the target, so attempt
+            -- to select a little more and then continue.
+            case utxoRemaining of
+                (i, o):utxoRemaining' ->
+                    let utxoSelected' = (i, o):utxoSelected
+                        target' = target - fromIntegral (getCoin (coin o))
+                    in
+                    coverTarget target' utxoRemaining' utxoSelected'
+                [] ->
+                    -- The UTxO has been exhausted, so stop here.
+                    Nothing

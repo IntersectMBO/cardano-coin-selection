@@ -209,7 +209,7 @@ spec = do
                 })
 
         coinSelectionUnitTest random ""
-            (Left $ ErrUtxoNotEnoughFragmented 3 4)
+            (Left $ ErrUtxoNotFragmentedEnough 3 4)
             (CoinSelectionFixture
                 { maxNumOfInputs = 100
                 , validateSelection = noValidation
