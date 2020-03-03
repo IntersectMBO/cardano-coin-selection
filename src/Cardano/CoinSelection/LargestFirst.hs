@@ -42,7 +42,7 @@ largestFirst
     -> UTxO
     -> ExceptT (ErrCoinSelection e) m (CoinSelection, UTxO)
 largestFirst opt outs utxo = do
-    let descending = NE.toList . NE.sortBy (flip $ comparing coin)
+    let outsDescending = NE.toList $ NE.sortBy (flip $ comparing coin) outs
     let nOuts = fromIntegral $ NE.length outs
     let maxN = fromIntegral $ maximumNumberOfInputs opt (fromIntegral nOuts)
     let nLargest = take maxN
@@ -51,11 +51,11 @@ largestFirst opt outs utxo = do
             . getUTxO
     let guard = except . left ErrInvalidSelection . validate opt
 
-    case foldM atLeast (nLargest utxo, mempty) (descending outs) of
+    case foldM atLeast (nLargest utxo, mempty) outsDescending of
         Just (utxo', s) ->
             guard s $> (s, UTxO $ Map.fromList utxo')
         Nothing -> do
-            let moneyRequested = sum $ (getCoin . coin) <$> (descending outs)
+            let moneyRequested = sum $ (getCoin . coin) <$> outsDescending
             let utxoBalance = fromIntegral $ balance utxo
             let nUtxo = fromIntegral $ L.length $ (Map.toList . getUTxO) utxo
 
