@@ -94,28 +94,34 @@ atLeast
     :: ([(TxIn, TxOut)], CoinSelection)
     -> TxOut
     -> Maybe ([(TxIn, TxOut)], CoinSelection)
-atLeast (utxo0, selection) txout =
-    coverOutput (fromIntegral $ getCoin $ coin txout, mempty) utxo0
+atLeast (utxoAvailable, currentSelection) txout =
+    let target = fromIntegral $ getCoin $ coin txout in
+    coverTarget target utxoAvailable mempty
   where
-    coverOutput
-        :: (Integer, [(TxIn, TxOut)])
+    coverTarget
+        :: Integer
+        -> [(TxIn, TxOut)]
         -> [(TxIn, TxOut)]
         -> Maybe ([(TxIn, TxOut)], CoinSelection)
-    coverOutput (target, ins) utxo
+    coverTarget target utxoRemaining utxoSelected
         | target <= 0 = Just
-            ( utxo
-            , selection <> CoinSelection
-                { inputs = ins
+            -- We've selected enough to cover the target, so stop here.
+            ( utxoRemaining
+            , currentSelection <> CoinSelection
+                { inputs  = utxoSelected
                 , outputs = [txout]
-                , change =
-                    filter (/= (Coin 0)) [Coin (fromIntegral $ abs target)]
+                , change  = [Coin $ fromIntegral $ abs target | target < 0]
                 }
             )
-        | null utxo =
-            Nothing
         | otherwise =
-            let
-                (inp, out):utxo' = utxo
-                target' = target - (fromIntegral (getCoin (coin out)))
-            in
-                coverOutput (target', (inp, out):ins) utxo'
+            -- We haven't yet selected enough to cover the target, so attempt
+            -- to select a little more and then continue.
+            case utxoRemaining of
+                (i, o):utxoRemaining' ->
+                    let utxoSelected' = (i, o):utxoSelected
+                        target' = target - fromIntegral (getCoin (coin o))
+                    in
+                    coverTarget target' utxoRemaining' utxoSelected'
+                [] ->
+                    -- The UTxO has been exhausted, so stop here.
+                    Nothing
