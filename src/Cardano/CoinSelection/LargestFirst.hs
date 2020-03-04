@@ -20,7 +20,7 @@ import Cardano.Types
 import Control.Arrow
     ( left )
 import Control.Monad
-    ( foldM, when )
+    ( foldM )
 import Control.Monad.Trans.Except
     ( ExceptT (..), except, throwE )
 import Data.Functor
@@ -28,7 +28,7 @@ import Data.Functor
 import Data.List.NonEmpty
     ( NonEmpty (..) )
 import Data.Ord
-    ( Down (..), comparing )
+    ( Down (..) )
 
 import qualified Data.List as L
 import qualified Data.List.NonEmpty as NE
@@ -41,34 +41,42 @@ largestFirst
     -> NonEmpty TxOut
     -> UTxO
     -> ExceptT (ErrCoinSelection e) m (CoinSelection, UTxO)
-largestFirst opt outs utxo = do
-    let outsDescending = NE.toList $ NE.sortBy (flip $ comparing coin) outs
-    let nOuts = fromIntegral $ NE.length outs
-    let maxN = fromIntegral $ maximumNumberOfInputs opt (fromIntegral nOuts)
-    let nLargest = take maxN
-            . L.sortOn (Down . coin . snd)
-            . Map.toList
-            . getUTxO
-    let guard = except . left ErrInvalidSelection . validate opt
-
-    case foldM atLeast (nLargest utxo, mempty) outsDescending of
-        Just (utxo', s) ->
-            guard s $> (s, UTxO $ Map.fromList utxo')
-        Nothing -> do
-            let moneyRequested = sum $ (getCoin . coin) <$> outsDescending
-            let utxoBalance = fromIntegral $ balance utxo
-            let nUtxo = fromIntegral $ L.length $ (Map.toList . getUTxO) utxo
-
-            when (utxoBalance < moneyRequested)
-                $ throwE $ ErrNotEnoughMoney utxoBalance moneyRequested
-
-            when (nUtxo < nOuts)
-                $ throwE $ ErrUtxoNotFragmentedEnough nUtxo nOuts
-
-            when (fromIntegral maxN > nUtxo)
-                $ throwE ErrInputsDepleted
-
-            throwE $ ErrMaximumInputsReached (fromIntegral maxN)
+largestFirst options outputsRequested utxo =
+    case foldM atLeast (utxoDescending, mempty) outputsDescending of
+        Just (utxoRemaining, selection) ->
+            validateSelection selection $>
+                (selection, UTxO $ Map.fromList utxoRemaining)
+        Nothing ->
+            throwE errorCondition
+  where
+    errorCondition
+      | amountAvailable < amountRequested =
+          ErrNotEnoughMoney amountAvailable amountRequested
+      | utxoCount < outputCount =
+          ErrUtxoNotFragmentedEnough utxoCount outputCount
+      | utxoCount <= inputCountMax =
+          ErrInputsDepleted
+      | otherwise =
+          ErrMaximumInputsReached inputCountMax
+    amountAvailable =
+        fromIntegral $ balance utxo
+    amountRequested =
+        sum $ (getCoin . coin) <$> outputsRequested
+    inputCountMax =
+        fromIntegral $ maximumNumberOfInputs options $ fromIntegral outputCount
+    outputCount =
+        fromIntegral $ NE.length outputsRequested
+    outputsDescending =
+        L.sortOn (Down . coin) $ NE.toList outputsRequested
+    utxoCount =
+        fromIntegral $ L.length $ (Map.toList . getUTxO) utxo
+    utxoDescending =
+        take (fromIntegral inputCountMax)
+            $ L.sortOn (Down . coin . snd)
+            $ Map.toList
+            $ getUTxO utxo
+    validateSelection =
+        except . left ErrInvalidSelection . validate options
 
 -- Selects coins to cover at least the specified value.
 --
