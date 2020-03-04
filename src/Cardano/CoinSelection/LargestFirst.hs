@@ -4,7 +4,7 @@
 -- Copyright: © 2018-2020 IOHK
 -- License: Apache-2.0
 --
--- This module contains an implementation of the __Largest-First__ coin
+-- This module contains an implementation of the __largest first__ coin
 -- selection algorithm.
 --
 module Cardano.CoinSelection.LargestFirst (
@@ -34,7 +34,73 @@ import qualified Data.List as L
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map.Strict as Map
 
--- | Implements the __Largest-First__ coin selection algorithm.
+-- | Generate a coin selection according to the __largest first__ algorithm.
+--
+-- For the given /output list/ and /starting UTxO set/, this algorithm
+-- generates a /coin selection/ that is capable of paying for all of the
+-- outputs, and a /remaining UTxO set/ from which spent values have been
+-- removed.
+--
+-- === Cardinality Rules
+--
+-- The algorithm requires that:
+--
+--  1.  Each output is paid for by /one or more/ entries from the UTxO set.
+--
+--  2.  Each entry from the UTxO set is used to pay for /at most one/ output.
+--
+--      (A given entry from the UTxO set /cannot/ be used to pay for multiple
+--      outputs.)
+--
+-- === Order of Processing
+--
+-- The algorithm processes /both/ the given output list /and/ the supplied UTxO
+-- set in __descending order of coin value__, from largest to smallest.
+--
+-- At all stages of processing, the algorithm maintains a /remaining UTxO set/
+-- that is steadily depleted as outputs are paid for.
+--
+-- === Processing an Output
+--
+-- For /each output/ in the (descending) output list, the algorithm repeatedly
+-- selects unspent values from the /remaining UTxO set/ (in descending order)
+-- until the /total selected value/ is greater than (or equal to) the output
+-- value, at which point the algorithm move ons to processing the /next/
+-- output.
+--
+-- If the /total selected value/ is greater than required for a particular
+-- output, the algorithm generates a /change output/ with the exact difference
+-- in value.
+--
+-- === Termination Conditions
+--
+-- The algorithm terminates with an __error__ if:
+--
+--  1.  The /total value/ of the starting UTxO set (the amount of money
+--      /available/) is /less than/ the total value of the output list (the
+--      amount of money /required/).
+--
+--      See: __'ErrNotEnoughMoney'__.
+--
+--  2.  The /number/ of entries in the starting UTxO set is /smaller than/ the
+--      number of requested outputs.
+--
+--      Due to the nature of the algorithm, /at least one/ UTxO entry is
+--      required /for each/ output.
+--
+--      See: __'ErrUtxoNotFragmentedEnough'__.
+--
+--  3.  Due to the particular /distribution/ of values within the starting UTxO
+--      set, the algorithm depletes all entries from the set /before/ it is able
+--      to pay for all requested outputs.
+--
+--      See: __'ErrInputsDepleted'__.
+--
+--  4.  The /number/ of UTxO entries needed to pay for the requested outputs
+--      would /exceed/ the upper limit specified by 'maximumNumberOfInputs'.
+--
+--      See: __'ErrMaximumInputsReached'__.
+--
 largestFirst
     :: forall m e. Monad m
     => CoinSelectionOptions e
