@@ -170,11 +170,11 @@ coinSelectionUnitTest run lbl expected (CoinSelectionFixture n fn utxoF outsF) =
   where
     title :: String
     title = mempty
+        <> if null lbl then "" else lbl <> ":\n\t"
         <> "max=" <> show n
         <> ", UTxO=" <> show utxoF
         <> ", Output=" <> show (NE.toList outsF)
         <> " --> " <> show (rsInputs <$> expected)
-        <> if null lbl then "" else " (" <> lbl <> ")"
 
     setup :: IO (UTxO, NonEmpty TxOut)
     setup = do
