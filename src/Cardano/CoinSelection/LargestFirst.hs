@@ -81,7 +81,7 @@ import qualified Data.Map.Strict as Map
 --      /available/) is /less than/ the total value of the output list (the
 --      amount of money /required/).
 --
---      See: __'ErrNotEnoughMoney'__.
+--      See: __'ErrUtxoBalanceInsufficient'__.
 --
 --  2.  The /number/ of entries in the starting UTxO set is /smaller than/ the
 --      number of requested outputs.
@@ -95,12 +95,12 @@ import qualified Data.Map.Strict as Map
 --      set, the algorithm depletes all entries from the set /before/ it is able
 --      to pay for all requested outputs.
 --
---      See: __'ErrInputsDepleted'__.
+--      See: __'ErrUxtoFullyDepleted'__.
 --
 --  4.  The /number/ of UTxO entries needed to pay for the requested outputs
---      would /exceed/ the upper limit specified by 'maximumNumberOfInputs'.
+--      would /exceed/ the upper limit specified by 'maximumInputCount'.
 --
---      See: __'ErrMaximumInputsReached'__.
+--      See: __'ErrMaximumInputCountExceeded'__.
 --
 largestFirst
     :: forall m e. Monad m
@@ -118,19 +118,19 @@ largestFirst options outputsRequested utxo =
   where
     errorCondition
       | amountAvailable < amountRequested =
-          ErrNotEnoughMoney amountAvailable amountRequested
+          ErrUtxoBalanceInsufficient amountAvailable amountRequested
       | utxoCount < outputCount =
           ErrUtxoNotFragmentedEnough utxoCount outputCount
       | utxoCount <= inputCountMax =
-          ErrInputsDepleted
+          ErrUxtoFullyDepleted
       | otherwise =
-          ErrMaximumInputsReached inputCountMax
+          ErrMaximumInputCountExceeded inputCountMax
     amountAvailable =
         fromIntegral $ balance utxo
     amountRequested =
         sum $ (getCoin . coin) <$> outputsRequested
     inputCountMax =
-        fromIntegral $ maximumNumberOfInputs options $ fromIntegral outputCount
+        fromIntegral $ maximumInputCount options $ fromIntegral outputCount
     outputCount =
         fromIntegral $ NE.length outputsRequested
     outputsDescending =

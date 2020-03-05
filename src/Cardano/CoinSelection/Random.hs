@@ -115,7 +115,7 @@ random
 random opt outs utxo = do
     let descending = NE.toList . NE.sortBy (flip $ comparing coin)
     let nOuts = fromIntegral $ NE.length outs
-    let maxN = fromIntegral $ maximumNumberOfInputs opt nOuts
+    let maxN = fromIntegral $ maximumInputCount opt nOuts
     randomMaybe <- lift $ runMaybeT $
         foldM makeSelection (maxN, utxo, []) (descending outs)
     case randomMaybe of

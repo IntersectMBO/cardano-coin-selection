@@ -155,7 +155,7 @@ spec = do
 
         coinSelectionUnitTest random
             "enough funds, proper fragmentation, inputs depleted"
-            (Left ErrInputsDepleted)
+            (Left ErrUxtoFullyDepleted)
             (CoinSelectionFixture
                 { maxNumOfInputs = 100
                 , validateSelection = noValidation
@@ -164,7 +164,7 @@ spec = do
                 })
 
         coinSelectionUnitTest random ""
-            (Left $ ErrMaximumInputsReached 2)
+            (Left $ ErrMaximumInputCountExceeded 2)
             (CoinSelectionFixture
                 { maxNumOfInputs = 2
                 , validateSelection = noValidation
@@ -173,7 +173,7 @@ spec = do
                 })
 
         coinSelectionUnitTest random "each output needs <maxNumOfInputs"
-            (Left $ ErrMaximumInputsReached 9)
+            (Left $ ErrMaximumInputCountExceeded 9)
             (CoinSelectionFixture
                 { maxNumOfInputs = 9
                 , validateSelection = noValidation
@@ -182,7 +182,7 @@ spec = do
                 })
 
         coinSelectionUnitTest random "each output needs >maxNumInputs"
-            (Left $ ErrMaximumInputsReached 9)
+            (Left $ ErrMaximumInputCountExceeded 9)
             (CoinSelectionFixture
                 { maxNumOfInputs = 9
                 , validateSelection = noValidation
@@ -191,7 +191,7 @@ spec = do
                 })
 
         coinSelectionUnitTest random ""
-            (Left $ ErrNotEnoughMoney 39 40)
+            (Left $ ErrUtxoBalanceInsufficient 39 40)
             (CoinSelectionFixture
                 { maxNumOfInputs = 100
                 , validateSelection = noValidation
@@ -200,7 +200,7 @@ spec = do
                 })
 
         coinSelectionUnitTest random ""
-            (Left $ ErrNotEnoughMoney 39 43)
+            (Left $ ErrUtxoBalanceInsufficient 39 43)
             (CoinSelectionFixture
                 { maxNumOfInputs = 100
                 , validateSelection = noValidation

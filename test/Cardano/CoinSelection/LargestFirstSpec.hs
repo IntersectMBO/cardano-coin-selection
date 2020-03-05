@@ -112,7 +112,7 @@ spec = do
                 })
 
         coinSelectionUnitTest largestFirst "not enough coins"
-            (Left $ ErrNotEnoughMoney 39 40)
+            (Left $ ErrUtxoBalanceInsufficient 39 40)
             (CoinSelectionFixture
                 { maxNumOfInputs = 100
                 , validateSelection = noValidation
@@ -122,7 +122,7 @@ spec = do
 
         coinSelectionUnitTest largestFirst
             "not enough coin & not fragmented enough"
-            (Left $ ErrNotEnoughMoney 39 43)
+            (Left $ ErrUtxoBalanceInsufficient 39 43)
             (CoinSelectionFixture
                 { maxNumOfInputs = 100
                 , validateSelection = noValidation
@@ -143,7 +143,7 @@ spec = do
         coinSelectionUnitTest largestFirst
             "enough coins, fragmented enough, but one output depletes all \
             \inputs"
-            (Left ErrInputsDepleted)
+            (Left ErrUxtoFullyDepleted)
             (CoinSelectionFixture
                 { maxNumOfInputs = 100
                 , validateSelection = noValidation
@@ -155,7 +155,7 @@ spec = do
             largestFirst
             "enough coins, fragmented enough, but the input needed to stay \
             \for the next output is depleted"
-            (Left ErrInputsDepleted)
+            (Left ErrUxtoFullyDepleted)
             (CoinSelectionFixture
                 { maxNumOfInputs = 100
                 , validateSelection = noValidation
@@ -164,7 +164,7 @@ spec = do
                 })
 
         coinSelectionUnitTest largestFirst "each output needs <maxNumOfInputs"
-            (Left $ ErrMaximumInputsReached 9)
+            (Left $ ErrMaximumInputCountExceeded 9)
             (CoinSelectionFixture
                 { maxNumOfInputs = 9
                 , validateSelection = noValidation
@@ -173,7 +173,7 @@ spec = do
                 })
 
         coinSelectionUnitTest largestFirst "each output needs >maxNumInputs"
-            (Left $ ErrMaximumInputsReached 9)
+            (Left $ ErrMaximumInputCountExceeded 9)
             (CoinSelectionFixture
                 { maxNumOfInputs = 9
                 , validateSelection = noValidation
@@ -182,8 +182,8 @@ spec = do
                 })
 
         coinSelectionUnitTest largestFirst
-            "enough coins but, strict maximumNumberOfInputs"
-            (Left $ ErrMaximumInputsReached 2)
+            "enough coins but, strict maximumInputCount"
+            (Left $ ErrMaximumInputCountExceeded 2)
             (CoinSelectionFixture
                 { maxNumOfInputs = 2
                 , validateSelection = noValidation
