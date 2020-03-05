@@ -9,6 +9,7 @@
 --
 module Cardano.CoinSelection.LargestFirst (
     largestFirst
+  , atLeast
   ) where
 
 import Prelude
@@ -144,27 +145,16 @@ largestFirst options outputsRequested utxo =
     validateSelection =
         except . left ErrInvalidSelection . validate options
 
--- Selects coins to cover at least the specified value.
+-- | Attempts to pay for a /single transaction output/ by selecting the
+--   /smallest possible/ number of entries from the /head/ of the given
+--   UTxO list.
 --
--- The details of the algorithm are as follows:
+-- Returns a /reduced/ list of UTxO entries, and a coin selection that is
+-- /updated/ to include the payment.
 --
--- (a) transaction outputs are processed starting from the largest first.
+-- If the total value of entries in the given UTxO list is /less than/ the
+-- required output amount, this function will return 'Nothing'.
 --
--- (b) `maximumNumberOfInputs` biggest available UTxO inputs are taken into
---     consideration. They constitute a candidate UTxO inputs from which coin
---     selection will be tried. Each output is treated independently with the
---     heuristic described in (c).
---
--- (c) the biggest candidate UTxO input is tried first to cover the transaction
---     output. If the input is not enough, then the next biggest one is added
---     to check if they can cover the transaction output. This process is
---     continued until the output is covered or the candidates UTxO inputs are
---     depleted.  In the latter case `MaximumInputsReached` error is triggered.
---     If the transaction output is covered the next biggest one is processed.
---     Here, the biggest UTxO input, not participating in the coverage, is
---     taken. We are back at (b) step as a result
---
--- The steps are continued until all transaction are covered.
 atLeast
     :: ([(TxIn, TxOut)], CoinSelection)
     -> TxOut
