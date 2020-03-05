@@ -45,7 +45,8 @@ import qualified Data.Set as Set
 
 spec :: Spec
 spec = do
-    describe "Coin selection : LargestFirst algorithm unit tests" $ do
+    describe "Coin selection: largest-first algorithm: unit tests" $ do
+
         coinSelectionUnitTest largestFirst ""
             (Right $ CoinSelectionResult
                 { rsInputs = [17]
@@ -111,7 +112,8 @@ spec = do
                 , txOutputs = 11 :| [1]
                 })
 
-        coinSelectionUnitTest largestFirst "not enough coins"
+        coinSelectionUnitTest largestFirst
+            "UTxO balance not sufficient"
             (Left $ ErrUtxoBalanceInsufficient 39 40)
             (CoinSelectionFixture
                 { maxNumOfInputs = 100
@@ -121,7 +123,7 @@ spec = do
                 })
 
         coinSelectionUnitTest largestFirst
-            "not enough coin & not fragmented enough"
+            "UTxO balance not sufficient, and not fragmented enough"
             (Left $ ErrUtxoBalanceInsufficient 39 43)
             (CoinSelectionFixture
                 { maxNumOfInputs = 100
@@ -131,7 +133,7 @@ spec = do
                 })
 
         coinSelectionUnitTest largestFirst
-            "enough coins, but not fragmented enough"
+            "UTxO balance sufficient, but not fragmented enough"
             (Left $ ErrUtxoNotFragmentedEnough 3 4)
             (CoinSelectionFixture
                 { maxNumOfInputs = 100
@@ -141,8 +143,8 @@ spec = do
                 })
 
         coinSelectionUnitTest largestFirst
-            "enough coins, fragmented enough, but one output depletes all \
-            \inputs"
+            "UTxO balance sufficient, fragmented enough, but single output \
+            \depletes all UTxO entries"
             (Left ErrUxtoFullyDepleted)
             (CoinSelectionFixture
                 { maxNumOfInputs = 100
@@ -151,10 +153,9 @@ spec = do
                 , txOutputs = 40 :| [1]
                 })
 
-        coinSelectionUnitTest
-            largestFirst
-            "enough coins, fragmented enough, but the input needed to stay \
-            \for the next output is depleted"
+        coinSelectionUnitTest largestFirst
+            "UTxO balance sufficient, fragmented enough, but single output \
+            \depletes all UTxO entries"
             (Left ErrUxtoFullyDepleted)
             (CoinSelectionFixture
                 { maxNumOfInputs = 100
@@ -163,7 +164,9 @@ spec = do
                 , txOutputs = 41 :| [6]
                 })
 
-        coinSelectionUnitTest largestFirst "each output needs <maxNumOfInputs"
+        coinSelectionUnitTest largestFirst
+            "UTxO balance sufficient, fragmented enough, but maximum input \
+            \count exceeded"
             (Left $ ErrMaximumInputCountExceeded 9)
             (CoinSelectionFixture
                 { maxNumOfInputs = 9
@@ -172,7 +175,9 @@ spec = do
                 , txOutputs = NE.fromList (replicate 100 1)
                 })
 
-        coinSelectionUnitTest largestFirst "each output needs >maxNumInputs"
+        coinSelectionUnitTest largestFirst
+            "UTxO balance sufficient, fragmented enough, but maximum input \
+            \count exceeded"
             (Left $ ErrMaximumInputCountExceeded 9)
             (CoinSelectionFixture
                 { maxNumOfInputs = 9
@@ -182,7 +187,8 @@ spec = do
                 })
 
         coinSelectionUnitTest largestFirst
-            "enough coins but, strict maximumInputCount"
+            "UTxO balance sufficient, fragmented enough, but maximum input \
+            \count exceeded"
             (Left $ ErrMaximumInputCountExceeded 2)
             (CoinSelectionFixture
                 { maxNumOfInputs = 2
@@ -191,7 +197,8 @@ spec = do
                 , txOutputs = 11 :| [1]
                 })
 
-        coinSelectionUnitTest largestFirst "custom validation"
+        coinSelectionUnitTest largestFirst
+            "Custom validation test fails"
             (Left $ ErrInvalidSelection ErrValidation)
             (CoinSelectionFixture
                 { maxNumOfInputs = 100
@@ -200,7 +207,8 @@ spec = do
                 , txOutputs = 2 :| []
                 })
 
-    describe "Coin selection properties : LargestFirst algorithm" $ do
+    describe "Coin selection: largest-first algorithm: properties" $ do
+
         it "forall (UTxO, NonEmpty TxOut), running algorithm twice yields \
             \exactly the same result"
             (property propDeterministic)
