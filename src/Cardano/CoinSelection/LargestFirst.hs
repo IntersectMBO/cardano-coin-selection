@@ -148,8 +148,8 @@ import qualified Data.Map.Strict as Map
 --      See: __'ErrUtxoNotFragmentedEnough'__.
 --
 --  3.  Due to the particular /distribution/ of values within the initial UTxO
---      set, the algorithm depletes all entries from the set /before/ it is
---      able to pay for all requested outputs.
+--      set, the algorithm depletes all entries from the UTxO set /before/ it
+--      is able to pay for all requested outputs.
 --
 --      See: __'ErrUxtoFullyDepleted'__.
 --
