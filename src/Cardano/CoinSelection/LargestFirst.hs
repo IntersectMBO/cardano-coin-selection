@@ -4,11 +4,12 @@
 -- Copyright: © 2018-2020 IOHK
 -- License: Apache-2.0
 --
--- This module contains an implementation of the __Largest-First__ coin
+-- This module contains an implementation of the __largest first__ coin
 -- selection algorithm.
 --
 module Cardano.CoinSelection.LargestFirst (
     largestFirst
+  , atLeast
   ) where
 
 import Prelude
@@ -20,7 +21,7 @@ import Cardano.Types
 import Control.Arrow
     ( left )
 import Control.Monad
-    ( foldM, when )
+    ( foldM )
 import Control.Monad.Trans.Except
     ( ExceptT (..), except, throwE )
 import Data.Functor
@@ -28,69 +29,195 @@ import Data.Functor
 import Data.List.NonEmpty
     ( NonEmpty (..) )
 import Data.Ord
-    ( Down (..), comparing )
+    ( Down (..) )
 
 import qualified Data.List as L
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map.Strict as Map
 
--- | Implements the __Largest-First__ coin selection algorithm.
+-- | Generate a coin selection according to the __largest first__ algorithm.
+--
+-- === Summary
+--
+-- For the given /output list/ and /initial UTxO set/, this algorithm generates
+-- a /coin selection/ that is capable of paying for all of the outputs, and a
+-- /remaining UTxO set/ from which all spent values have been removed.
+--
+-- === State Maintained by the Algorithm
+--
+-- At all stages of processing, the algorithm maintains:
+--
+--  1.  A __/remaining UTxO list/__
+--
+--      This is initially equal to the given /initial UTxO set/ parameter,
+--      sorted into /descending order of coin value/.
+--
+--      The /head/ of the list is always the remaining UTxO entry with the
+--      /greatest coin value/.
+--
+--      Entries are incrementally removed from the /head/ of the list as the
+--      algorithm proceeds, until the list is empty.
+--
+--  2.  An __/unpaid output list/__
+--
+--      This is initially equal to the given /output list/ parameter, sorted
+--      into /descending order of coin value/.
+--
+--      The /head/ of the list is always the unpaid output with the
+--      /greatest coin value/.
+--
+--      Entries are incrementally removed from the /head/ of the list as the
+--      algorithm proceeds, until the list is empty.
+--
+--  3.  An __/accumulated coin selection/__
+--
+--      This is initially /empty/.
+--
+--      Entries are incrementally added as each output is paid for, until the
+--      /unpaid output list/ is empty.
+--
+-- === Cardinality Rules
+--
+-- The algorithm requires that:
+--
+--  1.  Each output from the given /output list/ is paid for by /one or more/
+--      entries from the /initial UTxO set/.
+--
+--  2.  Each entry from the /initial UTxO set/ is used to pay for /at most one/
+--      output from the given /output list/.
+--
+--      (A single UTxO entry __cannot__ be used to pay for multiple outputs.)
+--
+-- === Order of Processing
+--
+-- The algorithm proceeds according to the following sequence of steps:
+--
+--  *   /Step 1/
+--
+--      Remove a single /unpaid output/ from the head of the
+--      /unpaid output list/.
+--
+--  *   /Step 2/
+--
+--      Repeatedly remove UTxO entries from the head of the
+--      /remaining UTxO list/ until the total value of entries removed is
+--      /greater than or equal to/ the value of the /removed output/.
+--
+--  *   /Step 3/
+--
+--      Use the /removed UTxO entries/ to pay for the /removed output/.
+--
+--      This is achieved by:
+--
+--      *  adding the /removed UTxO entries/ to the 'inputs' field of the
+--         /accumulated coin selection/.
+--      *  adding the /removed output/ to the 'outputs' field of the
+--         /accumulated coin selection/.
+--
+--  *   /Step 4/
+--
+--      If the /total value/ of the /removed UTxO entries/ is greater than the
+--      value of the /removed output/, generate a coin whose value is equal to
+--      the exact difference, and add it to the 'change' field of the
+--      /accumulated coin selection/.
+--
+--  *   /Step 5/
+--
+--      If the /unpaid output list/ is empty, __terminate__ here.
+--
+--      Otherwise, return to /Step 1/.
+--
+-- === Successful Termination
+--
+-- The algorithm terminates __successfully__ if the /remaining UTxO list/ is
+-- not depleted before the /unpaid output list/ can be fully depleted (i.e., if
+-- all the outputs have been paid for).
+--
+-- The /accumulated coin selection/ and /remaining UTxO list/ are returned to
+-- the caller.
+--
+-- === Unsuccessful Termination
+--
+-- The algorithm terminates with an __error__ if:
+--
+--  1.  The /total value/ of the initial UTxO set (the amount of money
+--      /available/) is /less than/ the total value of the output list (the
+--      amount of money /required/).
+--
+--      See: __'ErrUtxoBalanceInsufficient'__.
+--
+--  2.  The /number/ of entries in the initial UTxO set is /smaller than/ the
+--      number of requested outputs.
+--
+--      Due to the nature of the algorithm, /at least one/ UTxO entry is
+--      required /for each/ output.
+--
+--      See: __'ErrUtxoNotFragmentedEnough'__.
+--
+--  3.  Due to the particular /distribution/ of values within the initial UTxO
+--      set, the algorithm depletes all entries from the UTxO set /before/ it
+--      is able to pay for all requested outputs.
+--
+--      See: __'ErrUxtoFullyDepleted'__.
+--
+--  4.  The /number/ of UTxO entries needed to pay for the requested outputs
+--      would /exceed/ the upper limit specified by 'maximumInputCount'.
+--
+--      See: __'ErrMaximumInputCountExceeded'__.
+--
 largestFirst
     :: forall m e. Monad m
     => CoinSelectionOptions e
     -> NonEmpty TxOut
     -> UTxO
     -> ExceptT (ErrCoinSelection e) m (CoinSelection, UTxO)
-largestFirst opt outs utxo = do
-    let outsDescending = NE.toList $ NE.sortBy (flip $ comparing coin) outs
-    let nOuts = fromIntegral $ NE.length outs
-    let maxN = fromIntegral $ maximumNumberOfInputs opt (fromIntegral nOuts)
-    let nLargest = take maxN
-            . L.sortOn (Down . coin . snd)
-            . Map.toList
-            . getUTxO
-    let guard = except . left ErrInvalidSelection . validate opt
+largestFirst options outputsRequested utxo =
+    case foldM atLeast (utxoDescending, mempty) outputsDescending of
+        Just (utxoRemaining, selection) ->
+            validateSelection selection $>
+                (selection, UTxO $ Map.fromList utxoRemaining)
+        Nothing ->
+            throwE errorCondition
+  where
+    errorCondition
+      | amountAvailable < amountRequested =
+          ErrUtxoBalanceInsufficient amountAvailable amountRequested
+      | utxoCount < outputCount =
+          ErrUtxoNotFragmentedEnough utxoCount outputCount
+      | utxoCount <= inputCountMax =
+          ErrUxtoFullyDepleted
+      | otherwise =
+          ErrMaximumInputCountExceeded inputCountMax
+    amountAvailable =
+        fromIntegral $ balance utxo
+    amountRequested =
+        sum $ (getCoin . coin) <$> outputsRequested
+    inputCountMax =
+        fromIntegral $ maximumInputCount options $ fromIntegral outputCount
+    outputCount =
+        fromIntegral $ NE.length outputsRequested
+    outputsDescending =
+        L.sortOn (Down . coin) $ NE.toList outputsRequested
+    utxoCount =
+        fromIntegral $ L.length $ (Map.toList . getUTxO) utxo
+    utxoDescending =
+        take (fromIntegral inputCountMax)
+            $ L.sortOn (Down . coin . snd)
+            $ Map.toList
+            $ getUTxO utxo
+    validateSelection =
+        except . left ErrInvalidSelection . validate options
 
-    case foldM atLeast (nLargest utxo, mempty) outsDescending of
-        Just (utxo', s) ->
-            guard s $> (s, UTxO $ Map.fromList utxo')
-        Nothing -> do
-            let moneyRequested = sum $ (getCoin . coin) <$> outsDescending
-            let utxoBalance = fromIntegral $ balance utxo
-            let nUtxo = fromIntegral $ L.length $ (Map.toList . getUTxO) utxo
-
-            when (utxoBalance < moneyRequested)
-                $ throwE $ ErrNotEnoughMoney utxoBalance moneyRequested
-
-            when (nUtxo < nOuts)
-                $ throwE $ ErrUtxoNotFragmentedEnough nUtxo nOuts
-
-            when (fromIntegral maxN > nUtxo)
-                $ throwE ErrInputsDepleted
-
-            throwE $ ErrMaximumInputsReached (fromIntegral maxN)
-
--- Selects coins to cover at least the specified value.
+-- | Attempts to pay for a /single transaction output/ by selecting the
+--   /smallest possible/ number of entries from the /head/ of the given
+--   UTxO list.
 --
--- The details of the algorithm are as follows:
+-- Returns a /reduced/ list of UTxO entries, and a coin selection that is
+-- /updated/ to include the payment.
 --
--- (a) transaction outputs are processed starting from the largest first.
+-- If the total value of entries in the given UTxO list is /less than/ the
+-- required output amount, this function will return 'Nothing'.
 --
--- (b) `maximumNumberOfInputs` biggest available UTxO inputs are taken into
---     consideration. They constitute a candidate UTxO inputs from which coin
---     selection will be tried. Each output is treated independently with the
---     heuristic described in (c).
---
--- (c) the biggest candidate UTxO input is tried first to cover the transaction
---     output. If the input is not enough, then the next biggest one is added
---     to check if they can cover the transaction output. This process is
---     continued until the output is covered or the candidates UTxO inputs are
---     depleted.  In the latter case `MaximumInputsReached` error is triggered.
---     If the transaction output is covered the next biggest one is processed.
---     Here, the biggest UTxO input, not participating in the coverage, is
---     taken. We are back at (b) step as a result
---
--- The steps are continued until all transaction are covered.
 atLeast
     :: ([(TxIn, TxOut)], CoinSelection)
     -> TxOut

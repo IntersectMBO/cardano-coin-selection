@@ -74,7 +74,7 @@ instance Buildable CoinSelection where
         inpsF (txin, txout) = build txin <> " (~ " <> build txout <> ")"
 
 data CoinSelectionOptions e = CoinSelectionOptions
-    { maximumNumberOfInputs
+    { maximumInputCount
         :: Word8 -> Word8
             -- ^ Calculate the maximum number of inputs allowed for a given
             -- number of outputs.
@@ -106,31 +106,34 @@ addCoin :: Integral a => a -> Coin -> a
 addCoin total c = total + (fromIntegral (getCoin c))
 
 data ErrCoinSelection e
-    = ErrNotEnoughMoney Word64 Word64
-    -- ^ The UTxO was exhausted during input selection.
+    = ErrUtxoBalanceInsufficient Word64 Word64
+    -- ^ The UTxO balance was insufficient to cover the total payment amount.
     --
-    -- Records the balance of the UTxO, as well as the size of the payment we
-    -- tried to make.
+    -- Records the /UTxO balance/, as well as the /total value/ of the payment
+    -- we tried to make.
     --
     | ErrUtxoNotFragmentedEnough Word64 Word64
     -- ^ The UTxO was not fragmented enough to support the required number of
     -- transaction outputs.
     --
-    -- Records the number of UTxO entries, as well as the number of the
+    -- Records the /number/ of UTxO entries, as well as the /number/ of the
     -- transaction outputs.
     --
-    | ErrMaximumInputsReached Word64
-    -- ^ The maximum number of allowed inputs was not enough to cover the total
-    -- payment amount.
+    | ErrUxtoFullyDepleted
+    -- ^ Due to the particular distribution of values within the UTxO set, all
+    -- available UTxO entries were depleted before all the requested
+    -- transaction outputs could be paid for.
     --
-    | ErrInputsDepleted
-    -- ^ All available inputs were depleted, even though the UTxO was
-    -- sufficiently fragmented and with enough funds to cover payment.
+    | ErrMaximumInputCountExceeded Word64
+    -- ^ The number of UTxO entries needed to cover the requested payment
+    -- exceeded the upper limit specified by 'maximumInputCount'.
+    --
+    -- Records the value of 'maximumInputCount'.
     --
     | ErrInvalidSelection e
-    -- ^ The generated coin selection was reported to be invalid by the backend.
+    -- ^ The coin selection generated was reported to be invalid by the backend.
     --
-    -- Records the backend-specific error that occurred while attempting to
+    -- Records the /backend-specific error/ that occurred while attempting to
     -- validate the selection.
     --
     deriving (Show, Eq)

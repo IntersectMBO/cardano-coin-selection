@@ -174,7 +174,7 @@ idealBatchSize coinselOpts = fixPoint 1
         | otherwise = fixPoint (n + 1)
       where
         maxN :: Word8 -> Word8
-        maxN = maximumNumberOfInputs coinselOpts
+        maxN = maximumInputCount coinselOpts
 
 -- | Safe conversion of an integral type to an integer
 integer :: Integral a => a -> Integer
