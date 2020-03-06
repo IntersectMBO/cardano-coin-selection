@@ -77,12 +77,13 @@ instance Monoid CoinSelection where
     mempty = CoinSelection [] [] []
 
 instance Buildable CoinSelection where
-    build (CoinSelection inps outs chngs) = mempty
-        <> nameF "inputs" (blockListF' "-" inpsF inps)
-        <> nameF "outputs" (blockListF outs)
-        <> nameF "change" (listF chngs)
-      where
-        inpsF (txin, txout) = build txin <> " (~ " <> build txout <> ")"
+    build s = mempty
+        <> nameF "inputs"
+            (blockListF' "-" build $ inputs s)
+        <> nameF "outputs"
+            (blockListF $ outputs s)
+        <> nameF "change"
+            (listF $ change s)
 
 -- | Represents a set of options to be passed to a coin selection algorithm.
 --
