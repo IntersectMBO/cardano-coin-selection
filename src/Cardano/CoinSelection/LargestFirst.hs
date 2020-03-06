@@ -66,7 +66,7 @@ import qualified Data.Map.Strict as Map
 -- For /each output/ in the (descending) output list, the algorithm repeatedly
 -- selects unspent values from the /remaining UTxO set/ (in descending order)
 -- until the /total selected value/ is greater than (or equal to) the output
--- value, at which point the algorithm move ons to processing the /next/
+-- value, at which point the algorithm moves on to processing the /next/
 -- output.
 --
 -- If the /total selected value/ is greater than required for a particular
