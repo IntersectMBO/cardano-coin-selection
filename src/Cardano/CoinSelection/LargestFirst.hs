@@ -99,23 +99,26 @@ import qualified Data.Map.Strict as Map
 --
 --  *   /Step 2/
 --
---      Repeatedly remove entries from the head of the /remaining UTxO list/
---      until the total value of entries removed is /greater than or equal to/
---      the value of the /unpaid output/.
+--      Repeatedly remove UTxO entries from the head of the
+--      /remaining UTxO list/ until the total value of entries removed is
+--      /greater than or equal to/ the value of the /removed output/.
 --
 --  *   /Step 3/
 --
---      Use the /removed UTxO entries/ to pay for the /unpaid output/.
+--      Use the /removed UTxO entries/ to pay for the /removed output/.
 --
---      This is achieved by adding the /removed UTxO entries/ to the 'inputs'
---      field of the /accumulated coin selection/, and adding the /output/ to
---      the 'outputs' field of the /accumulated coin selection/.
+--      This is achieved by:
+--
+--      *  adding the /removed UTxO entries/ to the 'inputs' field of the
+--         /accumulated coin selection/.
+--      *  adding the /removed output/ to the 'outputs' field of the
+--         /accumulated coin selection/.
 --
 --  *   /Step 4/
 --
---      If the /total selected value/ is greater than the value required for
---      the current output, generate a coin whose value is equal to the exact
---      difference, and add it to the 'change' field of the
+--      If the /total value/ of the /removed UTxO entries/ is greater than the
+--      value of the /removed output/, generate a coin whose value is equal to
+--      the exact difference, and add it to the 'change' field of the
 --      /accumulated coin selection/.
 --
 --  *   /Step 5/
