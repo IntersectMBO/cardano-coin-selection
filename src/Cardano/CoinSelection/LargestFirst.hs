@@ -37,53 +37,109 @@ import qualified Data.Map.Strict as Map
 
 -- | Generate a coin selection according to the __largest first__ algorithm.
 --
--- For the given /output list/ and /starting UTxO set/, this algorithm
--- generates a /coin selection/ that is capable of paying for all of the
--- outputs, and a /remaining UTxO set/ from which spent values have been
--- removed.
+-- === Summary
+--
+-- For the given /output list/ and /initial UTxO set/, this algorithm generates
+-- a /coin selection/ that is capable of paying for all of the outputs, and a
+-- /remaining UTxO set/ from which spent values have been removed.
+--
+-- === State Maintained by the Algorithm
+--
+-- At all stages of processing, the algorithm maintains:
+--
+--  1.  A __/remaining UTxO list/__
+--
+--      This is initially equal to the given /initial UTxO set/ parameter,
+--      sorted into /descending order of coin value/.
+--
+--      The /head/ of the list is always the remaining UTxO entry with the
+--      /greatest coin value/.
+--
+--      Entries are incrementally removed from the /head/ of the list as the
+--      algorithm proceeds, until the list is empty.
+--
+--  2.  An __/unpaid output list/__
+--
+--      This is initially equal to the given /output list/ parameter, sorted
+--      into /descending order of coin value/.
+--
+--      The /head/ of the list is always the unpaid output with the
+--      /greatest coin value/.
+--
+--      Entries are incrementally removed from the /head/ of the list as the
+--      algorithm proceeds, until the list is empty.
+--
+--  3.  An __/accumulated coin selection/__
+--
+--      This is initially /empty/.
+--
+--      Entries are incrementally added as each output is paid for, until the
+--      /unpaid output list/ is empty.
 --
 -- === Cardinality Rules
 --
 -- The algorithm requires that:
 --
---  1.  Each output is paid for by /one or more/ entries from the UTxO set.
+--  1.  Each output from the given /output list/ is paid for by /one or more/
+--      entries from the /initial UTxO set/.
 --
---  2.  Each entry from the UTxO set is used to pay for /at most one/ output.
+--  2.  Each entry from the /initial UTxO set/ is used to pay for /at most one/
+--      output from the given /output list/.
 --
---      (A given entry from the UTxO set /cannot/ be used to pay for multiple
---      outputs.)
+--      (A single UTxO entry __cannot__ be used to pay for multiple outputs.)
 --
 -- === Order of Processing
 --
--- The algorithm processes /both/ the given output list /and/ the supplied UTxO
--- set in __descending order of coin value__, from largest to smallest.
+-- The algorithm proceeds according to the following sequence of steps:
 --
--- At all stages of processing, the algorithm maintains a /remaining UTxO set/
--- that is steadily depleted as outputs are paid for.
+--  *   /Step 1/
 --
--- === Processing an Output
+--      Remove a single /unpaid output/ from the head of the
+--      /unpaid output list/.
 --
--- For /each output/ in the (descending) output list, the algorithm repeatedly
--- selects unspent values from the /remaining UTxO set/ (in descending order)
--- until the /total selected value/ is greater than (or equal to) the output
--- value, at which point the algorithm moves on to processing the /next/
--- output.
+--  *   /Step 2/
 --
--- If the /total selected value/ is greater than required for a particular
--- output, the algorithm generates a /change output/ with the exact difference
--- in value.
+--      Repeatedly remove entries from the head of the /remaining UTxO list/
+--      until the total value of entries removed is /greater than or equal to/
+--      the value of the /unpaid output/.
 --
--- === Termination Conditions
+--  *   /Step 3/
+--
+--      Use the /removed UTxO entries/ to pay for the /unpaid output/, by
+--      adding entries to the /accumulated coin selection/.
+--
+--  *   /Step 4/
+--
+--      If the /total selected value/ is greater than the value required for
+--      the current output, generate a /change output/ with the exact
+--      difference in value, and add it to the /accumulated coin selection/.
+--
+--  *   /Step 5/
+--
+--      If the /unpaid output list/ is empty, __terminate__ here.
+--
+--      Otherwise, return to /Step 1/.
+--
+-- === Successful Termination
+--
+-- The algorithm terminates __successfully__ if the /remaining UTxO list/ is
+-- not depleted before the /unpaid output list/ can be fully depleted (i.e., if
+-- all the outputs have been paid for).
+--
+-- The /accumulated coin selection/ and /remaining UTxO list/ are returned to
+-- the caller.
+--
+-- === Unsuccessful Termination
 --
 -- The algorithm terminates with an __error__ if:
 --
---  1.  The /total value/ of the starting UTxO set (the amount of money
+--  1.  The /total value/ of the initial UTxO set (the amount of money
 --      /available/) is /less than/ the total value of the output list (the
 --      amount of money /required/).
 --
 --      See: __'ErrUtxoBalanceInsufficient'__.
 --
---  2.  The /number/ of entries in the starting UTxO set is /smaller than/ the
+--  2.  The /number/ of entries in the initial UTxO set is /smaller than/ the
 --      number of requested outputs.
 --
 --      Due to the nature of the algorithm, /at least one/ UTxO entry is
@@ -91,9 +147,9 @@ import qualified Data.Map.Strict as Map
 --
 --      See: __'ErrUtxoNotFragmentedEnough'__.
 --
---  3.  Due to the particular /distribution/ of values within the starting UTxO
---      set, the algorithm depletes all entries from the set /before/ it is able
---      to pay for all requested outputs.
+--  3.  Due to the particular /distribution/ of values within the initial UTxO
+--      set, the algorithm depletes all entries from the set /before/ it is
+--      able to pay for all requested outputs.
 --
 --      See: __'ErrUxtoFullyDepleted'__.
 --
