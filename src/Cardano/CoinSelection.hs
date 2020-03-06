@@ -114,12 +114,6 @@ changeBalance = foldl' addCoin 0 . change
 feeBalance :: CoinSelection -> Word64
 feeBalance sel = inputBalance sel - outputBalance sel - changeBalance sel
 
-addTxOut :: Integral a => a -> TxOut -> a
-addTxOut total = addCoin total . coin
-
-addCoin :: Integral a => a -> Coin -> a
-addCoin total c = total + (fromIntegral (getCoin c))
-
 -- | Represents the set of possible failures that can occur when attempting
 --   to produce a 'CoinSelection'.
 --
@@ -155,3 +149,13 @@ data ErrCoinSelection e
     -- validate the selection.
     --
     deriving (Show, Eq)
+
+--------------------------------------------------------------------------------
+-- Utility Functions
+--------------------------------------------------------------------------------
+
+addTxOut :: Integral a => a -> TxOut -> a
+addTxOut total = addCoin total . coin
+
+addCoin :: Integral a => a -> Coin -> a
+addCoin total c = total + (fromIntegral (getCoin c))
