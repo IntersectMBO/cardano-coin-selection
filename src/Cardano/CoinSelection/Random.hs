@@ -6,9 +6,9 @@
 -- Copyright: © 2018-2020 IOHK
 -- License: Apache-2.0
 --
--- This module contains the implementation of random
--- input selection algorithm
-
+-- This module contains an implementation of the __random-improve__ coin
+-- selection algorithm.
+--
 module Cardano.CoinSelection.Random
     ( randomImprove
     ) where
