@@ -1,5 +1,3 @@
-{-# LANGUAGE RankNTypes #-}
-
 -- |
 -- Copyright: © 2018-2020 IOHK
 -- License: Apache-2.0
@@ -162,11 +160,11 @@ import qualified Data.Map.Strict as Map
 --
 --      See: __'ErrMaximumInputCountExceeded'__.
 --
-largestFirst :: forall m e. Monad m => CoinSelectionAlgorithm m e
+largestFirst :: Monad m => CoinSelectionAlgorithm m e
 largestFirst = CoinSelectionAlgorithm payForOutputs
 
 payForOutputs
-    :: forall m e. Monad m
+    :: Monad m
     => CoinSelectionOptions e
     -> NonEmpty TxOut
     -> UTxO

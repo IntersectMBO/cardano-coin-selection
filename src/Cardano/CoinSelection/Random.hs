@@ -1,5 +1,4 @@
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TupleSections #-}
 
 -- |
@@ -110,7 +109,7 @@ data TargetRange = TargetRange
 -- that a randomly chosen UTxO entry will push the total above the upper bound
 -- we set.
 -- @
-randomImprove :: forall m e. MonadRandom m => CoinSelectionAlgorithm m e
+randomImprove :: MonadRandom m => CoinSelectionAlgorithm m e
 randomImprove = CoinSelectionAlgorithm payForOutputs
 
 payForOutputs
@@ -137,7 +136,7 @@ payForOutputs opt outs utxo = do
 
 -- | Perform a random selection on a given output, without improvement.
 makeSelection
-    :: forall m. MonadRandom m
+    :: MonadRandom m
     => (Word64, UTxO, [([(TxIn, TxOut)], TxOut)])
     -> TxOut
     -> MaybeT m (Word64, UTxO, [([(TxIn, TxOut)], TxOut)])
@@ -150,7 +149,7 @@ makeSelection (maxNumInputs, utxo0, selection) txout = do
         )
   where
     coverRandomly
-        :: forall m. MonadRandom m
+        :: MonadRandom m
         => ([(TxIn, TxOut)], UTxO)
         -> MaybeT m ([(TxIn, TxOut)], UTxO)
     coverRandomly (inps, utxo)
@@ -163,7 +162,7 @@ makeSelection (maxNumInputs, utxo0, selection) txout = do
 
 -- | Perform an improvement to random selection on a given output.
 improveTxOut
-    :: forall m. MonadRandom m
+    :: MonadRandom m
     => (Word64, CoinSelection, UTxO)
     -> ([(TxIn, TxOut)], TxOut)
     -> m (Word64, CoinSelection, UTxO)
@@ -182,7 +181,7 @@ improveTxOut (maxN0, selection, utxo0) (inps0, txout) = do
     target = mkTargetRange txout
 
     improve
-        :: forall m. MonadRandom m
+        :: MonadRandom m
         => (Word64, [(TxIn, TxOut)], UTxO)
         -> m (Word64, [(TxIn, TxOut)], UTxO)
     improve (maxN, inps, utxo)
