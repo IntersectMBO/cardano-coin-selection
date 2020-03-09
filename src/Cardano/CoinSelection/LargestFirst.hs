@@ -9,13 +9,16 @@
 --
 module Cardano.CoinSelection.LargestFirst (
     largestFirst
-  , atLeast
   ) where
 
 import Prelude
 
 import Cardano.CoinSelection
-    ( CoinSelection (..), CoinSelectionOptions (..), ErrCoinSelection (..) )
+    ( CoinSelection (..)
+    , CoinSelectionAlgorithm (..)
+    , CoinSelectionOptions (..)
+    , ErrCoinSelection (..)
+    )
 import Cardano.Types
     ( Coin (..), TxIn, TxOut (..), UTxO (..), balance )
 import Control.Arrow
@@ -165,14 +168,17 @@ import qualified Data.Map.Strict as Map
 --
 --      See: __'ErrMaximumInputCountExceeded'__.
 --
-largestFirst
+largestFirst :: forall m e. Monad m => CoinSelectionAlgorithm m e
+largestFirst = CoinSelectionAlgorithm payForOutputs
+
+payForOutputs
     :: forall m e. Monad m
     => CoinSelectionOptions e
     -> NonEmpty TxOut
     -> UTxO
     -> ExceptT (ErrCoinSelection e) m (CoinSelection, UTxO)
-largestFirst options outputsRequested utxo =
-    case foldM atLeast (utxoDescending, mempty) outputsDescending of
+payForOutputs options outputsRequested utxo =
+    case foldM payForOutput (utxoDescending, mempty) outputsDescending of
         Just (utxoRemaining, selection) ->
             validateSelection selection $>
                 (selection, UTxO $ Map.fromList utxoRemaining)
@@ -218,11 +224,11 @@ largestFirst options outputsRequested utxo =
 -- If the total value of entries in the given UTxO list is /less than/ the
 -- required output amount, this function will return 'Nothing'.
 --
-atLeast
+payForOutput
     :: ([(TxIn, TxOut)], CoinSelection)
     -> TxOut
     -> Maybe ([(TxIn, TxOut)], CoinSelection)
-atLeast (utxoAvailable, currentSelection) txout =
+payForOutput (utxoAvailable, currentSelection) txout =
     let target = fromIntegral $ getCoin $ coin txout in
     coverTarget target utxoAvailable mempty
   where

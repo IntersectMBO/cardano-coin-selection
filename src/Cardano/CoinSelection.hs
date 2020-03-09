@@ -12,7 +12,8 @@
 module Cardano.CoinSelection
     (
       -- * Types
-      CoinSelection (..)
+      CoinSelectionAlgorithm (..)
+    , CoinSelection (..)
     , CoinSelectionOptions (..)
     , ErrCoinSelection (..)
 
@@ -27,9 +28,13 @@ module Cardano.CoinSelection
 import Prelude
 
 import Cardano.Types
-    ( Coin (..), TxIn, TxOut (..) )
+    ( Coin (..), TxIn, TxOut (..), UTxO (..) )
+import Control.Monad.Trans.Except
+    ( ExceptT (..) )
 import Data.List
     ( foldl' )
+import Data.List.NonEmpty
+    ( NonEmpty (..) )
 import Data.Word
     ( Word64, Word8 )
 import Fmt
@@ -40,6 +45,14 @@ import GHC.Generics
 {-------------------------------------------------------------------------------
                                 Coin Selection
 -------------------------------------------------------------------------------}
+
+newtype CoinSelectionAlgorithm m e = CoinSelectionAlgorithm
+    { selectCoins
+        :: CoinSelectionOptions e
+        -> NonEmpty TxOut
+        -> UTxO
+        -> ExceptT (ErrCoinSelection e) m (CoinSelection, UTxO)
+    }
 
 -- | Represents the result of running a /coin selection algorithm/, which
 --   selects coins from an /initial UTxO set/ in order to cover a given set of

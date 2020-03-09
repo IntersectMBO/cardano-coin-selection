@@ -9,7 +9,11 @@ module Cardano.CoinSelection.RandomSpec
 import Prelude
 
 import Cardano.CoinSelection
-    ( CoinSelection (..), CoinSelectionOptions (..), ErrCoinSelection (..) )
+    ( CoinSelection (..)
+    , CoinSelectionAlgorithm (..)
+    , CoinSelectionOptions (..)
+    , ErrCoinSelection (..)
+    )
 import Cardano.CoinSelection.LargestFirst
     ( largestFirst )
 import Cardano.CoinSelection.Random
@@ -252,9 +256,9 @@ propFragmentation drg (CoinSelProp utxo txOuts) = do
     prop (CoinSelection inps1 _ _, CoinSelection inps2 _ _) =
         L.length inps1 `shouldSatisfy` (>= L.length inps2)
     (selection1,_) = withDRG drg
-        (runExceptT $ random opt txOuts utxo)
+        (runExceptT $ selectCoins random opt txOuts utxo)
     selection2 = runIdentity $ runExceptT $
-        largestFirst opt txOuts utxo
+        selectCoins largestFirst opt txOuts utxo
     opt = CoinSelectionOptions (const 100) noValidation
 
 propErrors
@@ -269,7 +273,7 @@ propErrors drg (CoinSelProp utxo txOuts) = do
     prop (err1, err2) =
         err1 === err2
     (selection1,_) = withDRG drg
-        (runExceptT $ random opt txOuts utxo)
+        (runExceptT $ selectCoins random opt txOuts utxo)
     selection2 = runIdentity $ runExceptT $
-        largestFirst opt txOuts utxo
+        selectCoins largestFirst opt txOuts utxo
     opt = (CoinSelectionOptions (const 1) noValidation)

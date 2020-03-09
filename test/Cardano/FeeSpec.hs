@@ -13,7 +13,7 @@ module Cardano.FeeSpec
 import Prelude
 
 import Cardano.CoinSelection
-    ( CoinSelection (..) )
+    ( CoinSelection (..), CoinSelectionAlgorithm (..) )
 import Cardano.CoinSelection.LargestFirst
     ( largestFirst )
 import Cardano.Fee
@@ -567,7 +567,7 @@ genSelection :: NonEmpty TxOut -> Gen CoinSelection
 genSelection outs = do
     let opts = CS.CoinSelectionOptions (const 100) (const $ pure ())
     utxo <- vectorOf (NE.length outs * 3) arbitrary >>= genUTxO
-    case runIdentity $ runExceptT $ largestFirst opts outs utxo of
+    case runIdentity $ runExceptT $ selectCoins largestFirst opts outs utxo of
         Left _ -> genSelection outs
         Right (s,_) -> return s
 

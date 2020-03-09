@@ -16,7 +16,11 @@ module Cardano.CoinSelection.Random
 import Prelude
 
 import Cardano.CoinSelection
-    ( CoinSelection (..), CoinSelectionOptions (..), ErrCoinSelection (..) )
+    ( CoinSelection (..)
+    , CoinSelectionAlgorithm (..)
+    , CoinSelectionOptions (..)
+    , ErrCoinSelection (..)
+    )
 import Cardano.CoinSelection.LargestFirst
     ( largestFirst )
 import Cardano.Types
@@ -106,13 +110,16 @@ data TargetRange = TargetRange
 -- that a randomly chosen UTxO entry will push the total above the upper bound
 -- we set.
 -- @
-random
-    :: forall m e. MonadRandom m
+random :: forall m e. MonadRandom m => CoinSelectionAlgorithm m e
+random = CoinSelectionAlgorithm payForOutputs
+
+payForOutputs
+    :: MonadRandom m
     => CoinSelectionOptions e
     -> NonEmpty TxOut
     -> UTxO
     -> ExceptT (ErrCoinSelection e) m (CoinSelection, UTxO)
-random opt outs utxo = do
+payForOutputs opt outs utxo = do
     let descending = NE.toList . NE.sortBy (flip $ comparing coin)
     let nOuts = fromIntegral $ NE.length outs
     let maxN = fromIntegral $ maximumInputCount opt nOuts
@@ -124,7 +131,7 @@ random opt outs utxo = do
                 foldM improveTxOut (maxN', mempty, utxo') (reverse res)
             guard sel $> (sel, remUtxo)
         Nothing ->
-            largestFirst opt outs utxo
+            selectCoins largestFirst opt outs utxo
   where
     guard = except . left ErrInvalidSelection . validate opt
 
