@@ -11,14 +11,17 @@
 --
 module Cardano.CoinSelection
     (
-      -- * Coin Selection
-      CoinSelection(..)
+      -- * Types
+      CoinSelection (..)
+    , CoinSelectionOptions (..)
+    , ErrCoinSelection (..)
+
+      -- * Calculating Balances
     , inputBalance
     , outputBalance
     , changeBalance
     , feeBalance
-    , ErrCoinSelection (..)
-    , CoinSelectionOptions (..)
+
     ) where
 
 import Prelude
@@ -38,13 +41,21 @@ import GHC.Generics
                                 Coin Selection
 -------------------------------------------------------------------------------}
 
+-- | Represents the result of running a /coin selection algorithm/, which
+--   selects coins from an /initial UTxO set/ in order to cover a given set of
+--   /output payments/.
+--
 data CoinSelection = CoinSelection
-    { inputs  :: [(TxIn, TxOut)]
-      -- ^ Picked inputs.
+    { inputs :: [(TxIn, TxOut)]
+      -- ^ A /subset/ of the original 'UTxO' that was passed to the coin
+      -- selection algorithm, containing only the entries that were /selected/
+      -- by the coin selection algorithm.
     , outputs :: [TxOut]
-      -- ^ Picked outputs.
-    , change  :: [Coin]
-      -- ^ Resulting change.
+      -- ^ The original set of output payments passed to the coin selection
+      -- algorithm, whose total value is covered by the 'inputs'.
+    , change :: [Coin]
+      -- ^ A set of change values to be paid back to the originator of the
+      -- payment.
     } deriving (Generic, Show, Eq)
 
 -- NOTE:
@@ -66,13 +77,16 @@ instance Monoid CoinSelection where
     mempty = CoinSelection [] [] []
 
 instance Buildable CoinSelection where
-    build (CoinSelection inps outs chngs) = mempty
-        <> nameF "inputs" (blockListF' "-" inpsF inps)
-        <> nameF "outputs" (blockListF outs)
-        <> nameF "change" (listF chngs)
-      where
-        inpsF (txin, txout) = build txin <> " (~ " <> build txout <> ")"
+    build s = mempty
+        <> nameF "inputs"
+            (blockListF' "-" build $ inputs s)
+        <> nameF "outputs"
+            (blockListF $ outputs s)
+        <> nameF "change"
+            (listF $ change s)
 
+-- | Represents a set of options to be passed to a coin selection algorithm.
+--
 data CoinSelectionOptions e = CoinSelectionOptions
     { maximumInputCount
         :: Word8 -> Word8
@@ -84,27 +98,25 @@ data CoinSelectionOptions e = CoinSelectionOptions
             -- error.
     } deriving (Generic)
 
--- | Calculate the sum of all input values.
+-- | Calculate the total sum of all 'inputs' for the given 'CoinSelection'.
 inputBalance :: CoinSelection -> Word64
 inputBalance =  foldl' (\total -> addTxOut total . snd) 0 . inputs
 
--- | Calculate the sum of all output values.
+-- | Calculate the total sum of all 'outputs' for the given 'CoinSelection'.
 outputBalance :: CoinSelection -> Word64
 outputBalance = foldl' addTxOut 0 . outputs
 
--- | Calculate the sum of all output values.
+-- | Calculate the total sum of all 'change' for the given 'CoinSelection'.
 changeBalance :: CoinSelection -> Word64
 changeBalance = foldl' addCoin 0 . change
 
+-- | Calculates the fee associated with a given 'CoinSelection'.
 feeBalance :: CoinSelection -> Word64
 feeBalance sel = inputBalance sel - outputBalance sel - changeBalance sel
 
-addTxOut :: Integral a => a -> TxOut -> a
-addTxOut total = addCoin total . coin
-
-addCoin :: Integral a => a -> Coin -> a
-addCoin total c = total + (fromIntegral (getCoin c))
-
+-- | Represents the set of possible failures that can occur when attempting
+--   to produce a 'CoinSelection'.
+--
 data ErrCoinSelection e
     = ErrUtxoBalanceInsufficient Word64 Word64
     -- ^ The UTxO balance was insufficient to cover the total payment amount.
@@ -137,3 +149,13 @@ data ErrCoinSelection e
     -- validate the selection.
     --
     deriving (Show, Eq)
+
+--------------------------------------------------------------------------------
+-- Utility Functions
+--------------------------------------------------------------------------------
+
+addTxOut :: Integral a => a -> TxOut -> a
+addTxOut total = addCoin total . coin
+
+addCoin :: Integral a => a -> Coin -> a
+addCoin total c = total + (fromIntegral (getCoin c))
