@@ -40,12 +40,6 @@ import qualified Data.Map.Strict as Map
 
 -- | Generate a coin selection according to the __largest first__ algorithm.
 --
--- === Summary
---
--- For the given /output list/ and /initial UTxO set/, this algorithm generates
--- a /coin selection/ that is capable of paying for all of the outputs, and a
--- /remaining UTxO set/ from which all spent values have been removed.
---
 -- === State Maintained by the Algorithm
 --
 -- At all stages of processing, the algorithm maintains:

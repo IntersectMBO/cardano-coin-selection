@@ -46,6 +46,13 @@ import GHC.Generics
                                 Coin Selection
 -------------------------------------------------------------------------------}
 
+-- | Represents a /coin selection algorithm/.
+--
+-- The function 'selectCoins', when applied to the given /output list/ and
+-- /initial UTxO set/, generates a 'CoinSelection' that is capable of paying
+-- for all of the outputs, and a /remaining UTxO set/ from which all spent
+-- values have been removed.
+--
 newtype CoinSelectionAlgorithm m e = CoinSelectionAlgorithm
     { selectCoins
         :: CoinSelectionOptions e
@@ -54,9 +61,9 @@ newtype CoinSelectionAlgorithm m e = CoinSelectionAlgorithm
         -> ExceptT (ErrCoinSelection e) m (CoinSelection, UTxO)
     }
 
--- | Represents the result of running a /coin selection algorithm/, which
---   selects coins from an /initial UTxO set/ in order to cover a given set of
---   /output payments/.
+-- | Represents the result of running a /coin selection algorithm/.
+--
+-- See 'CoinSelectionAlgorithm'.
 --
 data CoinSelection = CoinSelection
     { inputs :: [(TxIn, TxOut)]
