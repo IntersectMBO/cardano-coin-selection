@@ -10,7 +10,7 @@
 -- input selection algorithm
 
 module Cardano.CoinSelection.Random
-    ( random
+    ( randomImprove
     ) where
 
 import Prelude
@@ -110,8 +110,8 @@ data TargetRange = TargetRange
 -- that a randomly chosen UTxO entry will push the total above the upper bound
 -- we set.
 -- @
-random :: forall m e. MonadRandom m => CoinSelectionAlgorithm m e
-random = CoinSelectionAlgorithm payForOutputs
+randomImprove :: forall m e. MonadRandom m => CoinSelectionAlgorithm m e
+randomImprove = CoinSelectionAlgorithm payForOutputs
 
 payForOutputs
     :: MonadRandom m
