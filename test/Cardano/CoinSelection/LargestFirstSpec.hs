@@ -37,11 +37,16 @@ import Test.Hspec
     ( Spec, describe, it, shouldSatisfy )
 import Test.QuickCheck
     ( Property, property, (===), (==>) )
+import Test.QuickCheck.Monadic
+    ( monadicIO )
+import Test.Vector.Shuffle
+    ( shuffleNonEmpty )
 
 import qualified Data.List as L
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
+import qualified Test.QuickCheck.Monadic as QC
 
 spec :: Spec
 spec = do
@@ -209,9 +214,10 @@ spec = do
 
     describe "Coin selection: largest-first algorithm: properties" $ do
 
-        it "forall (UTxO, NonEmpty TxOut), running algorithm twice yields \
-            \exactly the same result"
-            (property propDeterministic)
+        it "forall (UTxO, NonEmpty TxOut), running algorithm yields exactly \
+            \the same result regardless of the way in which requested outputs \
+            \are ordered"
+            (property propOutputOrderIrrelevant)
         it "forall (UTxO, NonEmpty TxOut), there's at least as many selected \
             \inputs as there are requested outputs"
             (property propAtLeast)
@@ -224,14 +230,19 @@ spec = do
                                   Properties
 -------------------------------------------------------------------------------}
 
-propDeterministic
+propOutputOrderIrrelevant
     :: CoinSelProp
     -> Property
-propDeterministic (CoinSelProp utxo txOuts) = do
-    let opts = CoinSelectionOptions (const 100) noValidation
-    let resultOne = runIdentity $ runExceptT $ largestFirst opts txOuts utxo
-    let resultTwo = runIdentity $ runExceptT $ largestFirst opts txOuts utxo
-    resultOne === resultTwo
+propOutputOrderIrrelevant (CoinSelProp utxo txOuts) = monadicIO $ QC.run $ do
+    txOutsShuffled <- shuffleNonEmpty txOuts
+    let resultOne = runSelectionFor txOuts
+    let resultTwo = runSelectionFor txOutsShuffled
+    pure (resultOne === resultTwo)
+  where
+    options =
+        CoinSelectionOptions (const 100) noValidation
+    runSelectionFor outs =
+        runIdentity $ runExceptT $ largestFirst options outs utxo
 
 propAtLeast
     :: CoinSelProp
