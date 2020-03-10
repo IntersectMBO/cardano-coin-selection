@@ -1,3 +1,4 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
@@ -18,6 +19,7 @@ import Test.QuickCheck
     , Positive (..)
     , PrintableString (..)
     , Property
+    , Testable
     , arbitrary
     , checkCoverageWith
     , cover
@@ -38,28 +40,31 @@ import qualified Data.Text as T
 spec :: Spec
 spec = do
     describe "shuffle" $ do
-        it "every list can be shuffled, ultimately"
-            (checkCoverageWith lowerConfidence prop_shuffleCanShuffle)
-        it "shuffle is non-deterministic"
-            (checkCoverageWith lowerConfidence prop_shuffleNotDeterministic)
-        it "sort (shuffle xs) == sort xs"
-            (checkCoverageWith lowerConfidence prop_shufflePreserveElements)
+        it "every list can be shuffled, ultimately" $
+            check prop_shuffleCanShuffle
+        it "shuffle is non-deterministic" $
+            check prop_shuffleNotDeterministic
+        it "sort (shuffle xs) == sort xs" $
+            check prop_shufflePreserveElements
 
     describe "shuffleNonEmpty" $ do
-        it "every non-empty list can be shuffled, ultimately"
-            (checkCoverageWith lowerConfidence prop_shuffleNonEmptyCanShuffle)
-        it "shuffleNonEmpty is non-deterministic"
-            (checkCoverageWith lowerConfidence prop_shuffleNonEmptyNotDeterministic)
-        it "sort (shuffleNonEmpty xs) == sort xs"
-            (checkCoverageWith lowerConfidence prop_shuffleNonEmptyPreserveElements)
+        it "every non-empty list can be shuffled, ultimately" $
+            check prop_shuffleNonEmptyCanShuffle
+        it "shuffleNonEmpty is non-deterministic" $
+            check prop_shuffleNonEmptyNotDeterministic
+        it "sort (shuffleNonEmpty xs) == sort xs" $
+            check prop_shuffleNonEmptyPreserveElements
 
     describe "shuffleWith / mkSeed" $ do
-        it "shuffling with the same seed is deterministic"
-            (checkCoverageWith lowerConfidence prop_shuffleWithDeterministic)
-        it "different seed means different shuffles"
-            (checkCoverageWith lowerConfidence prop_shuffleDifferentSeed)
+        it "shuffling with the same seed is deterministic" $
+            check prop_shuffleWithDeterministic
+        it "different seed means different shuffles" $
+            check prop_shuffleDifferentSeed
 
   where
+    check :: forall p. Testable p => p -> Property
+    check = checkCoverageWith lowerConfidence
+
     lowerConfidence :: Confidence
     lowerConfidence = Confidence (10^(6 :: Integer)) 0.75
 
