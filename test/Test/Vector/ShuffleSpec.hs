@@ -1,4 +1,6 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Test.Vector.ShuffleSpec
     ( spec
@@ -6,17 +8,22 @@ module Test.Vector.ShuffleSpec
 
 import Prelude
 
+import Data.List.NonEmpty
+    ( NonEmpty (..) )
 import Test.Hspec
     ( Spec, describe, it )
 import Test.QuickCheck
-    ( Confidence (..)
+    ( Arbitrary (..)
+    , Confidence (..)
     , NonEmptyList (..)
     , Positive (..)
     , PrintableString (..)
     , Property
+    , Testable
     , arbitrary
     , checkCoverageWith
     , cover
+    , genericShrink
     , label
     , vectorOf
     , (==>)
@@ -24,28 +31,40 @@ import Test.QuickCheck
 import Test.QuickCheck.Monadic
     ( assert, monadicIO, monitor, pick, run )
 import Test.Vector.Shuffle
-    ( mkSeed, shuffle, shuffleWith )
+    ( mkSeed, shuffle, shuffleNonEmpty, shuffleWith )
 
 import qualified Data.List as L
+import qualified Data.List.NonEmpty as NE
 import qualified Data.Text as T
 
 spec :: Spec
 spec = do
     describe "shuffle" $ do
-        it "every non-empty list can be shuffled, ultimately"
-            (checkCoverageWith lowerConfidence prop_shuffleCanShuffle)
-        it "shuffle is non-deterministic"
-            (checkCoverageWith lowerConfidence prop_shuffleNotDeterministic)
-        it "sort (shuffled xs) == sort xs"
-            (checkCoverageWith lowerConfidence prop_shufflePreserveElements)
+        it "every list can be shuffled, ultimately" $
+            check prop_shuffleCanShuffle
+        it "shuffle is non-deterministic" $
+            check prop_shuffleNotDeterministic
+        it "sort (shuffle xs) == sort xs" $
+            check prop_shufflePreserveElements
+
+    describe "shuffleNonEmpty" $ do
+        it "every non-empty list can be shuffled, ultimately" $
+            check prop_shuffleNonEmptyCanShuffle
+        it "shuffleNonEmpty is non-deterministic" $
+            check prop_shuffleNonEmptyNotDeterministic
+        it "sort (shuffleNonEmpty xs) == sort xs" $
+            check prop_shuffleNonEmptyPreserveElements
 
     describe "shuffleWith / mkSeed" $ do
-        it "shuffling with the same seed is deterministic"
-            (checkCoverageWith lowerConfidence prop_shuffleWithDeterministic)
-        it "different seed means different shuffles"
-            (checkCoverageWith lowerConfidence prop_shuffleDifferentSeed)
+        it "shuffling with the same seed is deterministic" $
+            check prop_shuffleWithDeterministic
+        it "different seed means different shuffles" $
+            check prop_shuffleDifferentSeed
 
   where
+    check :: forall p. Testable p => p -> Property
+    check = checkCoverageWith lowerConfidence
+
     lowerConfidence :: Confidence
     lowerConfidence = Confidence (10^(6 :: Integer)) 0.75
 
@@ -60,6 +79,13 @@ prop_shuffleCanShuffle (NonEmpty xs) = monadicIO $ run $ do
     xs' <- shuffle xs
     return $ cover 90 (xs /= xs') "shuffled" ()
 
+prop_shuffleNonEmptyCanShuffle
+    :: NonEmpty Int
+    -> Property
+prop_shuffleNonEmptyCanShuffle xs = monadicIO $ run $ do
+    xs' <- shuffleNonEmpty xs
+    return $ cover 90 (xs /= xs') "shuffled" ()
+
 prop_shuffleNotDeterministic
     :: NonEmptyList Int
     -> Property
@@ -68,12 +94,27 @@ prop_shuffleNotDeterministic (NonEmpty xs) = monadicIO $ run $ do
     xs2 <- shuffle xs
     return $ cover 90 (xs1 /= xs2) "not deterministic" ()
 
+prop_shuffleNonEmptyNotDeterministic
+    :: NonEmpty Int
+    -> Property
+prop_shuffleNonEmptyNotDeterministic xs = monadicIO $ run $ do
+    xs1 <- shuffleNonEmpty xs
+    xs2 <- shuffleNonEmpty xs
+    return $ cover 90 (xs1 /= xs2) "not deterministic" ()
+
 prop_shufflePreserveElements
     :: [Int]
     -> Property
 prop_shufflePreserveElements xs = monadicIO $ run $ do
     xs' <- shuffle xs
     return $ cover 90 (not $ null xs) "non-empty" (L.sort xs == L.sort xs')
+
+prop_shuffleNonEmptyPreserveElements
+    :: NonEmpty Int
+    -> Property
+prop_shuffleNonEmptyPreserveElements xs = monadicIO $ run $ do
+    xs' <- shuffleNonEmpty xs
+    return $ cover 90 (not $ null xs) "non-empty" (NE.sort xs == NE.sort xs')
 
 -- ∀(g :: RandomGen).
 -- ∀(es :: [a]).
@@ -114,3 +155,7 @@ prop_shuffleDifferentSeed (x0, x1) (Positive len) = do
         n | n <= 1 -> "singleton"
         n | n <= 10 -> "small list"
         _ -> "big list"
+
+instance Arbitrary a => Arbitrary (NonEmpty a) where
+    arbitrary = (:|) <$> arbitrary <*> arbitrary
+    shrink = genericShrink

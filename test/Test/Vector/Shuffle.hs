@@ -4,10 +4,12 @@
 module Test.Vector.Shuffle
     ( -- * Simple
       shuffle
+    , shuffleNonEmpty
 
       -- * Advanced
     , mkSeed
     , shuffleWith
+    , shuffleNonEmptyWith
     ) where
 
 import Prelude
@@ -22,6 +24,10 @@ import Crypto.Hash
     ( hash )
 import Crypto.Hash.Algorithms
     ( MD5 )
+import Data.List.NonEmpty
+    ( NonEmpty (..) )
+import Data.Maybe
+    ( fromMaybe )
 import Data.Text
     ( Text )
 import Data.Vector.Mutable
@@ -33,6 +39,7 @@ import System.Random
 
 import qualified Data.ByteArray as BA
 import qualified Data.ByteString as BS
+import qualified Data.List.NonEmpty as NE
 import qualified Data.Text.Encoding as T
 import qualified Data.Vector as V
 import qualified Data.Vector.Mutable as MV
@@ -80,3 +87,20 @@ shuffleWith seed = modifyInPlace $ \v -> flip evalStateT seed $ do
         v' <- V.thaw $ V.fromList xs
         f v'
         V.toList <$> V.freeze v'
+
+-- | Shuffles a /non-empty/ list of elements.
+--
+-- See 'shuffle'.
+--
+shuffleNonEmpty :: NonEmpty a -> IO (NonEmpty a)
+shuffleNonEmpty xs = newStdGen >>= flip shuffleNonEmptyWith xs
+
+-- | Shuffles a /non-empty/ list of elements with the given random generator.
+--
+-- See 'shuffleWith'.
+--
+shuffleNonEmptyWith :: RandomGen g => g -> NonEmpty a -> IO (NonEmpty a)
+shuffleNonEmptyWith g =
+    fmap (fromMaybe raiseError . NE.nonEmpty) . shuffleWith g . NE.toList
+  where
+    raiseError = error "shuffleNonEmptyWith encountered an empty list."
