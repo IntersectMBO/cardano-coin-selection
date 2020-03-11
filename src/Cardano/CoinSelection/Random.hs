@@ -133,7 +133,13 @@ payForOutputs options outputsRequested utxo = do
     validateSelection =
         except . left ErrInvalidSelection . validate options
 
--- | Perform a random selection on a given output, without improvement.
+-- | Randomly select entries from the given UTxO set, until the total value of
+--   selected entries is greater than or equal to the given output value.
+--
+-- Once a random selection has been made that meets the above criterion, this
+-- function returns that selection as is, making no attempt to improve upon
+-- the selection in any way.
+--
 makeRandomSelection
     :: MonadRandom m
     => (Word64, UTxO, [([CoinSelectionInput], TxOut)])
