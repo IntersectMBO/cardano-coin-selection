@@ -1,22 +1,25 @@
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TupleSections #-}
 
 -- |
 -- Copyright: © 2018-2020 IOHK
 -- License: Apache-2.0
 --
--- This module contains the implementation of random
--- input selection algorithm
-
+-- This module contains an implementation of the __random-improve__ coin
+-- selection algorithm.
+--
 module Cardano.CoinSelection.Random
-    ( random
+    ( randomImprove
     ) where
 
 import Prelude
 
 import Cardano.CoinSelection
-    ( CoinSelection (..), CoinSelectionOptions (..), ErrCoinSelection (..) )
+    ( CoinSelection (..)
+    , CoinSelectionAlgorithm (..)
+    , CoinSelectionOptions (..)
+    , ErrCoinSelection (..)
+    )
 import Cardano.CoinSelection.LargestFirst
     ( largestFirst )
 import Cardano.Types
@@ -106,13 +109,16 @@ data TargetRange = TargetRange
 -- that a randomly chosen UTxO entry will push the total above the upper bound
 -- we set.
 -- @
-random
-    :: forall m e. MonadRandom m
+randomImprove :: MonadRandom m => CoinSelectionAlgorithm m e
+randomImprove = CoinSelectionAlgorithm payForOutputs
+
+payForOutputs
+    :: MonadRandom m
     => CoinSelectionOptions e
     -> NonEmpty TxOut
     -> UTxO
     -> ExceptT (ErrCoinSelection e) m (CoinSelection, UTxO)
-random opt outs utxo = do
+payForOutputs opt outs utxo = do
     let descending = NE.toList . NE.sortBy (flip $ comparing coin)
     let nOuts = fromIntegral $ NE.length outs
     let maxN = fromIntegral $ maximumInputCount opt nOuts
@@ -124,13 +130,13 @@ random opt outs utxo = do
                 foldM improveTxOut (maxN', mempty, utxo') (reverse res)
             guard sel $> (sel, remUtxo)
         Nothing ->
-            largestFirst opt outs utxo
+            selectCoins largestFirst opt outs utxo
   where
     guard = except . left ErrInvalidSelection . validate opt
 
 -- | Perform a random selection on a given output, without improvement.
 makeSelection
-    :: forall m. MonadRandom m
+    :: MonadRandom m
     => (Word64, UTxO, [([(TxIn, TxOut)], TxOut)])
     -> TxOut
     -> MaybeT m (Word64, UTxO, [([(TxIn, TxOut)], TxOut)])
@@ -143,7 +149,7 @@ makeSelection (maxNumInputs, utxo0, selection) txout = do
         )
   where
     coverRandomly
-        :: forall m. MonadRandom m
+        :: MonadRandom m
         => ([(TxIn, TxOut)], UTxO)
         -> MaybeT m ([(TxIn, TxOut)], UTxO)
     coverRandomly (inps, utxo)
@@ -156,7 +162,7 @@ makeSelection (maxNumInputs, utxo0, selection) txout = do
 
 -- | Perform an improvement to random selection on a given output.
 improveTxOut
-    :: forall m. MonadRandom m
+    :: MonadRandom m
     => (Word64, CoinSelection, UTxO)
     -> ([(TxIn, TxOut)], TxOut)
     -> m (Word64, CoinSelection, UTxO)
@@ -175,7 +181,7 @@ improveTxOut (maxN0, selection, utxo0) (inps0, txout) = do
     target = mkTargetRange txout
 
     improve
-        :: forall m. MonadRandom m
+        :: MonadRandom m
         => (Word64, [(TxIn, TxOut)], UTxO)
         -> m (Word64, [(TxIn, TxOut)], UTxO)
     improve (maxN, inps, utxo)

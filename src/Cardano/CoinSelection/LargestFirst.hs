@@ -1,5 +1,3 @@
-{-# LANGUAGE RankNTypes #-}
-
 -- |
 -- Copyright: © 2018-2020 IOHK
 -- License: Apache-2.0
@@ -9,13 +7,16 @@
 --
 module Cardano.CoinSelection.LargestFirst (
     largestFirst
-  , atLeast
   ) where
 
 import Prelude
 
 import Cardano.CoinSelection
-    ( CoinSelection (..), CoinSelectionOptions (..), ErrCoinSelection (..) )
+    ( CoinSelection (..)
+    , CoinSelectionAlgorithm (..)
+    , CoinSelectionOptions (..)
+    , ErrCoinSelection (..)
+    )
 import Cardano.Types
     ( Coin (..), TxIn, TxOut (..), UTxO (..), balance )
 import Control.Arrow
@@ -36,12 +37,6 @@ import qualified Data.List.NonEmpty as NE
 import qualified Data.Map.Strict as Map
 
 -- | Generate a coin selection according to the __largest first__ algorithm.
---
--- === Summary
---
--- For the given /output list/ and /initial UTxO set/, this algorithm generates
--- a /coin selection/ that is capable of paying for all of the outputs, and a
--- /remaining UTxO set/ from which all spent values have been removed.
 --
 -- === State Maintained by the Algorithm
 --
@@ -165,14 +160,17 @@ import qualified Data.Map.Strict as Map
 --
 --      See: __'ErrMaximumInputCountExceeded'__.
 --
-largestFirst
-    :: forall m e. Monad m
+largestFirst :: Monad m => CoinSelectionAlgorithm m e
+largestFirst = CoinSelectionAlgorithm payForOutputs
+
+payForOutputs
+    :: Monad m
     => CoinSelectionOptions e
     -> NonEmpty TxOut
     -> UTxO
     -> ExceptT (ErrCoinSelection e) m (CoinSelection, UTxO)
-largestFirst options outputsRequested utxo =
-    case foldM atLeast (utxoDescending, mempty) outputsDescending of
+payForOutputs options outputsRequested utxo =
+    case foldM payForOutput (utxoDescending, mempty) outputsDescending of
         Just (utxoRemaining, selection) ->
             validateSelection selection $>
                 (selection, UTxO $ Map.fromList utxoRemaining)
@@ -218,11 +216,11 @@ largestFirst options outputsRequested utxo =
 -- If the total value of entries in the given UTxO list is /less than/ the
 -- required output amount, this function will return 'Nothing'.
 --
-atLeast
+payForOutput
     :: ([(TxIn, TxOut)], CoinSelection)
     -> TxOut
     -> Maybe ([(TxIn, TxOut)], CoinSelection)
-atLeast (utxoAvailable, currentSelection) txout =
+payForOutput (utxoAvailable, currentSelection) txout =
     let target = fromIntegral $ getCoin $ coin txout in
     coverTarget target utxoAvailable mempty
   where

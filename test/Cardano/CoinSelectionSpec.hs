@@ -25,7 +25,11 @@ module Cardano.CoinSelectionSpec
 import Prelude
 
 import Cardano.CoinSelection
-    ( CoinSelection (..), CoinSelectionOptions (..), ErrCoinSelection (..) )
+    ( CoinSelection (..)
+    , CoinSelectionAlgorithm (..)
+    , CoinSelectionOptions (..)
+    , ErrCoinSelection (..)
+    )
 import Cardano.Types
     ( Address (..)
     , Coin (..)
@@ -36,7 +40,7 @@ import Cardano.Types
     , UTxO (..)
     )
 import Control.Monad.Trans.Except
-    ( ExceptT, runExceptT )
+    ( runExceptT )
 import Data.List.NonEmpty
     ( NonEmpty (..) )
 import Data.Maybe
@@ -146,21 +150,17 @@ data CoinSelectionResult = CoinSelectionResult
 -- | Generate a 'UTxO' and 'TxOut' matching the given 'Fixture', and perform
 -- the given coin selection on it.
 coinSelectionUnitTest
-    :: ( CoinSelectionOptions ErrValidation
-         -> NonEmpty TxOut
-         -> UTxO
-         -> ExceptT (ErrCoinSelection ErrValidation) IO (CoinSelection, UTxO)
-       )
+    :: CoinSelectionAlgorithm IO ErrValidation
     -> String
     -> Either (ErrCoinSelection ErrValidation) CoinSelectionResult
     -> CoinSelectionFixture
     -> SpecWith ()
-coinSelectionUnitTest run lbl expected (CoinSelectionFixture n fn utxoF outsF) =
+coinSelectionUnitTest alg lbl expected (CoinSelectionFixture n fn utxoF outsF) =
     it title $ do
         (utxo,txOuts) <- setup
         result <- runExceptT $ do
             (CoinSelection inps outs chngs, _) <-
-                run (CoinSelectionOptions (const n) fn) txOuts utxo
+                selectCoins alg (CoinSelectionOptions (const n) fn) txOuts utxo
             return $ CoinSelectionResult
                 { rsInputs = map (getCoin . coin . snd) inps
                 , rsChange = map getCoin chngs

@@ -9,7 +9,11 @@ module Cardano.CoinSelection.LargestFirstSpec
 import Prelude
 
 import Cardano.CoinSelection
-    ( CoinSelection (..), CoinSelectionOptions (..), ErrCoinSelection (..) )
+    ( CoinSelection (..)
+    , CoinSelectionAlgorithm (..)
+    , CoinSelectionOptions (..)
+    , ErrCoinSelection (..)
+    )
 import Cardano.CoinSelection.LargestFirst
     ( largestFirst )
 import Cardano.CoinSelectionSpec
@@ -242,7 +246,7 @@ propOutputOrderIrrelevant (CoinSelProp utxo txOuts) = monadicIO $ QC.run $ do
     options =
         CoinSelectionOptions (const 100) noValidation
     runSelectionFor outs =
-        runIdentity $ runExceptT $ largestFirst options outs utxo
+        runIdentity $ runExceptT $ selectCoins largestFirst options outs utxo
 
 propAtLeast
     :: CoinSelProp
@@ -252,7 +256,7 @@ propAtLeast (CoinSelProp utxo txOuts) =
   where
     prop (CoinSelection inps _ _) =
         L.length inps `shouldSatisfy` (>= NE.length txOuts)
-    selection = runIdentity $ runExceptT $
+    selection = runIdentity $ runExceptT $ selectCoins
         largestFirst (CoinSelectionOptions (const 100) noValidation) txOuts utxo
 
 propInputDecreasingOrder
@@ -270,5 +274,5 @@ propInputDecreasingOrder (CoinSelProp utxo txOuts) =
             `shouldSatisfy`
             (>= (getExtremumValue L.maximum utxo'))
     getExtremumValue f = f . map (getCoin . coin . snd)
-    selection = runIdentity $ runExceptT $
-        largestFirst (CoinSelectionOptions (const 100) noValidation) txOuts utxo
+    selection = runIdentity $ runExceptT $ selectCoins largestFirst
+        (CoinSelectionOptions (const 100) noValidation) txOuts utxo

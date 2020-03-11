@@ -9,11 +9,15 @@ module Cardano.CoinSelection.RandomSpec
 import Prelude
 
 import Cardano.CoinSelection
-    ( CoinSelection (..), CoinSelectionOptions (..), ErrCoinSelection (..) )
+    ( CoinSelection (..)
+    , CoinSelectionAlgorithm (..)
+    , CoinSelectionOptions (..)
+    , ErrCoinSelection (..)
+    )
 import Cardano.CoinSelection.LargestFirst
     ( largestFirst )
 import Cardano.CoinSelection.Random
-    ( random )
+    ( randomImprove )
 import Cardano.CoinSelectionSpec
     ( CoinSelProp (..)
     , CoinSelectionFixture (..)
@@ -48,7 +52,7 @@ spec = do
     describe "Coin selection : random algorithm unit tests" $ do
         let oneAda = 1000000
 
-        coinSelectionUnitTest random ""
+        coinSelectionUnitTest randomImprove ""
             (Right $ CoinSelectionResult
                 { rsInputs = [1,1,1,1]
                 , rsChange = [2]
@@ -61,7 +65,7 @@ spec = do
                 , txOutputs = 2 :| []
                 })
 
-        coinSelectionUnitTest random ""
+        coinSelectionUnitTest randomImprove ""
             (Right $ CoinSelectionResult
                 { rsInputs = [1,1,1,1,1,1]
                 , rsChange = [2,1]
@@ -74,7 +78,7 @@ spec = do
                 , txOutputs = 2 :| [1]
                 })
 
-        coinSelectionUnitTest random ""
+        coinSelectionUnitTest randomImprove ""
             (Right $ CoinSelectionResult
                 { rsInputs = [1,1,1,1,1]
                 , rsChange = [2]
@@ -87,7 +91,7 @@ spec = do
                 , txOutputs = 2 :| [1]
                 })
 
-        coinSelectionUnitTest random ""
+        coinSelectionUnitTest randomImprove ""
             (Right $ CoinSelectionResult
                 { rsInputs = [1,1,1,1]
                 , rsChange = [1]
@@ -100,7 +104,7 @@ spec = do
                 , txOutputs = 2 :| [1]
                 })
 
-        coinSelectionUnitTest random ""
+        coinSelectionUnitTest randomImprove ""
             (Right $ CoinSelectionResult
                 { rsInputs = [5]
                 , rsChange = [3]
@@ -113,7 +117,7 @@ spec = do
                 , txOutputs = 2 :| []
                 })
 
-        coinSelectionUnitTest random ""
+        coinSelectionUnitTest randomImprove ""
             (Right $ CoinSelectionResult
                 { rsInputs = [10,10]
                 , rsChange = [8,8]
@@ -127,7 +131,7 @@ spec = do
                 , txOutputs = 2 :| [2]
                 })
 
-        coinSelectionUnitTest random "cannot cover aim, but only min"
+        coinSelectionUnitTest randomImprove "cannot cover aim, but only min"
             (Right $ CoinSelectionResult
                 { rsInputs = [1,1,1,1]
                 , rsChange = [1]
@@ -140,7 +144,7 @@ spec = do
                 , txOutputs = 3 :| []
                 })
 
-        coinSelectionUnitTest random "REG CO-450: no fallback"
+        coinSelectionUnitTest randomImprove "REG CO-450: no fallback"
             (Right $ CoinSelectionResult
                 { rsInputs = [oneAda, oneAda, oneAda, oneAda]
                 , rsChange = [oneAda, oneAda `div` 2]
@@ -153,7 +157,7 @@ spec = do
                 , txOutputs = 2*oneAda :| [oneAda `div` 2]
                 })
 
-        coinSelectionUnitTest random
+        coinSelectionUnitTest randomImprove
             "enough funds, proper fragmentation, inputs depleted"
             (Left ErrUxtoFullyDepleted)
             (CoinSelectionFixture
@@ -163,7 +167,7 @@ spec = do
                 , txOutputs = 38 :| [1]
                 })
 
-        coinSelectionUnitTest random ""
+        coinSelectionUnitTest randomImprove ""
             (Left $ ErrMaximumInputCountExceeded 2)
             (CoinSelectionFixture
                 { maxNumOfInputs = 2
@@ -172,7 +176,7 @@ spec = do
                 , txOutputs = 3 :| []
                 })
 
-        coinSelectionUnitTest random "each output needs <maxNumOfInputs"
+        coinSelectionUnitTest randomImprove "each output needs <maxNumOfInputs"
             (Left $ ErrMaximumInputCountExceeded 9)
             (CoinSelectionFixture
                 { maxNumOfInputs = 9
@@ -181,7 +185,7 @@ spec = do
                 , txOutputs = NE.fromList (replicate 100 1)
                 })
 
-        coinSelectionUnitTest random "each output needs >maxNumInputs"
+        coinSelectionUnitTest randomImprove "each output needs >maxNumInputs"
             (Left $ ErrMaximumInputCountExceeded 9)
             (CoinSelectionFixture
                 { maxNumOfInputs = 9
@@ -190,7 +194,7 @@ spec = do
                 , txOutputs = NE.fromList (replicate 10 10)
                 })
 
-        coinSelectionUnitTest random ""
+        coinSelectionUnitTest randomImprove ""
             (Left $ ErrUtxoBalanceInsufficient 39 40)
             (CoinSelectionFixture
                 { maxNumOfInputs = 100
@@ -199,7 +203,7 @@ spec = do
                 , txOutputs = 40 :| []
                 })
 
-        coinSelectionUnitTest random ""
+        coinSelectionUnitTest randomImprove ""
             (Left $ ErrUtxoBalanceInsufficient 39 43)
             (CoinSelectionFixture
                 { maxNumOfInputs = 100
@@ -208,7 +212,7 @@ spec = do
                 , txOutputs = 40 :| [1,1,1]
                 })
 
-        coinSelectionUnitTest random ""
+        coinSelectionUnitTest randomImprove ""
             (Left $ ErrUtxoNotFragmentedEnough 3 4)
             (CoinSelectionFixture
                 { maxNumOfInputs = 100
@@ -217,7 +221,7 @@ spec = do
                 , txOutputs = 40 :| [1,1,1]
                 })
 
-        coinSelectionUnitTest random "custom validation"
+        coinSelectionUnitTest randomImprove "custom validation"
             (Left $ ErrInvalidSelection ErrValidation)
             (CoinSelectionFixture
                 { maxNumOfInputs = 100
@@ -252,9 +256,9 @@ propFragmentation drg (CoinSelProp utxo txOuts) = do
     prop (CoinSelection inps1 _ _, CoinSelection inps2 _ _) =
         L.length inps1 `shouldSatisfy` (>= L.length inps2)
     (selection1,_) = withDRG drg
-        (runExceptT $ random opt txOuts utxo)
+        (runExceptT $ selectCoins randomImprove opt txOuts utxo)
     selection2 = runIdentity $ runExceptT $
-        largestFirst opt txOuts utxo
+        selectCoins largestFirst opt txOuts utxo
     opt = CoinSelectionOptions (const 100) noValidation
 
 propErrors
@@ -269,7 +273,7 @@ propErrors drg (CoinSelProp utxo txOuts) = do
     prop (err1, err2) =
         err1 === err2
     (selection1,_) = withDRG drg
-        (runExceptT $ random opt txOuts utxo)
+        (runExceptT $ selectCoins randomImprove opt txOuts utxo)
     selection2 = runIdentity $ runExceptT $
-        largestFirst opt txOuts utxo
+        selectCoins largestFirst opt txOuts utxo
     opt = (CoinSelectionOptions (const 1) noValidation)
