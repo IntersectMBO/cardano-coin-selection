@@ -58,47 +58,159 @@ import qualified Data.List.NonEmpty as NE
 
 -- | An implementation of the __Random-Improve__ coin selection algorithm.
 --
--- 1. Randomly select outputs from the UTxO until the payment value is covered.
---    (In the rare case that this fails because the maximum number of
---    transaction inputs has been exceeded, fall back on the largest-first
---    algorithm for this step.)
+-- = Overview
 --
--- 2. The algorithm first makes a random selection for each output from the
---    UTxO, processing the biggest output first and proceeding in a descending
---    order.  If the selection is not successful largest-first fallback kicks
---    in.  If the selection is successful for each output then the improvement
---    is tried for each selection, once again starting from the selection made
---    for the biggest output. The improvement is tried for the next biggest
---    output's selection. An output is considered an improvement when:
+-- The __Random-Improve__ coin selection algorithm works in __two phases__, by
+-- /first/ selecting UTxO entries /at random/ to pay for each of the given
+-- outputs, and /then/ attempting to /improve/ upon each of the selections.
 --
---    (a)  It doesn’t exceed a specified upper limit.
---    (b)  Adding the new output gets us closer to the ideal change value.
---    (c)  It doesn’t exceed a maximum number of transaction inputs.
+-- === Phase 1: Random Selection
 --
--- This algorithm follows three principles:
+-- __In this phase, the algorithm randomly selects a minimal set of UTxO__
+-- __entries to pay for each of the given outputs.__
 --
--- @
--- **Self organisation principle 1**
--- Random selection has a high probability of picking dust outputs precisely
--- when there is a lot of dust in the UTxO.
--- @
+-- During this phase, the algorithm:
 --
--- @
--- **Self organisation principle 2**
--- If for each payment request for value `x` we create a change output roughly
--- of the same value `x`, then we will end up with a lot of change outputs in
--- our UTxO of size `x` precisely when we have a lot of payment requests of
--- size `x`
--- @
+--   *  processes outputs in /descending order of coin value/.
 --
--- @
--- **Self organisation principle 3**
--- Searching the UTxO for additional entries to improve our change output is
--- only useful if the UTxO contains entries that are sufficiently small enough.
--- But precisely when the UTxO contains many small entries, it is less likely
--- that a randomly chosen UTxO entry will push the total above the upper bound
--- we set.
--- @
+--   *  maintains a /remaining UTxO set/, initially equal to the given
+--      /UTxO set/ parameter.
+--
+-- For each output of value __/v/__, the algorithm /randomly/ selects entries
+-- from the /remaining UTxO set/, until the total value of selected entries is
+-- greater than or equal to __/v/__. The selected entries are then associated
+-- with that output, and removed from the /remaining UTxO set/.
+--
+-- This phase ends when every output has been associated with a selection of
+-- UTxO entries.
+--
+-- However, if the remaining UTxO set is completely exhausted before all
+-- outputs can be processed, the algorithm terminates and delegates to the
+-- __Largest-First__ algorithm. (See 'largestFirst'.)
+--
+-- === Phase 2: Improvement
+--
+-- __In this phase, the algorithm attempts to improve upon each of the UTxO__
+-- __selections made in the previous phase, by conservatively expanding the__
+-- __selection made for each output.__
+--
+-- During this phase, the algorithm:
+--
+--   *  processes outputs in /ascending order of coin value/.
+--
+--   *  continues to maintain the /remaining UTxO set/ produced by the previous
+--      phase.
+--
+--   *  maintains an /accumulated coin selection/, which is initially /empty/.
+--
+-- For each output of value __/v/__, the algorithm:
+--
+--  1.  __Calculates a /target range/__ for the total value of inputs used to
+--      pay for that output, defined by the triplet:
+--
+--      (/minimum/, /ideal/, /maximum/) = (/v/, /2v/, /3v/)
+--
+--  2.  __Attempts to /improve/ upon the /existing UTxO selection/__ for that
+--      output, by repeatedly selecting additional entries at random from the
+--      /remaining UTxO set/, stopping when the selection can be improved upon
+--      no further.
+--
+--      A selection with value /v1/ is considered to be an /improvement/ over a
+--      selection with value /v0/ if __all__ of the following conditions are
+--      satisfied:
+--
+--       * __Condition 1__: we have moved closer to the /ideal/ value:
+--
+--             abs (/ideal/ − /v1/) < abs (/ideal/ − /v0/)
+--
+--       * __Condition 2__: we have not exceeded the /maximum/ value:
+--
+--             /v1/ ≤ /maximum/
+--
+--       * __Condition 3__: when counting cumulatively across all outputs
+--       considered so far, we have not selected more than the /maximum/ number
+--       of UTxO entries specified by 'maximumInputCount'.
+--
+--  3.  __Creates a /change value/__ for the output, equal to the total value
+--      of the /final UTxO selection/ for that output minus the value /v/ of
+--      that output.
+--
+--  4.  __Updates the /accumulated coin selection/__:
+--
+--       * Adds the /output/ to 'outputs'.
+--       * Adds the /improved UTxO selection/ to 'inputs'.
+--       * Adds the /change value/ to 'change'.
+--
+-- This phase ends when every output has been processed, __or__ when the
+-- /remaining UTxO set/ has been exhausted, whichever occurs sooner.
+--
+-- = Termination
+--
+-- When both phases are complete, the algorithm terminates.
+--
+-- The /accumulated coin selection/ and /remaining UTxO set/ are returned to
+-- the caller.
+--
+-- === Failure Modes
+--
+-- The algorithm terminates with an __error__ if:
+--
+--  1.  The /total value/ of the initial UTxO set (the amount of money
+--      /available/) is /less than/ the total value of the output list (the
+--      amount of money /required/).
+--
+--      See: __'ErrUtxoBalanceInsufficient'__.
+--
+--  2.  The /number/ of entries in the initial UTxO set is /smaller than/ the
+--      number of requested outputs.
+--
+--      Due to the nature of the algorithm, /at least one/ UTxO entry is
+--      required /for each/ output.
+--
+--      See: __'ErrUtxoNotFragmentedEnough'__.
+--
+--  3.  Due to the particular /distribution/ of values within the initial UTxO
+--      set, the algorithm depletes all entries from the UTxO set /before/ it
+--      is able to pay for all requested outputs.
+--
+--      See: __'ErrUxtoFullyDepleted'__.
+--
+--  4.  The /number/ of UTxO entries needed to pay for the requested outputs
+--      would /exceed/ the upper limit specified by 'maximumInputCount'.
+--
+--      See: __'ErrMaximumInputCountExceeded'__.
+--
+-- = Motivating Principles
+--
+-- There are several motivating principles behind the design of the algorithm.
+--
+-- === Principle 1: Dust Management
+--
+-- The probability that random selection will choose dust entries from a UTxO
+-- set increases with the proportion of dust in the set.
+--
+-- Therefore, for a UTxO set with a large amount of dust, there's a high
+-- probability that a random subset will include a large amount of dust.
+--
+-- === Principle 2: Change Management
+--
+-- Ideally, coin selection algorithms should, over time, create a UTxO set that
+-- has /useful/ outputs: outputs that will allow us to process future payments
+-- with a minimum number of inputs.
+--
+-- If for each payment request of value __/v/__ we create a change output of
+-- /roughly/ the same value __/v/__, then we will end up with a distribution of
+-- change values that matches the typical value distribution of payment
+-- requests.
+--
+-- === Principle 3: Performance Management
+--
+-- Searching the UTxO set for additional entries to improve our change outputs
+-- is /only/ useful if the UTxO set contains entries that are sufficiently
+-- small enough. But it is precisely when the UTxO set contains many small
+-- entries that it is less likely for a randomly-chosen UTxO entry to push the
+-- total above the upper bound.
+--
 randomImprove :: MonadRandom m => CoinSelectionAlgorithm m e
 randomImprove = CoinSelectionAlgorithm payForOutputs
 
