@@ -208,17 +208,28 @@ improveSelection (maxN0, selection, utxo0) (inps0, txout) = do
                                  Internals
 -------------------------------------------------------------------------------}
 
--- | Target range for picking inputs
+-- | Represents a target range of /total input values/ for a given output.
+--
+-- In this context, /total input value/ refers to the total value of a set of
+-- inputs selected to pay for a given output.
+--
 data TargetRange = TargetRange
     { targetMin :: Word64
-        -- ^ Minimum value to cover: only the requested amount, no change at all
+        -- ^ The minimum value, corresponding to exactly the requested target
+        -- amount, and a change amount of zero.
     , targetAim :: Word64
-        -- ^ Ideal case: change equal to requested amount
+        -- ^ The ideal value, corresponding to exactly twice the requested
+        -- target amount, and a change amount equal to the requested amount.
     , targetMax :: Word64
-        -- ^ Maximum value: an arbitrary upper bound (e.g. @2 * targetMin@)
+        -- ^ The maximum value, corresponding to exactly three times the
+        -- requested amount, and a change amount equal to twice the requested
+        -- amount.
     }
 
--- | Compute the target range for a given output
+-- | Compute the target range of /total input values/ for a given output.
+--
+-- See 'TargetRange'.
+--
 mkTargetRange :: TxOut -> TargetRange
 mkTargetRange (TxOut _ (Coin c)) = TargetRange
     { targetMin = c
