@@ -113,11 +113,11 @@ payForOutputs opt outs utxo = do
     let nOuts = fromIntegral $ NE.length outs
     let maxN = fromIntegral $ maximumInputCount opt nOuts
     randomMaybe <- lift $ runMaybeT $
-        foldM makeSelection (maxN, utxo, []) (descending outs)
+        foldM makeRandomSelection (maxN, utxo, []) (descending outs)
     case randomMaybe of
         Just (maxN', utxo', res) -> do
             (_, sel, remUtxo) <- lift $
-                foldM improveTxOut (maxN', mempty, utxo') (reverse res)
+                foldM improveSelection (maxN', mempty, utxo') (reverse res)
             guard sel $> (sel, remUtxo)
         Nothing ->
             selectCoins largestFirst opt outs utxo
@@ -125,12 +125,12 @@ payForOutputs opt outs utxo = do
     guard = except . left ErrInvalidSelection . validate opt
 
 -- | Perform a random selection on a given output, without improvement.
-makeSelection
+makeRandomSelection
     :: MonadRandom m
     => (Word64, UTxO, [([(TxIn, TxOut)], TxOut)])
     -> TxOut
     -> MaybeT m (Word64, UTxO, [([(TxIn, TxOut)], TxOut)])
-makeSelection (maxNumInputs, utxo0, selection) txout = do
+makeRandomSelection (maxNumInputs, utxo0, selection) txout = do
     (inps, utxo1) <- coverRandomly ([], utxo0)
     return
         ( maxNumInputs - fromIntegral (L.length inps)
@@ -151,12 +151,12 @@ makeSelection (maxNumInputs, utxo0, selection) txout = do
             pickRandomT utxo >>= \(io, utxo') -> coverRandomly (io:inps, utxo')
 
 -- | Perform an improvement to random selection on a given output.
-improveTxOut
+improveSelection
     :: MonadRandom m
     => (Word64, CoinSelection, UTxO)
     -> ([(TxIn, TxOut)], TxOut)
     -> m (Word64, CoinSelection, UTxO)
-improveTxOut (maxN0, selection, utxo0) (inps0, txout) = do
+improveSelection (maxN0, selection, utxo0) (inps0, txout) = do
     (maxN, inps, utxo) <- improve (maxN0, inps0, utxo0)
     return
         ( maxN
