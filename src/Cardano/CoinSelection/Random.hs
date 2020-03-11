@@ -139,25 +139,27 @@ makeRandomSelection
     => (Word64, UTxO, [([CoinSelectionInput], TxOut)])
     -> TxOut
     -> MaybeT m (Word64, UTxO, [([CoinSelectionInput], TxOut)])
-makeRandomSelection (maxNumInputs, utxo0, selection) txout = do
-    (inps, utxo1) <- coverRandomly ([], utxo0)
-    return
-        ( maxNumInputs - fromIntegral (L.length inps)
-        , utxo1
-        , (inps, txout) : selection
-        )
+makeRandomSelection
+    (inputCountRemaining, utxoRemaining, existingSelections) txout = do
+        (utxoSelected, utxoRemaining') <- coverRandomly ([], utxoRemaining)
+        return
+            ( inputCountRemaining - fromIntegral (L.length utxoSelected)
+            , utxoRemaining'
+            , (utxoSelected, txout) : existingSelections
+            )
   where
     coverRandomly
         :: MonadRandom m
         => ([CoinSelectionInput], UTxO)
         -> MaybeT m ([CoinSelectionInput], UTxO)
-    coverRandomly (inps, utxo)
-        | L.length inps > (fromIntegral maxNumInputs) =
+    coverRandomly (selected, remaining)
+        | L.length selected > fromIntegral inputCountRemaining =
             MaybeT $ return Nothing
-        | balance' inps >= targetMin (mkTargetRange txout) =
-            MaybeT $ return $ Just (inps, utxo)
-        | otherwise = do
-            pickRandomT utxo >>= \(io, utxo') -> coverRandomly (io:inps, utxo')
+        | balance' selected >= targetMin (mkTargetRange txout) =
+            MaybeT $ return $ Just (selected, remaining)
+        | otherwise =
+            pickRandomT remaining >>= \(picked, remaining') ->
+                coverRandomly (picked : selected, remaining')
 
 -- | Perform an improvement to random selection on a given output.
 improveSelection
