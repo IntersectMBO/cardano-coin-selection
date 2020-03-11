@@ -5,7 +5,7 @@
 -- Copyright: © 2018-2020 IOHK
 -- License: Apache-2.0
 --
--- This module contains an implementation of the __random-improve__ coin
+-- This module contains an implementation of the __Random-Improve__ coin
 -- selection algorithm.
 --
 module Cardano.CoinSelection.Random
@@ -56,7 +56,7 @@ import Data.Word
 import qualified Data.List as L
 import qualified Data.List.NonEmpty as NE
 
--- | Random-Improve Algorithm
+-- | An implementation of the __Random-Improve__ coin selection algorithm.
 --
 -- 1. Randomly select outputs from the UTxO until the payment value is covered.
 --    (In the rare case that this fails because the maximum number of

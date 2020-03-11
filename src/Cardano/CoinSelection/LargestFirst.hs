@@ -2,7 +2,7 @@
 -- Copyright: © 2018-2020 IOHK
 -- License: Apache-2.0
 --
--- This module contains an implementation of the __largest first__ coin
+-- This module contains an implementation of the __Largest-First__ coin
 -- selection algorithm.
 --
 module Cardano.CoinSelection.LargestFirst (
@@ -36,7 +36,7 @@ import qualified Data.List as L
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map.Strict as Map
 
--- | Generate a coin selection according to the __largest first__ algorithm.
+-- | An implementation of the __Largest-First__ coin selection algorithm.
 --
 -- === State Maintained by the Algorithm
 --
