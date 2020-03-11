@@ -56,16 +56,6 @@ import Data.Word
 import qualified Data.List as L
 import qualified Data.List.NonEmpty as NE
 
--- | Target range for picking inputs
-data TargetRange = TargetRange
-    { targetMin :: Word64
-        -- ^ Minimum value to cover: only the requested amount, no change at all
-    , targetAim :: Word64
-        -- ^ Ideal case: change equal to requested amount
-    , targetMax :: Word64
-        -- ^ Maximum value: an arbitrary upper bound (e.g. @2 * targetMin@)
-    }
-
 -- | Random-Improve Algorithm
 --
 -- 1. Randomly select outputs from the UTxO until the payment value is covered.
@@ -218,10 +208,15 @@ improveTxOut (maxN0, selection, utxo0) (inps0, txout) = do
                                  Internals
 -------------------------------------------------------------------------------}
 
--- | Re-wrap 'pickRandom' in a 'MaybeT' monad
-pickRandomT :: MonadRandom m => UTxO -> MaybeT m ((TxIn, TxOut), UTxO)
-pickRandomT =
-    MaybeT . fmap (\(m,u) -> (,u) <$> m) . pickRandom
+-- | Target range for picking inputs
+data TargetRange = TargetRange
+    { targetMin :: Word64
+        -- ^ Minimum value to cover: only the requested amount, no change at all
+    , targetAim :: Word64
+        -- ^ Ideal case: change equal to requested amount
+    , targetMax :: Word64
+        -- ^ Maximum value: an arbitrary upper bound (e.g. @2 * targetMin@)
+    }
 
 -- | Compute the target range for a given output
 mkTargetRange :: TxOut -> TargetRange
@@ -230,6 +225,11 @@ mkTargetRange (TxOut _ (Coin c)) = TargetRange
     , targetAim = 2 * c
     , targetMax = 3 * c
     }
+
+-- | Re-wrap 'pickRandom' in a 'MaybeT' monad
+pickRandomT :: MonadRandom m => UTxO -> MaybeT m ((TxIn, TxOut), UTxO)
+pickRandomT =
+    MaybeT . fmap (\(m,u) -> (,u) <$> m) . pickRandom
 
 -- | Compute corresponding change outputs from a target output and a selection
 -- of inputs.
