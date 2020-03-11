@@ -49,7 +49,7 @@ import Data.Functor
 import Data.List.NonEmpty
     ( NonEmpty (..) )
 import Data.Ord
-    ( comparing )
+    ( Down (..) )
 import Data.Word
     ( Word64 )
 
@@ -108,21 +108,30 @@ payForOutputs
     -> NonEmpty TxOut
     -> UTxO
     -> ExceptT (ErrCoinSelection e) m (CoinSelection, UTxO)
-payForOutputs opt outs utxo = do
-    let descending = NE.toList . NE.sortBy (flip $ comparing coin)
-    let nOuts = fromIntegral $ NE.length outs
-    let maxN = fromIntegral $ maximumInputCount opt nOuts
-    randomMaybe <- lift $ runMaybeT $
-        foldM makeRandomSelection (maxN, utxo, []) (descending outs)
-    case randomMaybe of
-        Just (maxN', utxo', res) -> do
-            (_, sel, remUtxo) <- lift $
-                foldM improveSelection (maxN', mempty, utxo') (reverse res)
-            guard sel $> (sel, remUtxo)
+payForOutputs options outputsRequested utxo = do
+    mRandomSelections <- lift $ runMaybeT $ foldM makeRandomSelection
+        (inputCountMax, utxo, []) outputsDescending
+    case mRandomSelections of
+        Just (inputCountRemaining, utxoRemaining, randomSelections) -> do
+            (_, finalSelection, utxoRemaining') <- lift $ foldM
+                improveSelection
+                    (inputCountRemaining, mempty, utxoRemaining)
+                    (reverse randomSelections)
+            validateSelection finalSelection $>
+                (finalSelection, utxoRemaining')
         Nothing ->
-            selectCoins largestFirst opt outs utxo
+            -- In the case that we fail to generate a selection, delegate to
+            -- the "Largest-First" algorithm as a backup.
+            selectCoins largestFirst options outputsRequested utxo
   where
-    guard = except . left ErrInvalidSelection . validate opt
+    inputCountMax =
+        fromIntegral $ maximumInputCount options outputCount
+    outputCount =
+        fromIntegral $ NE.length outputsRequested
+    outputsDescending =
+        L.sortOn (Down . coin) $ NE.toList outputsRequested
+    validateSelection =
+        except . left ErrInvalidSelection . validate options
 
 -- | Perform a random selection on a given output, without improvement.
 makeRandomSelection
