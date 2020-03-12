@@ -85,7 +85,7 @@ import qualified Data.List.NonEmpty as NE
 -- UTxO entries.
 --
 -- However, if the remaining UTxO set is completely exhausted before all
--- outputs can be processed, the algorithm terminates and delegates to the
+-- outputs can be processed, the algorithm terminates and falls back to the
 -- __Largest-First__ algorithm. (See 'largestFirst'.)
 --
 -- === Phase 2: Improvement
@@ -232,7 +232,7 @@ payForOutputs options outputsRequested utxo = do
             validateSelection finalSelection $>
                 (finalSelection, utxoRemaining')
         Nothing ->
-            -- In the case that we fail to generate a selection, delegate to
+            -- In the case that we fail to generate a selection, fall back to
             -- the "Largest-First" algorithm as a backup.
             selectCoins largestFirst options outputsRequested utxo
   where
