@@ -38,7 +38,16 @@ import qualified Data.Map.Strict as Map
 
 -- | An implementation of the __Largest-First__ coin selection algorithm.
 --
--- === State Maintained by the Algorithm
+-- = Overview
+--
+-- The __Largest-First__ algorithm processes outputs in /descending order of/
+-- /value/, from /largest/ to /smallest/.
+--
+-- For each output, it repeatedly selects the /largest/ remaining unspent UTxO
+-- entry until the value of selected entries is greater than or equal to the
+-- value of that output.
+--
+-- = State Maintained by the Algorithm
 --
 -- At all stages of processing, the algorithm maintains:
 --
@@ -48,7 +57,7 @@ import qualified Data.Map.Strict as Map
 --      sorted into /descending order of coin value/.
 --
 --      The /head/ of the list is always the remaining UTxO entry with the
---      /greatest coin value/.
+--      /largest coin value/.
 --
 --      Entries are incrementally removed from the /head/ of the list as the
 --      algorithm proceeds, until the list is empty.
@@ -59,7 +68,7 @@ import qualified Data.Map.Strict as Map
 --      into /descending order of coin value/.
 --
 --      The /head/ of the list is always the unpaid output with the
---      /greatest coin value/.
+--      /largest coin value/.
 --
 --      Entries are incrementally removed from the /head/ of the list as the
 --      algorithm proceeds, until the list is empty.
@@ -71,7 +80,7 @@ import qualified Data.Map.Strict as Map
 --      Entries are incrementally added as each output is paid for, until the
 --      /unpaid output list/ is empty.
 --
--- === Cardinality Rules
+-- = Cardinality Rules
 --
 -- The algorithm requires that:
 --
@@ -83,7 +92,7 @@ import qualified Data.Map.Strict as Map
 --
 --      (A single UTxO entry __cannot__ be used to pay for multiple outputs.)
 --
--- === Order of Processing
+-- = Order of Processing
 --
 -- The algorithm proceeds according to the following sequence of steps:
 --
@@ -122,7 +131,7 @@ import qualified Data.Map.Strict as Map
 --
 --      Otherwise, return to /Step 1/.
 --
--- === Successful Termination
+-- = Termination
 --
 -- The algorithm terminates __successfully__ if the /remaining UTxO list/ is
 -- not depleted before the /unpaid output list/ can be fully depleted (i.e., if
@@ -131,7 +140,7 @@ import qualified Data.Map.Strict as Map
 -- The /accumulated coin selection/ and /remaining UTxO list/ are returned to
 -- the caller.
 --
--- === Unsuccessful Termination
+-- === Failure Modes
 --
 -- The algorithm terminates with an __error__ if:
 --
