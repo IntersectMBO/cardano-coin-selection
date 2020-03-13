@@ -3,6 +3,17 @@
 This article documents the process that we used to create the
 `cardano-coin-selection` repository.
 
+# Contents
+
+* [Overview](#overview)
+* [Background](#background)
+* [Process](#process)
+  * [Step 1: Clone Source Repository](#step-1-clone-source-repository)
+  * [Step 2: Remove Irrelevant Files](#step-2-remove-irrelevant-files)
+  * [Step 3: Identify Content Ancestors](#step-3-identify-content-ancestors)
+  * [Step 4: Filter Commit History](#step-4-filter-commit-history)
+  * [Step 5: Verify Commit History](#step-5-verify-commit-history)
+
 # Overview
 
 The `cardano-coin-selection` repository was created by taking a clone of the
