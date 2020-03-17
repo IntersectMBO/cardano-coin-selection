@@ -8,7 +8,7 @@
 -- This module contains an implementation of the __Random-Improve__ coin
 -- selection algorithm.
 --
-module Cardano.CoinSelection.Random
+module Cardano.CoinSelection.RandomImprove
     ( randomImprove
     ) where
 
