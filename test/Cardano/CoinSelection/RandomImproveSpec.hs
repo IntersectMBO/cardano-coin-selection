@@ -2,7 +2,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
-module Cardano.CoinSelection.RandomSpec
+module Cardano.CoinSelection.RandomImproveSpec
     ( spec
     ) where
 
@@ -16,7 +16,7 @@ import Cardano.CoinSelection
     )
 import Cardano.CoinSelection.LargestFirst
     ( largestFirst )
-import Cardano.CoinSelection.Random
+import Cardano.CoinSelection.RandomImprove
     ( randomImprove )
 import Cardano.CoinSelectionSpec
     ( CoinSelProp (..)
