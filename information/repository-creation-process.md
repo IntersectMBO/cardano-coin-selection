@@ -81,7 +81,7 @@ want to keep. To avoid deleting too much, we need to determine the *transitive
 closure* of module dependencies required by the modules that we're interested
 in.
 
-A safe way to achieve this is to *iteratively* remove files that we've not
+A safe way to achieve this is to *iteratively* remove files that we're not
 interested in, while confirming that it is still possible to build the
 remaining subset, repeating the process until all unwanted files are deleted.
 
