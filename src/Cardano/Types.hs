@@ -167,8 +167,9 @@ instance Buildable Address where
 
 -- | Coins are stored as Lovelace (reminder: 1 Lovelace = 1e-6 ADA)
 newtype Coin = Coin
-    { getCoin :: Word64
-    } deriving stock (Show, Ord, Eq, Generic)
+    { getCoin :: Word64 }
+    deriving stock (Eq, Generic, Ord)
+    deriving Show via (Quiet Coin)
 
 instance NFData Coin
 
