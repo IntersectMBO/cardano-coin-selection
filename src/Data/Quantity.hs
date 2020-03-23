@@ -1,6 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -30,6 +30,8 @@ import GHC.Generics
     ( Generic )
 import GHC.TypeLits
     ( KnownSymbol, Symbol, symbolVal )
+import Quiet
+    ( Quiet (Quiet) )
 
 -- | @Quantity (unit :: Symbol) a@ is a primitive @a@  multiplied by an @unit@.
 --
@@ -55,8 +57,9 @@ import GHC.TypeLits
 -- >>> Aeson.encode $ Quantity @"lovelace" 14
 -- {"unit":"lovelace","quantity":14}
 newtype Quantity (unit :: Symbol) a = Quantity { getQuantity :: a }
-    deriving stock (Generic, Show, Eq, Ord)
+    deriving stock (Eq, Generic, Ord)
     deriving newtype (Bounded, Enum)
+    deriving Show via (Quiet (Quantity unit a))
 
 instance Functor (Quantity any) where
     fmap f (Quantity a) = Quantity (f a)
