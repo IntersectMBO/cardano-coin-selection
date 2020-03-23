@@ -1,6 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -78,6 +78,8 @@ import GHC.TypeLits
     ( Symbol )
 import Numeric.Natural
     ( Natural )
+import Quiet
+    ( Quiet (Quiet) )
 
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
@@ -142,8 +144,9 @@ instance NFData FeePolicy
 -------------------------------------------------------------------------------}
 
 newtype Address = Address
-    { unAddress :: ByteString
-    } deriving (Show, Generic, Eq, Ord)
+    { unAddress :: ByteString }
+    deriving stock (Eq, Generic, Ord)
+    deriving Show via (Quiet Address)
 
 instance NFData Address
 
