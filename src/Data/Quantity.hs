@@ -51,9 +51,6 @@ import Quiet
 --
 -- so mixing them up is more difficult.
 --
--- The unit is mostly a phantom type, but it is also included in the
--- @ToJSON@/@FromJSON@ instances.
---
 -- >>> Aeson.encode $ Quantity @"lovelace" 14
 -- {"unit":"lovelace","quantity":14}
 newtype Quantity (unit :: Symbol) a = Quantity { getQuantity :: a }
