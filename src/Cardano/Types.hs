@@ -187,9 +187,11 @@ isValidCoin c = c >= minBound && c <= maxBound
                                     UTxO
 -------------------------------------------------------------------------------}
 
-newtype UTxO = UTxO { getUTxO :: Map TxIn TxOut }
-    deriving stock (Show, Generic, Eq, Ord)
+newtype UTxO = UTxO
+    { getUTxO :: Map TxIn TxOut }
+    deriving stock (Eq, Generic, Ord)
     deriving newtype (Semigroup, Monoid)
+    deriving Show via (Quiet UTxO)
 
 instance NFData UTxO
 
