@@ -55,8 +55,16 @@ import Control.Monad.Trans.State
     ( StateT (..), evalStateT )
 import Crypto.Random.Types
     ( MonadRandom )
+import Data.Function
+    ( (&) )
+import Data.List.NonEmpty
+    ( NonEmpty ((:|)) )
+import Data.Ord
+    ( Down (..), comparing )
 import Data.Quantity
     ( Quantity (..) )
+import Data.Ratio
+    ( (%) )
 import Data.Word
     ( Word64 )
 import Fmt
@@ -68,7 +76,9 @@ import GHC.Stack
 import Quiet
     ( Quiet (Quiet) )
 
+import qualified Data.Foldable as F
 import qualified Data.List as L
+import qualified Data.List.NonEmpty as NE
 
 {-------------------------------------------------------------------------------
                                     Types
@@ -241,9 +251,12 @@ rebalanceChangeOutputs :: FeeOptions -> Fee -> [Coin] -> [Coin]
 rebalanceChangeOutputs opt totalFee chgs =
     case removeDust (Coin 0) chgs of
         [] -> []
-        xs -> removeDust (dustThreshold opt)
+        x : xs ->
+            removeDust (dustThreshold opt)
             $ map reduceSingleChange
-            $ divvyFee totalFee xs
+            $ F.toList
+            $ divvyFee totalFee
+            $ x :| xs
 
 -- | Reduce single change output by a given fee amount. If fees are too big for
 -- a single coin, returns a `Coin 0`.
@@ -271,28 +284,77 @@ reduceSingleChange (Fee fee, Coin chng)
 -- >>> divvyFee (Fee 14) [(Coin 1), (Coin 2), (Coin 4)]
 -- [(Fee 2, Coin 1), (Fee 4, Coin 2), (Fee 8, Coin 4)]
 --
--- == Pre-conditions
+-- == Pre-condition
 --
--- 1. The given list of coins must not be empty.
--- 2. The given list of coins must all be positive.
+-- Every coin in the given list must be __non-zero__.
 --
-divvyFee :: Fee -> [Coin] -> [(Fee, Coin)]
-divvyFee _ outs | (Coin 0) `elem` outs =
-    error "divvyFee: some outputs are null"
-divvyFee (Fee f0) outs = go f0 [] outs
+divvyFee :: Fee -> NonEmpty Coin -> NonEmpty (Fee, Coin)
+divvyFee _ outs | Coin 0 `F.elem` outs =
+    error "divvyFee: one or more coins has a value of zero."
+divvyFee (Fee feeTotal) coins =
+    NE.zip feesRounded coins
   where
-    total = (sum . map getCoin) outs
-    go _ _ [] =
-        error "divvyFee: empty list"
-    go fOut xs [out] =
-        -- The last one pays the rounding issues
-        reverse ((Fee fOut, out):xs)
-    go f xs ((Coin out):q) =
-        let
-            r = fromIntegral out / fromIntegral total
-            fOut = ceiling @Double (r * fromIntegral f)
-        in
-            go (f - fOut) ((Fee fOut, Coin out):xs) q
+    -- A list of rounded fee portions, where each fee portion deviates from the
+    -- ideal unrounded portion by as small an amount as possible.
+    feesRounded :: NonEmpty Fee
+    feesRounded
+        -- 1. Start with the list of ideal unrounded fee portions for each coin:
+        = feesIdeal
+        -- 2. Attach an index to each fee portion, so that we can remember the
+        --    original order:
+        & NE.zip indices
+        -- 3. Sort the fees into descending order of their fractional parts:
+        & NE.sortBy (comparing (Down . fractionalPart . snd))
+        -- 4. Apply pre-computed adjustments to each fee portion:
+        --    * fees with the greatest fractional parts are rounded up;
+        --    * fees with the smallest fractional parts are rounded down.
+        & NE.zipWith (\adj (idx, fee) -> (idx, floor fee + adj)) feeAdjustments
+        -- 5. Restore the original order:
+        & NE.sortBy (comparing fst)
+        -- 6. Strip away the indices:
+        & fmap (Fee . fromIntegral . snd)
+      where
+        indices :: NonEmpty Int
+        indices = 0 :| [1 ..]
+
+    -- A list of fee portion adjustments, with one adjustment per coin.
+    --
+    -- Since the ideal fee portion for each coin is a rational value, we must
+    -- therefore round the rational value to produce a final integer result.
+    --
+    -- * A fee adjustment of '1' indicates a fee portion to be rounded /up/.
+    -- * A fee adjustment of '0' indicates a fee portion to be rounded /down/.
+    --
+    -- The total count of '1's corresponds to the value of 'feeShortfall'.
+    --
+    -- All '1's are at the front of the list.
+    --
+    feeAdjustments :: NonEmpty Integer
+    feeAdjustments = applyN
+        (fromIntegral . getFee $ feeShortfall)
+        (NE.cons 1)
+        (NE.repeat 0)
+
+    -- A list of ideal unrounded fee portions, with one fee portion per coin.
+    --
+    -- A coin's ideal fee portion is the rational portion of the total fee that
+    -- corresponds to that coin's relative size when compared to other coins.
+    feesIdeal :: NonEmpty Rational
+    feesIdeal = calculateIdealFee <$> coins
+      where
+        calculateIdealFee (Coin c)
+            = fromIntegral c
+            * fromIntegral feeTotal
+            % fromIntegral (getCoin totalCoinValue)
+
+    -- The part of the total fee that we'd lose if we were to take the simple
+    -- approach of rounding down all ideal fee portions.
+    feeShortfall :: Fee
+    feeShortfall = Fee $ fromIntegral feeTotal - F.sum (floor <$> feesIdeal)
+
+    -- The total value of all coins.
+    totalCoinValue :: Coin
+    totalCoinValue = Coin $ F.sum $ getCoin <$> coins
 
 -- | Remove coins that are below a given threshold. Note that we can't simply
 -- "remove" coins from the list because this could create an unbalanced

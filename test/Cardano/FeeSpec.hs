@@ -42,7 +42,7 @@ import Data.Either
 import Data.Functor.Identity
     ( Identity (runIdentity) )
 import Data.List.NonEmpty
-    ( NonEmpty )
+    ( NonEmpty (..) )
 import Data.Word
     ( Word64 )
 import Fmt
@@ -52,7 +52,6 @@ import Test.Hspec
 import Test.QuickCheck
     ( Arbitrary (..)
     , Gen
-    , NonEmptyList (..)
     , Property
     , checkCoverage
     , choose
@@ -61,6 +60,7 @@ import Test.QuickCheck
     , elements
     , expectFailure
     , generate
+    , genericShrink
     , property
     , scale
     , tabulate
@@ -74,6 +74,7 @@ import Test.QuickCheck.Monadic
 
 import qualified Cardano.CoinSelection as CS
 import qualified Data.ByteString as BS
+import qualified Data.Foldable as F
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map.Strict as Map
 
@@ -342,8 +343,6 @@ spec = do
             (checkCoverage propDivvyFeeOuts)
         it "expectFailure: not (any null (fst <$> divvyFee fee outs))"
             (expectFailure propDivvyFeeNoNullFee)
-        it "expectFailure: empty list"
-            (expectFailure propDivvyFeeInvariantEmptyList)
 
 {-------------------------------------------------------------------------------
                          Fee Adjustment - Properties
@@ -412,10 +411,10 @@ propReducedChanges drg (ShowFmt (FeeProp coinSel utxo (fee, dust))) = do
 
 -- | Helper to re-apply the pre-conditions for divvyFee
 propDivvyFee
-    :: ((Fee, [Coin]) -> Property)
-    -> (Fee, NonEmptyList Coin)
+    :: ((Fee, NonEmpty Coin) -> Property)
+    -> (Fee, NonEmpty Coin)
     -> Property
-propDivvyFee prop (fee, NonEmpty outs) =
+propDivvyFee prop (fee, outs) =
     coverTable "properties"
         [ ("fee > 0", 50)
         , ("nOuts=1", 1)
@@ -433,14 +432,14 @@ propDivvyFee prop (fee, NonEmpty outs) =
 -- | Sum of the fees divvied over each output is the same as the initial total
 -- fee.
 propDivvyFeeSame
-    :: (Fee, NonEmptyList Coin)
+    :: (Fee, NonEmpty Coin)
     -> Property
 propDivvyFeeSame = propDivvyFee $ \(fee, outs) ->
-    sum (getFee . fst <$> divvyFee fee outs) === getFee fee
+    F.sum (getFee . fst <$> divvyFee fee outs) === getFee fee
 
 -- | divvyFee doesn't change any of the outputs
 propDivvyFeeOuts
-    :: (Fee, NonEmptyList Coin)
+    :: (Fee, NonEmpty Coin)
     -> Property
 propDivvyFeeOuts = propDivvyFee $ \(fee, outs) ->
     (snd <$> divvyFee fee outs) === outs
@@ -453,21 +452,12 @@ propDivvyFeeOuts = propDivvyFee $ \(fee, outs) ->
 -- this would happen is because there would be less outputs than the fee amount
 -- which is probably never going to happen in practice...
 propDivvyFeeNoNullFee
-    :: (Fee, [Coin])
+    :: (Fee, NonEmpty Coin)
     -> Property
 propDivvyFeeNoNullFee (fee, outs) =
     not (null outs) ==> withMaxSuccess 100000 prop
   where
-    prop = property $ Fee 0 `notElem` (fst <$> divvyFee fee outs)
-
--- | Illustrate the invariant: 'outs' should be an non-empty list
-propDivvyFeeInvariantEmptyList
-    :: (Fee, [Coin])
-    -> Property
-propDivvyFeeInvariantEmptyList (fee, outs) =
-    withMaxSuccess 100000 prop
-  where
-    prop = divvyFee fee outs `seq` True
+    prop = property $ Fee 0 `F.notElem` (fst <$> divvyFee fee outs)
 
 {-------------------------------------------------------------------------------
                          Fee Adjustment - Unit Tests
@@ -654,6 +644,10 @@ instance Arbitrary FeeOptions where
                     $ c + a * (length (inputs s) + length (outputs s))
             , dustThreshold = Coin t
             }
+
+instance Arbitrary a => Arbitrary (NonEmpty a) where
+    arbitrary = (:|) <$> arbitrary <*> arbitrary
+    shrink = genericShrink
 
 instance Show FeeOptions where
     show (FeeOptions _ dust) = show dust
