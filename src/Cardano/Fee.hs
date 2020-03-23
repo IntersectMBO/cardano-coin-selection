@@ -254,12 +254,28 @@ reduceSingleChange (Fee fee, Coin chng)
     | otherwise =
           Coin 0
 
--- | Proportionally divide the fee over each output.
+-- | Distribute the given fee over the given list of coins, so that each coin
+--   is allocated a fraction of the fee in proportion to its relative size.
 --
--- Pre-condition 1: The given outputs list shouldn't be empty
--- Pre-condition 2: None of the outputs should be null
+-- == Examples
 --
--- It returns the a list of pairs (fee, output).
+-- >>> divvyFee (Fee 2) [(Coin 1), (Coin 1)]
+-- [(Fee 1, Coin 1), (Fee 1, Coin 1)]
+--
+-- >>> divvyFee (Fee 4) [(Coin 1), (Coin 1)]
+-- [(Fee 2, Coin 1), (Fee 2, Coin 1)]
+--
+-- >>> divvyFee (Fee 7) [(Coin 1), (Coin 2), (Coin 4)]
+-- [(Fee 1, Coin 1), (Fee 2, Coin 2), (Fee 4, Coin 4)]
+--
+-- >>> divvyFee (Fee 14) [(Coin 1), (Coin 2), (Coin 4)]
+-- [(Fee 2, Coin 1), (Fee 4, Coin 2), (Fee 8, Coin 4)]
+--
+-- == Pre-conditions
+--
+-- 1. The given list of coins must not be empty.
+-- 2. The given list of coins must all be positive.
+--
 divvyFee :: Fee -> [Coin] -> [(Fee, Coin)]
 divvyFee _ outs | (Coin 0) `elem` outs =
     error "divvyFee: some outputs are null"
