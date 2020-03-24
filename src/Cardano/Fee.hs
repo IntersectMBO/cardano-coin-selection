@@ -268,7 +268,7 @@ reduceSingleChange (Fee fee, Coin chng)
           Coin 0
 
 -- | Distribute the given fee over the given list of coins, so that each coin
---   is allocated a fraction of the fee in proportion to its relative size.
+--   is allocated a __fraction__ of the fee in proportion to its relative size.
 --
 -- == Examples
 --
