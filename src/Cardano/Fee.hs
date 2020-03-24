@@ -389,3 +389,8 @@ splitChange = go
 --
 fractionalPart :: Rational -> Rational
 fractionalPart = snd . properFraction @_ @Integer
+
+-- | Apply the same function multiple times to a value.
+--
+applyN :: Int -> (a -> a) -> a -> a
+applyN n f = F.foldr (.) id (replicate n f)
