@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RankNTypes #-}
@@ -64,6 +65,8 @@ import GHC.Generics
     ( Generic )
 import GHC.Stack
     ( HasCallStack )
+import Quiet
+    ( Quiet (Quiet) )
 
 import qualified Data.List as L
 
@@ -72,8 +75,10 @@ import qualified Data.List as L
 -------------------------------------------------------------------------------}
 
 -- | A 'Fee', isomorph to 'Coin' but ease type-signatures and readability.
-newtype Fee = Fee { getFee :: Word64 }
-    deriving (Eq, Ord, Show)
+newtype Fee = Fee
+    { getFee :: Word64 }
+    deriving stock (Eq, Generic, Ord)
+    deriving Show via (Quiet Fee)
 
 {-------------------------------------------------------------------------------
                                 Fee Calculation

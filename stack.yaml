@@ -1,4 +1,5 @@
 resolver: lts-13.24
 packages:
 - .
-extra-deps: []
+extra-deps:
+- quiet-0.2

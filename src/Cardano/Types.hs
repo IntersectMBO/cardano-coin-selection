@@ -1,6 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -78,6 +78,8 @@ import GHC.TypeLits
     ( Symbol )
 import Numeric.Natural
     ( Natural )
+import Quiet
+    ( Quiet (Quiet) )
 
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
@@ -142,8 +144,9 @@ instance NFData FeePolicy
 -------------------------------------------------------------------------------}
 
 newtype Address = Address
-    { unAddress :: ByteString
-    } deriving (Show, Generic, Eq, Ord)
+    { unAddress :: ByteString }
+    deriving stock (Eq, Generic, Ord)
+    deriving Show via (Quiet Address)
 
 instance NFData Address
 
@@ -164,8 +167,9 @@ instance Buildable Address where
 
 -- | Coins are stored as Lovelace (reminder: 1 Lovelace = 1e-6 ADA)
 newtype Coin = Coin
-    { getCoin :: Word64
-    } deriving stock (Show, Ord, Eq, Generic)
+    { getCoin :: Word64 }
+    deriving stock (Eq, Generic, Ord)
+    deriving Show via (Quiet Coin)
 
 instance NFData Coin
 
@@ -183,9 +187,11 @@ isValidCoin c = c >= minBound && c <= maxBound
                                     UTxO
 -------------------------------------------------------------------------------}
 
-newtype UTxO = UTxO { getUTxO :: Map TxIn TxOut }
-    deriving stock (Show, Generic, Eq, Ord)
+newtype UTxO = UTxO
+    { getUTxO :: Map TxIn TxOut }
+    deriving stock (Eq, Generic, Ord)
     deriving newtype (Semigroup, Monoid)
+    deriving Show via (Quiet UTxO)
 
 instance NFData UTxO
 
@@ -259,8 +265,9 @@ class Dom a where
     dom :: a -> Set (DomElem a)
 
 newtype Hash (tag :: Symbol) = Hash { getHash :: ByteString }
-    deriving stock (Show, Generic, Eq, Ord)
+    deriving stock (Eq, Generic, Ord)
     deriving newtype (ByteArrayAccess)
+    deriving Show via (Quiet (Hash tag))
 
 instance NFData (Hash tag)
 

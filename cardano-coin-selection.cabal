@@ -45,6 +45,7 @@ library
     , deepseq
     , fmt
     , memory
+    , quiet
     , text
     , transformers
   hs-source-dirs:
