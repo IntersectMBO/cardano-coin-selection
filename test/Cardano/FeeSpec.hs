@@ -48,6 +48,8 @@ import Data.Functor.Identity
     ( Identity (runIdentity) )
 import Data.List.NonEmpty
     ( NonEmpty (..) )
+import Data.Ratio
+    ( (%) )
 import Data.Word
     ( Word64 )
 import Fmt
@@ -71,6 +73,7 @@ import Test.QuickCheck
     , tabulate
     , vectorOf
     , withMaxSuccess
+    , (.&&.)
     , (===)
     , (==>)
     )
@@ -342,6 +345,8 @@ spec = do
             (property . propReducedChanges)
 
     describe "distributeFee" $ do
+        it "fee portions are all within unity of ideal unrounded portions"
+            (checkCoverage propDistributeFeeIsFair)
         it "Σ fst (distributeFee fee outs) == fee"
             (checkCoverage propDistributeFeeSame)
         it "snd (distributeFee fee outs) == outs"
@@ -433,6 +438,27 @@ propDistributeFee prop (fee, outs) =
                 _ -> "2+"
             ]
         $ prop (fee, outs)
+
+-- | Verify that fees are distributed fairly across outputs, so that every
+--   rounded fee portion is always within unity of the ideal unrounded fee
+--   portion.
+propDistributeFeeIsFair
+    :: (Fee, NonEmpty Coin)
+    -> Property
+propDistributeFeeIsFair (fee, coins) = (.&&.)
+    (F.all (uncurry (<=)) (NE.zip fees feeUpperBounds))
+    (F.all (uncurry (>=)) (NE.zip fees feeLowerBounds))
+  where
+    fees = fst <$> distributeFee fee coins
+
+    feeUpperBounds = Fee . ceiling . computeIdealFee <$> coins
+    feeLowerBounds = Fee . floor   . computeIdealFee <$> coins
+
+    computeIdealFee :: Coin -> Rational
+    computeIdealFee (Coin c)
+        = fromIntegral c
+        * fromIntegral (getFee fee)
+        % fromIntegral (sum $ getCoin <$> coins)
 
 -- | Sum of the fees divvied over each output is the same as the initial total
 -- fee.
