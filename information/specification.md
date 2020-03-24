@@ -400,7 +400,7 @@ There are a number of ways in which a coin selection algorithm can fail:
 
     This failure occurs when the total value of the entries within the [initial
     UTxO set](#initial-utxo-set) (the amount of money _available_) is _less
-    than_ the the total value of all entries in the [initial output
+    than_ the the total value of all entries in the [requested output
     list](#requested-output-list) (the amount of money _required_).
 
   * #### UTxO Not Fragmented Enough
