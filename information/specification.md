@@ -675,7 +675,7 @@ For each output of value **_v_**, the algorithm:
         Count](#maximum-input-count).
 
  3.  **Creates a _change value_** for the output, equal to the total value
-     of the _final UTxO selection_ for that output minus the value _v_ of
+     of the _improved UTxO selection_ for that output minus the value _v_ of
      that output.
 
  4.  **Updates the [accumulated coin
