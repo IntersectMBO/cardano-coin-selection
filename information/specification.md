@@ -639,7 +639,7 @@ During this phase, the algorithm:
   * processes outputs in _ascending order of coin value_.
 
   * continues to select values from the [available UTxO
-    set](#available-utxo-set)
+    set](#available-utxo-set).
 
   * incrementally populates the
     [accumulated coin selection](#accumulated-coin-selection-1).
