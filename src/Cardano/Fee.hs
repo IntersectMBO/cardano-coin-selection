@@ -24,7 +24,7 @@ module Cardano.Fee
 
       -- * Fee Calculation
     , computeFee
-    , divvyFee
+    , distributeFee
 
       -- * Fee Adjustment
     , FeeOptions (..)
@@ -255,7 +255,7 @@ rebalanceChangeOutputs opt totalFee chgs =
             removeDust (dustThreshold opt)
             $ map reduceSingleChange
             $ F.toList
-            $ divvyFee totalFee
+            $ distributeFee totalFee
             $ x :| xs
 
 -- | Reduce single change output by a given fee amount. If fees are too big for
@@ -272,26 +272,26 @@ reduceSingleChange (Fee fee, Coin chng)
 --
 -- == Examples
 --
--- >>> divvyFee (Fee 2) [(Coin 1), (Coin 1)]
+-- >>> distributeFee (Fee 2) [(Coin 1), (Coin 1)]
 -- [(Fee 1, Coin 1), (Fee 1, Coin 1)]
 --
--- >>> divvyFee (Fee 4) [(Coin 1), (Coin 1)]
+-- >>> distributeFee (Fee 4) [(Coin 1), (Coin 1)]
 -- [(Fee 2, Coin 1), (Fee 2, Coin 1)]
 --
--- >>> divvyFee (Fee 7) [(Coin 1), (Coin 2), (Coin 4)]
+-- >>> distributeFee (Fee 7) [(Coin 1), (Coin 2), (Coin 4)]
 -- [(Fee 1, Coin 1), (Fee 2, Coin 2), (Fee 4, Coin 4)]
 --
--- >>> divvyFee (Fee 14) [(Coin 1), (Coin 2), (Coin 4)]
+-- >>> distributeFee (Fee 14) [(Coin 1), (Coin 2), (Coin 4)]
 -- [(Fee 2, Coin 1), (Fee 4, Coin 2), (Fee 8, Coin 4)]
 --
 -- == Pre-condition
 --
 -- Every coin in the given list must be __non-zero__.
 --
-divvyFee :: Fee -> NonEmpty Coin -> NonEmpty (Fee, Coin)
-divvyFee _ outs | Coin 0 `F.elem` outs =
-    error "divvyFee: one or more coins has a value of zero."
-divvyFee (Fee feeTotal) coins =
+distributeFee :: Fee -> NonEmpty Coin -> NonEmpty (Fee, Coin)
+distributeFee _ outs | Coin 0 `F.elem` outs =
+    error "distributeFee: one or more coins has a value of zero."
+distributeFee (Fee feeTotal) coins =
     NE.zip feesRounded coins
   where
     -- A list of rounded fee portions, where each fee portion deviates from the

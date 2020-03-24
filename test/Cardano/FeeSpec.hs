@@ -17,7 +17,12 @@ import Cardano.CoinSelection
 import Cardano.CoinSelection.LargestFirst
     ( largestFirst )
 import Cardano.Fee
-    ( ErrAdjustForFee (..), Fee (..), FeeOptions (..), adjustForFee, divvyFee )
+    ( ErrAdjustForFee (..)
+    , Fee (..)
+    , FeeOptions (..)
+    , adjustForFee
+    , distributeFee
+    )
 import Cardano.Types
     ( Address (..)
     , Coin (..)
@@ -336,13 +341,13 @@ spec = do
             \inputs"
             (property . propReducedChanges)
 
-    describe "divvyFee" $ do
-        it "Σ fst (divvyFee fee outs) == fee"
-            (checkCoverage propDivvyFeeSame)
-        it "snd (divvyFee fee outs) == outs"
-            (checkCoverage propDivvyFeeOuts)
-        it "expectFailure: not (any null (fst <$> divvyFee fee outs))"
-            (expectFailure propDivvyFeeNoNullFee)
+    describe "distributeFee" $ do
+        it "Σ fst (distributeFee fee outs) == fee"
+            (checkCoverage propDistributeFeeSame)
+        it "snd (distributeFee fee outs) == outs"
+            (checkCoverage propDistributeFeeOuts)
+        it "expectFailure: not (any null (fst <$> distributeFee fee outs))"
+            (expectFailure propDistributeFeeNoNullFee)
 
 {-------------------------------------------------------------------------------
                          Fee Adjustment - Properties
@@ -406,15 +411,15 @@ propReducedChanges drg (ShowFmt (FeeProp coinSel utxo (fee, dust))) = do
         adjustForFee feeOpt utxo coinSel
 
 {-------------------------------------------------------------------------------
-                             divvyFee - Properties
+                             distributeFee - Properties
 -------------------------------------------------------------------------------}
 
--- | Helper to re-apply the pre-conditions for divvyFee
-propDivvyFee
+-- | Helper to re-apply the pre-conditions for distributeFee
+propDistributeFee
     :: ((Fee, NonEmpty Coin) -> Property)
     -> (Fee, NonEmpty Coin)
     -> Property
-propDivvyFee prop (fee, outs) =
+propDistributeFee prop (fee, outs) =
     coverTable "properties"
         [ ("fee > 0", 50)
         , ("nOuts=1", 1)
@@ -431,33 +436,33 @@ propDivvyFee prop (fee, outs) =
 
 -- | Sum of the fees divvied over each output is the same as the initial total
 -- fee.
-propDivvyFeeSame
+propDistributeFeeSame
     :: (Fee, NonEmpty Coin)
     -> Property
-propDivvyFeeSame = propDivvyFee $ \(fee, outs) ->
-    F.sum (getFee . fst <$> divvyFee fee outs) === getFee fee
+propDistributeFeeSame = propDistributeFee $ \(fee, outs) ->
+    F.sum (getFee . fst <$> distributeFee fee outs) === getFee fee
 
--- | divvyFee doesn't change any of the outputs
-propDivvyFeeOuts
+-- | distributeFee doesn't change any of the outputs
+propDistributeFeeOuts
     :: (Fee, NonEmpty Coin)
     -> Property
-propDivvyFeeOuts = propDivvyFee $ \(fee, outs) ->
-    (snd <$> divvyFee fee outs) === outs
+propDistributeFeeOuts = propDistributeFee $ \(fee, outs) ->
+    (snd <$> distributeFee fee outs) === outs
 
--- | divvyFee never generates null fees for a given output.
+-- | distributeFee never generates null fees for a given output.
 --
 -- This is NOT a property. It is here to illustrate that this can happen in
--- practice, and is known as a possible outcome for the divvyFee function
+-- practice, and is known as a possible outcome for the distributeFee function
 -- (it is fine for one of the output to be assigned no fee). The only reason
 -- this would happen is because there would be less outputs than the fee amount
 -- which is probably never going to happen in practice...
-propDivvyFeeNoNullFee
+propDistributeFeeNoNullFee
     :: (Fee, NonEmpty Coin)
     -> Property
-propDivvyFeeNoNullFee (fee, outs) =
+propDistributeFeeNoNullFee (fee, outs) =
     not (null outs) ==> withMaxSuccess 100000 prop
   where
-    prop = property $ Fee 0 `F.notElem` (fst <$> divvyFee fee outs)
+    prop = property $ Fee 0 `F.notElem` (fst <$> distributeFee fee outs)
 
 {-------------------------------------------------------------------------------
                          Fee Adjustment - Unit Tests
