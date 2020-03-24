@@ -410,7 +410,7 @@ There are a number of ways in which a coin selection algorithm can fail:
     [requested output list](#requested-output-list).
 
     All algorithms require that there is _at least one_ UTxO entry available
-    _for each_ output.
+    _for each_ requested output.
 
   * #### UTxO Fully Depleted
 
