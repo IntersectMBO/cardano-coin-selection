@@ -270,6 +270,10 @@ reduceSingleChange (Fee fee, Coin chng)
 -- | Distribute the given fee over the given list of coins, so that each coin
 --   is allocated a __fraction__ of the fee in proportion to its relative size.
 --
+-- == Pre-condition
+--
+-- Every coin in the given list must be __non-zero__.
+--
 -- == Examples
 --
 -- >>> distributeFee (Fee 2) [(Coin 1), (Coin 1)]
@@ -283,10 +287,6 @@ reduceSingleChange (Fee fee, Coin chng)
 --
 -- >>> distributeFee (Fee 14) [(Coin 1), (Coin 2), (Coin 4)]
 -- [(Fee 2, Coin 1), (Fee 4, Coin 2), (Fee 8, Coin 4)]
---
--- == Pre-condition
---
--- Every coin in the given list must be __non-zero__.
 --
 distributeFee :: Fee -> NonEmpty Coin -> NonEmpty (Fee, Coin)
 distributeFee _ outs | Coin 0 `F.elem` outs =
