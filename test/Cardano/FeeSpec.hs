@@ -134,7 +134,7 @@ spec = do
             }) (Right $ FeeOutput
             { csInps = [20,20]
             , csOuts = [17,18]
-            , csChngs = [1,2]
+            , csChngs = [2,1]
             })
 
         -- Fee divvied, dust removed (dust = 0)
