@@ -372,3 +372,20 @@ splitChange = go
             if isValidCoin newChange
             then newChange : go newRemaining as
             else a : go rest as
+
+--------------------------------------------------------------------------------
+-- Utilities
+--------------------------------------------------------------------------------
+
+-- | Extract the fractional part of a rational number.
+--
+-- Examples:
+--
+-- >>> fractionalPart (3 % 2)
+-- 1 % 2
+--
+-- >>> fractionalPart (11 % 10)
+-- 1 % 10
+--
+fractionalPart :: Rational -> Rational
+fractionalPart = snd . properFraction @_ @Integer
