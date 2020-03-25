@@ -373,11 +373,14 @@ distributeFee (Fee feeTotal) coinsUnsafe =
     totalCoinValue :: Coin
     totalCoinValue = Coin $ F.sum $ getCoin <$> coins
 
--- | Remove coins that are below a given threshold. Note that we can't simply
--- "remove" coins from the list because this could create an unbalanced
--- transaction. Therefore, we want `removeDust` to have the following property:
+-- | From the given list of coins, remove dust coins with a value less than or
+--   equal to the given threshold value, redistributing their total value over
+--   the coins that remain.
 --
---     ∀δ≥0. sum coins == sum (removeDust δcoins)
+-- This function satisfies the following properties:
+--
+-- >>> sum coins = sum (removeDust threshold coins)
+-- >>> all (/= Coin 0) (removeDust threshold coins)
 --
 removeDust :: Coin -> [Coin] -> [Coin]
 removeDust threshold coins =
