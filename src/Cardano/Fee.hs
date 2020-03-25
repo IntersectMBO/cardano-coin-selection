@@ -32,7 +32,7 @@ module Cardano.Fee
     , adjustForFee
 
       -- * Dust Processing
-    , removeDust
+    , coalesceDust
 
     ) where
 
@@ -256,10 +256,10 @@ coverRemainingFee (Fee fee) = go [] where
 -- any output:change ratio as unchanged as possible
 rebalanceChangeOutputs :: FeeOptions -> Fee -> [Coin] -> [Coin]
 rebalanceChangeOutputs opt totalFee chgs =
-    case removeDust (Coin 0) chgs of
+    case coalesceDust (Coin 0) chgs of
         [] -> []
         x : xs ->
-            removeDust (dustThreshold opt)
+            coalesceDust (dustThreshold opt)
             $ map reduceSingleChange
             $ F.toList
             $ distributeFee totalFee
@@ -383,11 +383,11 @@ distributeFee (Fee feeTotal) coinsUnsafe =
 --
 -- This function satisfies the following properties:
 --
--- >>> sum coins = sum (removeDust threshold coins)
--- >>> all (/= Coin 0) (removeDust threshold coins)
+-- >>> sum coins = sum (coalesceDust threshold coins)
+-- >>> all (/= Coin 0) (coalesceDust threshold coins)
 --
-removeDust :: Coin -> [Coin] -> [Coin]
-removeDust threshold coins =
+coalesceDust :: Coin -> [Coin] -> [Coin]
+coalesceDust threshold coins =
     let
         filtered = L.filter (> threshold) coins
         diff = balance coins - balance filtered

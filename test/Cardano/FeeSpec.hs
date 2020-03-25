@@ -23,8 +23,8 @@ import Cardano.Fee
     , Fee (..)
     , FeeOptions (..)
     , adjustForFee
+    , coalesceDust
     , distributeFee
-    , removeDust
     )
 import Cardano.Types
     ( Address (..)
@@ -363,11 +363,11 @@ spec = do
         it "expectFailure: not (any null (fst <$> distributeFee fee outs))"
             (expectFailure propDistributeFeeNoNullFee)
 
-    describe "removeDust" $ do
-        it "sum coins = sum (removeDust threshold coins)"
-            (checkCoverage propRemoveDustPreservesSum)
-        it "all (/= Coin 0) (removeDust threshold coins)"
-            (checkCoverage propRemoveDustNoZeroCoins)
+    describe "coalesceDust" $ do
+        it "sum coins = sum (coalesceDust threshold coins)"
+            (checkCoverage propCoalesceDustPreservesSum)
+        it "all (/= Coin 0) (coalesceDust threshold coins)"
+            (checkCoverage propCoalesceDustNoZeroCoins)
 
 {-------------------------------------------------------------------------------
                          Fee Adjustment - Properties
@@ -554,20 +554,20 @@ propDistributeFeeNoNullFee (fee, outs) =
     prop = property $ Fee 0 `F.notElem` (fst <$> distributeFee fee outs)
 
 {-------------------------------------------------------------------------------
-                         removeDust - Properties
+                         coalesceDust - Properties
 -------------------------------------------------------------------------------}
 
-propRemoveDustPreservesSum
+propCoalesceDustPreservesSum
     :: Coin -> [Coin] -> Property
-propRemoveDustPreservesSum threshold coins = property $
+propCoalesceDustPreservesSum threshold coins = property $
     F.sum (getCoin <$> coins)
     ==
-    F.sum (getCoin <$> removeDust threshold coins)
+    F.sum (getCoin <$> coalesceDust threshold coins)
 
-propRemoveDustNoZeroCoins
+propCoalesceDustNoZeroCoins
     :: Coin -> [Word64] -> Property
-propRemoveDustNoZeroCoins threshold coinValues = property $
-    notElem (Coin 0) $ removeDust threshold (Coin <$> coinValues)
+propCoalesceDustNoZeroCoins threshold coinValues = property $
+    notElem (Coin 0) $ coalesceDust threshold (Coin <$> coinValues)
 
 {-------------------------------------------------------------------------------
                          Fee Adjustment - Unit Tests
