@@ -366,6 +366,8 @@ spec = do
     describe "removeDust" $ do
         it "sum coins = sum (removeDust threshold coins)"
             (checkCoverage propRemoveDustPreservesSum)
+        it "all (/= Coin 0) (removeDust threshold coins)"
+            (checkCoverage propRemoveDustNoZeroCoins)
 
 {-------------------------------------------------------------------------------
                          Fee Adjustment - Properties
@@ -561,6 +563,11 @@ propRemoveDustPreservesSum threshold coins = property $
     F.sum (getCoin <$> coins)
     ==
     F.sum (getCoin <$> removeDust threshold coins)
+
+propRemoveDustNoZeroCoins
+    :: Coin -> [Word64] -> Property
+propRemoveDustNoZeroCoins threshold coinValues = property $
+    notElem (Coin 0) $ removeDust threshold (Coin <$> coinValues)
 
 {-------------------------------------------------------------------------------
                          Fee Adjustment - Unit Tests
