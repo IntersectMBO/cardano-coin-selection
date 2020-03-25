@@ -58,6 +58,7 @@ library
       Cardano.Fee
       Cardano.Types
       Data.Quantity
+      Numeric.Rounding
 
 test-suite unit
   default-language:

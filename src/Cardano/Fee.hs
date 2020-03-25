@@ -74,6 +74,8 @@ import GHC.Generics
     ( Generic )
 import GHC.Stack
     ( HasCallStack )
+import Numeric.Rounding
+    ( RoundingDirection (..), round )
 import Quiet
     ( Quiet (Quiet) )
 
@@ -471,23 +473,3 @@ fractionalPart = snd . properFraction @_ @Integer
 --
 applyN :: Int -> (a -> a) -> a -> a
 applyN n f = F.foldr (.) id (replicate n f)
-
--- | Indicates a rounding direction to be used when converting from a
---   fractional value to an integral value.
---
--- See 'round'.
---
-data RoundingDirection
-    = RoundUp
-      -- ^ Round up to the nearest integral value.
-    | RoundDown
-      -- ^ Round down to the nearest integral value.
-    deriving (Eq, Show)
-
--- | Use the given rounding direction to round the given fractional value,
---   producing an integral result.
---
-round :: (RealFrac a, Integral b) => RoundingDirection -> a -> b
-round = \case
-    RoundUp -> ceiling
-    RoundDown -> floor
