@@ -17,7 +17,12 @@ import Cardano.CoinSelection
 import Cardano.CoinSelection.LargestFirst
     ( largestFirst )
 import Cardano.Fee
-    ( ErrAdjustForFee (..), Fee (..), FeeOptions (..), adjustForFee, divvyFee )
+    ( ErrAdjustForFee (..)
+    , Fee (..)
+    , FeeOptions (..)
+    , adjustForFee
+    , distributeFee
+    )
 import Cardano.Types
     ( Address (..)
     , Coin (..)
@@ -42,7 +47,9 @@ import Data.Either
 import Data.Functor.Identity
     ( Identity (runIdentity) )
 import Data.List.NonEmpty
-    ( NonEmpty )
+    ( NonEmpty (..) )
+import Data.Ratio
+    ( (%) )
 import Data.Word
     ( Word64 )
 import Fmt
@@ -52,7 +59,6 @@ import Test.Hspec
 import Test.QuickCheck
     ( Arbitrary (..)
     , Gen
-    , NonEmptyList (..)
     , Property
     , checkCoverage
     , choose
@@ -61,11 +67,13 @@ import Test.QuickCheck
     , elements
     , expectFailure
     , generate
+    , genericShrink
     , property
     , scale
     , tabulate
     , vectorOf
     , withMaxSuccess
+    , (.&&.)
     , (===)
     , (==>)
     )
@@ -74,6 +82,7 @@ import Test.QuickCheck.Monadic
 
 import qualified Cardano.CoinSelection as CS
 import qualified Data.ByteString as BS
+import qualified Data.Foldable as F
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map.Strict as Map
 
@@ -133,7 +142,7 @@ spec = do
             }) (Right $ FeeOutput
             { csInps = [20,20]
             , csOuts = [17,18]
-            , csChngs = [1,2]
+            , csChngs = [2,1]
             })
 
         -- Fee divvied, dust removed (dust = 0)
@@ -335,15 +344,15 @@ spec = do
             \inputs"
             (property . propReducedChanges)
 
-    describe "divvyFee" $ do
-        it "Σ fst (divvyFee fee outs) == fee"
-            (checkCoverage propDivvyFeeSame)
-        it "snd (divvyFee fee outs) == outs"
-            (checkCoverage propDivvyFeeOuts)
-        it "expectFailure: not (any null (fst <$> divvyFee fee outs))"
-            (expectFailure propDivvyFeeNoNullFee)
-        it "expectFailure: empty list"
-            (expectFailure propDivvyFeeInvariantEmptyList)
+    describe "distributeFee" $ do
+        it "fee portions are all within unity of ideal unrounded portions"
+            (checkCoverage propDistributeFeeIsFair)
+        it "Σ fst (distributeFee fee outs) == fee"
+            (checkCoverage propDistributeFeeSame)
+        it "snd (distributeFee fee outs) == outs"
+            (checkCoverage propDistributeFeeOuts)
+        it "expectFailure: not (any null (fst <$> distributeFee fee outs))"
+            (expectFailure propDistributeFeeNoNullFee)
 
 {-------------------------------------------------------------------------------
                          Fee Adjustment - Properties
@@ -407,15 +416,15 @@ propReducedChanges drg (ShowFmt (FeeProp coinSel utxo (fee, dust))) = do
         adjustForFee feeOpt utxo coinSel
 
 {-------------------------------------------------------------------------------
-                             divvyFee - Properties
+                             distributeFee - Properties
 -------------------------------------------------------------------------------}
 
--- | Helper to re-apply the pre-conditions for divvyFee
-propDivvyFee
-    :: ((Fee, [Coin]) -> Property)
-    -> (Fee, NonEmptyList Coin)
+-- | Helper to re-apply the pre-conditions for distributeFee
+propDistributeFee
+    :: ((Fee, NonEmpty Coin) -> Property)
+    -> (Fee, NonEmpty Coin)
     -> Property
-propDivvyFee prop (fee, NonEmpty outs) =
+propDistributeFee prop (fee, outs) =
     coverTable "properties"
         [ ("fee > 0", 50)
         , ("nOuts=1", 1)
@@ -430,44 +439,56 @@ propDivvyFee prop (fee, NonEmpty outs) =
             ]
         $ prop (fee, outs)
 
+-- | Verify that fees are distributed fairly across outputs, so that every
+--   rounded fee portion is always within unity of the ideal unrounded fee
+--   portion.
+propDistributeFeeIsFair
+    :: (Fee, NonEmpty Coin)
+    -> Property
+propDistributeFeeIsFair (fee, coins) = (.&&.)
+    (F.all (uncurry (<=)) (NE.zip fees feeUpperBounds))
+    (F.all (uncurry (>=)) (NE.zip fees feeLowerBounds))
+  where
+    fees = fst <$> distributeFee fee coins
+
+    feeUpperBounds = Fee . ceiling . computeIdealFee <$> coins
+    feeLowerBounds = Fee . floor   . computeIdealFee <$> coins
+
+    computeIdealFee :: Coin -> Rational
+    computeIdealFee (Coin c)
+        = fromIntegral c
+        * fromIntegral (getFee fee)
+        % fromIntegral (sum $ getCoin <$> coins)
+
 -- | Sum of the fees divvied over each output is the same as the initial total
 -- fee.
-propDivvyFeeSame
-    :: (Fee, NonEmptyList Coin)
+propDistributeFeeSame
+    :: (Fee, NonEmpty Coin)
     -> Property
-propDivvyFeeSame = propDivvyFee $ \(fee, outs) ->
-    sum (getFee . fst <$> divvyFee fee outs) === getFee fee
+propDistributeFeeSame = propDistributeFee $ \(fee, outs) ->
+    F.sum (getFee . fst <$> distributeFee fee outs) === getFee fee
 
--- | divvyFee doesn't change any of the outputs
-propDivvyFeeOuts
-    :: (Fee, NonEmptyList Coin)
+-- | distributeFee doesn't change any of the outputs
+propDistributeFeeOuts
+    :: (Fee, NonEmpty Coin)
     -> Property
-propDivvyFeeOuts = propDivvyFee $ \(fee, outs) ->
-    (snd <$> divvyFee fee outs) === outs
+propDistributeFeeOuts = propDistributeFee $ \(fee, outs) ->
+    (snd <$> distributeFee fee outs) === outs
 
--- | divvyFee never generates null fees for a given output.
+-- | distributeFee never generates null fees for a given output.
 --
 -- This is NOT a property. It is here to illustrate that this can happen in
--- practice, and is known as a possible outcome for the divvyFee function
+-- practice, and is known as a possible outcome for the distributeFee function
 -- (it is fine for one of the output to be assigned no fee). The only reason
 -- this would happen is because there would be less outputs than the fee amount
 -- which is probably never going to happen in practice...
-propDivvyFeeNoNullFee
-    :: (Fee, [Coin])
+propDistributeFeeNoNullFee
+    :: (Fee, NonEmpty Coin)
     -> Property
-propDivvyFeeNoNullFee (fee, outs) =
+propDistributeFeeNoNullFee (fee, outs) =
     not (null outs) ==> withMaxSuccess 100000 prop
   where
-    prop = property $ Fee 0 `notElem` (fst <$> divvyFee fee outs)
-
--- | Illustrate the invariant: 'outs' should be an non-empty list
-propDivvyFeeInvariantEmptyList
-    :: (Fee, [Coin])
-    -> Property
-propDivvyFeeInvariantEmptyList (fee, outs) =
-    withMaxSuccess 100000 prop
-  where
-    prop = divvyFee fee outs `seq` True
+    prop = property $ Fee 0 `F.notElem` (fst <$> distributeFee fee outs)
 
 {-------------------------------------------------------------------------------
                          Fee Adjustment - Unit Tests
@@ -654,6 +675,10 @@ instance Arbitrary FeeOptions where
                     $ c + a * (length (inputs s) + length (outputs s))
             , dustThreshold = Coin t
             }
+
+instance Arbitrary a => Arbitrary (NonEmpty a) where
+    arbitrary = (:|) <$> arbitrary <*> arbitrary
+    shrink = genericShrink
 
 instance Show FeeOptions where
     show (FeeOptions _ dust) = show dust

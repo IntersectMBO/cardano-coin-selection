@@ -24,7 +24,7 @@ module Cardano.Fee
 
       -- * Fee Calculation
     , computeFee
-    , divvyFee
+    , distributeFee
 
       -- * Fee Adjustment
     , FeeOptions (..)
@@ -32,7 +32,8 @@ module Cardano.Fee
     , adjustForFee
     ) where
 
-import Prelude
+import Prelude hiding
+    ( round )
 
 import Cardano.CoinSelection
     ( CoinSelection (..), changeBalance, inputBalance, outputBalance )
@@ -55,8 +56,16 @@ import Control.Monad.Trans.State
     ( StateT (..), evalStateT )
 import Crypto.Random.Types
     ( MonadRandom )
+import Data.Function
+    ( (&) )
+import Data.List.NonEmpty
+    ( NonEmpty ((:|)) )
+import Data.Ord
+    ( Down (..), comparing )
 import Data.Quantity
     ( Quantity (..) )
+import Data.Ratio
+    ( (%) )
 import Data.Word
     ( Word64 )
 import Fmt
@@ -68,7 +77,9 @@ import GHC.Stack
 import Quiet
     ( Quiet (Quiet) )
 
+import qualified Data.Foldable as F
 import qualified Data.List as L
+import qualified Data.List.NonEmpty as NE
 
 {-------------------------------------------------------------------------------
                                     Types
@@ -241,9 +252,12 @@ rebalanceChangeOutputs :: FeeOptions -> Fee -> [Coin] -> [Coin]
 rebalanceChangeOutputs opt totalFee chgs =
     case removeDust (Coin 0) chgs of
         [] -> []
-        xs -> removeDust (dustThreshold opt)
+        x : xs ->
+            removeDust (dustThreshold opt)
             $ map reduceSingleChange
-            $ divvyFee totalFee xs
+            $ F.toList
+            $ distributeFee totalFee
+            $ x :| xs
 
 -- | Reduce single change output by a given fee amount. If fees are too big for
 -- a single coin, returns a `Coin 0`.
@@ -254,29 +268,108 @@ reduceSingleChange (Fee fee, Coin chng)
     | otherwise =
           Coin 0
 
--- | Proportionally divide the fee over each output.
+-- | Distribute the given fee over the given list of coins, so that each coin
+--   is allocated a __fraction__ of the fee in proportion to its relative size.
 --
--- Pre-condition 1: The given outputs list shouldn't be empty
--- Pre-condition 2: None of the outputs should be null
+-- == Pre-condition
 --
--- It returns the a list of pairs (fee, output).
-divvyFee :: Fee -> [Coin] -> [(Fee, Coin)]
-divvyFee _ outs | (Coin 0) `elem` outs =
-    error "divvyFee: some outputs are null"
-divvyFee (Fee f0) outs = go f0 [] outs
+-- Every coin in the given list must be __non-zero__ in value.
+--
+-- == Examples
+--
+-- >>> distributeFee (Fee 2) [(Coin 1), (Coin 1)]
+-- [(Fee 1, Coin 1), (Fee 1, Coin 1)]
+--
+-- >>> distributeFee (Fee 4) [(Coin 1), (Coin 1)]
+-- [(Fee 2, Coin 1), (Fee 2, Coin 1)]
+--
+-- >>> distributeFee (Fee 7) [(Coin 1), (Coin 2), (Coin 4)]
+-- [(Fee 1, Coin 1), (Fee 2, Coin 2), (Fee 4, Coin 4)]
+--
+-- >>> distributeFee (Fee 14) [(Coin 1), (Coin 2), (Coin 4)]
+-- [(Fee 2, Coin 1), (Fee 4, Coin 2), (Fee 8, Coin 4)]
+--
+distributeFee :: Fee -> NonEmpty Coin -> NonEmpty (Fee, Coin)
+distributeFee (Fee feeTotal) coinsUnsafe =
+    NE.zip feesRounded coins
   where
-    total = (sum . map getCoin) outs
-    go _ _ [] =
-        error "divvyFee: empty list"
-    go fOut xs [out] =
-        -- The last one pays the rounding issues
-        reverse ((Fee fOut, out):xs)
-    go f xs ((Coin out):q) =
-        let
-            r = fromIntegral out / fromIntegral total
-            fOut = ceiling @Double (r * fromIntegral f)
-        in
-            go (f - fOut) ((Fee fOut, Coin out):xs) q
+    -- A list of coins that are non-zero in value.
+    coins :: NonEmpty Coin
+    coins =
+        invariant "distributeFee: all coins must be non-zero in value."
+        coinsUnsafe (Coin 0 `F.notElem`)
+
+    -- A list of rounded fee portions, where each fee portion deviates from the
+    -- ideal unrounded portion by as small an amount as possible.
+    feesRounded :: NonEmpty Fee
+    feesRounded
+        -- 1. Start with the list of ideal unrounded fee portions for each coin:
+        = feesUnrounded
+        -- 2. Attach an index to each fee portion, so that we can remember the
+        --    original order:
+        & NE.zip indices
+        -- 3. Sort the fees into descending order of their fractional parts:
+        & NE.sortBy (comparing (Down . fractionalPart . snd))
+        -- 4. Apply pre-computed roundings to each fee portion:
+        --    * portions with the greatest fractional parts are rounded up;
+        --    * portions with the smallest fractional parts are rounded down.
+        & NE.zipWith (\roundDir (i, f) -> (i, round roundDir f)) feeRoundings
+        -- 5. Restore the original order:
+        & NE.sortBy (comparing fst)
+        -- 6. Strip away the indices:
+        & fmap (Fee . fromIntegral @Integer . snd)
+      where
+        indices :: NonEmpty Int
+        indices = 0 :| [1 ..]
+
+    -- A list of rounding directions, one per fee portion.
+    --
+    -- Since the ideal fee portion for each coin is a rational value, we must
+    -- therefore round each rational value either /up/ or /down/ to produce a
+    -- final integer result.
+    --
+    -- However, we can't take the simple approach of either rounding /all/ fee
+    -- portions down or rounding /all/ fee portions up, as this could cause the
+    -- sum of fee portions to either undershoot or overshoot the original fee.
+    --
+    -- So in order to hit the fee exactly, we must round /some/ of the portions
+    -- up, and /some/ of the portions down.
+    --
+    -- Fortunately, we can calculate exactly how many fee portions must be
+    -- rounded up, by first rounding /all/ portions down, and then computing
+    -- the /shortfall/ between the sum of the rounded-down portions and the
+    -- original fee.
+    --
+    -- We return a list where all values of 'RoundUp' occur in a contiguous
+    -- section at the start of the list, of the following form:
+    --
+    --     [RoundUp, RoundUp, ..., RoundDown, RoundDown, ...]
+    --
+    feeRoundings :: NonEmpty RoundingDirection
+    feeRoundings =
+        applyN feeShortfall (NE.cons RoundUp) (NE.repeat RoundDown)
+      where
+         -- The part of the total fee that we'd lose if we were to take the
+         -- simple approach of rounding all ideal fee portions /down/.
+        feeShortfall
+            = fromIntegral feeTotal
+            - fromIntegral @Integer (F.sum $ round RoundDown <$> feesUnrounded)
+
+    -- A list of ideal unrounded fee portions, with one fee portion per coin.
+    --
+    -- A coin's ideal fee portion is the rational portion of the total fee that
+    -- corresponds to that coin's relative size when compared to other coins.
+    feesUnrounded :: NonEmpty Rational
+    feesUnrounded = calculateIdealFee <$> coins
+      where
+        calculateIdealFee (Coin c)
+            = fromIntegral c
+            * fromIntegral feeTotal
+            % fromIntegral (getCoin totalCoinValue)
+
+    -- The total value of all coins.
+    totalCoinValue :: Coin
+    totalCoinValue = Coin $ F.sum $ getCoin <$> coins
 
 -- | Remove coins that are below a given threshold. Note that we can't simply
 -- "remove" coins from the list because this could create an unbalanced
@@ -356,3 +449,45 @@ splitChange = go
             if isValidCoin newChange
             then newChange : go newRemaining as
             else a : go rest as
+
+--------------------------------------------------------------------------------
+-- Utilities
+--------------------------------------------------------------------------------
+
+-- | Extract the fractional part of a rational number.
+--
+-- Examples:
+--
+-- >>> fractionalPart (3 % 2)
+-- 1 % 2
+--
+-- >>> fractionalPart (11 % 10)
+-- 1 % 10
+--
+fractionalPart :: Rational -> Rational
+fractionalPart = snd . properFraction @_ @Integer
+
+-- | Apply the same function multiple times to a value.
+--
+applyN :: Int -> (a -> a) -> a -> a
+applyN n f = F.foldr (.) id (replicate n f)
+
+-- | Indicates a rounding direction to be used when converting from a
+--   fractional value to an integral value.
+--
+-- See 'round'.
+--
+data RoundingDirection
+    = RoundUp
+      -- ^ Round up to the nearest integral value.
+    | RoundDown
+      -- ^ Round down to the nearest integral value.
+    deriving (Eq, Show)
+
+-- | Use the given rounding direction to round the given fractional value,
+--   producing an integral result.
+--
+round :: (RealFrac a, Integral b) => RoundingDirection -> a -> b
+round = \case
+    RoundUp -> ceiling
+    RoundDown -> floor
