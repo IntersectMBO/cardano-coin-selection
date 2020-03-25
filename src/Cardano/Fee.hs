@@ -273,7 +273,7 @@ reduceSingleChange (Fee fee, Coin chng)
 --
 -- == Pre-condition
 --
--- Every coin in the given list must be __non-zero__.
+-- Every coin in the given list must be __non-zero__ in value.
 --
 -- == Examples
 --
@@ -290,11 +290,15 @@ reduceSingleChange (Fee fee, Coin chng)
 -- [(Fee 2, Coin 1), (Fee 4, Coin 2), (Fee 8, Coin 4)]
 --
 distributeFee :: Fee -> NonEmpty Coin -> NonEmpty (Fee, Coin)
-distributeFee _ coins | Coin 0 `F.elem` coins =
-    error "distributeFee: one or more coins has a value of zero."
-distributeFee (Fee feeTotal) coins =
+distributeFee (Fee feeTotal) coinsUnsafe =
     NE.zip feesRounded coins
   where
+    -- A list of coins that are non-zero in value.
+    coins :: NonEmpty Coin
+    coins =
+        invariant "distributeFee: all coins must be non-zero in value."
+        coinsUnsafe (Coin 0 `F.notElem`)
+
     -- A list of rounded fee portions, where each fee portion deviates from the
     -- ideal unrounded portion by as small an amount as possible.
     feesRounded :: NonEmpty Fee
