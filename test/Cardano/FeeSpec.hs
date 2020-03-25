@@ -346,7 +346,7 @@ spec = do
 
     describe "distributeFee" $ do
         it "fee portions are all within unity of ideal unrounded portions"
-            (checkCoverage propDistributeFeeIsFair)
+            (checkCoverage propDistributeFeeFair)
         it "Σ fst (distributeFee fee outs) == fee"
             (checkCoverage propDistributeFeeSame)
         it "snd (distributeFee fee outs) == outs"
@@ -442,10 +442,10 @@ propDistributeFee prop (fee, outs) =
 -- | Verify that fees are distributed fairly across outputs, so that every
 --   rounded fee portion is always within unity of the ideal unrounded fee
 --   portion.
-propDistributeFeeIsFair
+propDistributeFeeFair
     :: (Fee, NonEmpty Coin)
     -> Property
-propDistributeFeeIsFair (fee, coins) = (.&&.)
+propDistributeFeeFair (fee, coins) = (.&&.)
     (F.all (uncurry (<=)) (NE.zip fees feeUpperBounds))
     (F.all (uncurry (>=)) (NE.zip fees feeLowerBounds))
   where
