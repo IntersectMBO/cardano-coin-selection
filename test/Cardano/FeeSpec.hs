@@ -36,6 +36,8 @@ import Cardano.Types
     )
 import Control.Arrow
     ( left )
+import Control.Monad
+    ( replicateM )
 import Control.Monad.IO.Class
     ( liftIO )
 import Control.Monad.Trans.Except
@@ -731,7 +733,9 @@ instance Arbitrary FeeOptions where
             }
 
 instance Arbitrary a => Arbitrary (NonEmpty a) where
-    arbitrary = (:|) <$> arbitrary <*> (take 10 <$> arbitrary)
+    arbitrary = do
+        tailLength <- choose (0, 10)
+        (:|) <$> arbitrary <*> replicateM tailLength arbitrary
     shrink = genericShrink
 
 instance Show FeeOptions where
