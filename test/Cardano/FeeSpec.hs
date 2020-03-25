@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -59,6 +60,8 @@ import Data.Word
     ( Word64 )
 import Fmt
     ( Buildable (..), nameF, tupleF )
+import GHC.Generics
+    ( Generic )
 import Numeric.Rounding
     ( RoundingDirection (..), round )
 import Test.Hspec
@@ -75,6 +78,7 @@ import Test.QuickCheck
     , expectFailure
     , generate
     , genericShrink
+    , oneof
     , property
     , scale
     , tabulate
@@ -367,7 +371,7 @@ spec = do
         it "sum coins = sum (coalesceDust threshold coins)"
             (checkCoverage propCoalesceDustPreservesSum)
         it "all (/= Coin 0) (coalesceDust threshold coins)"
-            (checkCoverage propCoalesceDustNoZeroCoins)
+            (checkCoverage propCoalesceDustLeavesNoZeroCoins)
 
 {-------------------------------------------------------------------------------
                          Fee Adjustment - Properties
@@ -557,17 +561,44 @@ propDistributeFeeNoNullFee (fee, outs) =
                          coalesceDust - Properties
 -------------------------------------------------------------------------------}
 
+data CoalesceDustInput = CoalesceDustInput
+    { getThreshold :: Coin
+    , getCoins :: [Coin]
+    }
+    deriving (Eq, Generic, Show)
+
+instance Arbitrary CoalesceDustInput where
+    arbitrary = do
+        coinCount <- genCoinCount
+        coins <- replicateM coinCount genCoin
+        -- The threshold coin can be either:
+        --  * a coin picked from the existing coin set; OR
+        --  * a completely fresh coin.
+        threshold <- oneof
+            [ genCoin
+            , elements coins
+            ]
+        pure $ CoalesceDustInput threshold coins
+      where
+        genCoin = Coin <$>
+            choose (0, 100)
+        genCoinCount =
+            choose (0, 10)
+    shrink = genericShrink
+
 propCoalesceDustPreservesSum
-    :: Coin -> [Coin] -> Property
-propCoalesceDustPreservesSum threshold coins = property $
+    :: CoalesceDustInput -> Property
+propCoalesceDustPreservesSum (CoalesceDustInput threshold coins) =
+    property $
     F.sum (getCoin <$> coins)
     ==
     F.sum (getCoin <$> coalesceDust threshold coins)
 
-propCoalesceDustNoZeroCoins
-    :: Coin -> [Word64] -> Property
-propCoalesceDustNoZeroCoins threshold coinValues = property $
-    notElem (Coin 0) $ coalesceDust threshold (Coin <$> coinValues)
+propCoalesceDustLeavesNoZeroCoins
+    :: CoalesceDustInput -> Property
+propCoalesceDustLeavesNoZeroCoins (CoalesceDustInput threshold coins) =
+    property $
+    notElem (Coin 0) $ coalesceDust threshold coins
 
 {-------------------------------------------------------------------------------
                          Fee Adjustment - Unit Tests
