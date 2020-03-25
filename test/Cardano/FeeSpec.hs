@@ -24,6 +24,7 @@ import Cardano.Fee
     , FeeOptions (..)
     , adjustForFee
     , distributeFee
+    , removeDust
     )
 import Cardano.Types
     ( Address (..)
@@ -362,6 +363,10 @@ spec = do
         it "expectFailure: not (any null (fst <$> distributeFee fee outs))"
             (expectFailure propDistributeFeeNoNullFee)
 
+    describe "removeDust" $ do
+        it "sum coins = sum (removeDust threshold coins)"
+            (checkCoverage propRemoveDustPreservesSum)
+
 {-------------------------------------------------------------------------------
                          Fee Adjustment - Properties
 -------------------------------------------------------------------------------}
@@ -545,6 +550,17 @@ propDistributeFeeNoNullFee (fee, outs) =
     not (null outs) ==> withMaxSuccess 100000 prop
   where
     prop = property $ Fee 0 `F.notElem` (fst <$> distributeFee fee outs)
+
+{-------------------------------------------------------------------------------
+                         removeDust - Properties
+-------------------------------------------------------------------------------}
+
+propRemoveDustPreservesSum
+    :: Coin -> [Coin] -> Property
+propRemoveDustPreservesSum threshold coins = property $
+    F.sum (getCoin <$> coins)
+    ==
+    F.sum (getCoin <$> removeDust threshold coins)
 
 {-------------------------------------------------------------------------------
                          Fee Adjustment - Unit Tests

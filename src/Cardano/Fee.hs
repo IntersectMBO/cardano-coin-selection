@@ -30,6 +30,10 @@ module Cardano.Fee
     , FeeOptions (..)
     , ErrAdjustForFee(..)
     , adjustForFee
+
+      -- * Dust Processing
+    , removeDust
+
     ) where
 
 import Prelude hiding
