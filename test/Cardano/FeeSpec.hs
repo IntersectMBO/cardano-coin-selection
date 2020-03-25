@@ -677,7 +677,7 @@ instance Arbitrary FeeOptions where
             }
 
 instance Arbitrary a => Arbitrary (NonEmpty a) where
-    arbitrary = (:|) <$> arbitrary <*> arbitrary
+    arbitrary = (:|) <$> arbitrary <*> (take 10 <$> arbitrary)
     shrink = genericShrink
 
 instance Show FeeOptions where
