@@ -290,7 +290,7 @@ reduceSingleChange (Fee fee, Coin chng)
 -- [(Fee 2, Coin 1), (Fee 4, Coin 2), (Fee 8, Coin 4)]
 --
 distributeFee :: Fee -> NonEmpty Coin -> NonEmpty (Fee, Coin)
-distributeFee _ outs | Coin 0 `F.elem` outs =
+distributeFee _ coins | Coin 0 `F.elem` coins =
     error "distributeFee: one or more coins has a value of zero."
 distributeFee (Fee feeTotal) coins =
     NE.zip feesRounded coins
