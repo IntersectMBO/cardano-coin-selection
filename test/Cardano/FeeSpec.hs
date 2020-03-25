@@ -4,13 +4,15 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TypeApplications #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Cardano.FeeSpec
     ( spec
     ) where
 
-import Prelude
+import Prelude hiding
+    ( round )
 
 import Cardano.CoinSelection
     ( CoinSelection (..), CoinSelectionAlgorithm (..) )
@@ -54,6 +56,8 @@ import Data.Word
     ( Word64 )
 import Fmt
     ( Buildable (..), nameF, tupleF )
+import Numeric.Rounding
+    ( RoundingDirection (..), round )
 import Test.Hspec
     ( Spec, SpecWith, before, describe, it, shouldBe, shouldSatisfy )
 import Test.QuickCheck
@@ -347,6 +351,8 @@ spec = do
     describe "distributeFee" $ do
         it "fee portions are all within unity of ideal unrounded portions"
             (checkCoverage propDistributeFeeFair)
+        it "fee portions are allocated optimally"
+            (checkCoverage propDistributeFeeOptimal)
         it "Σ fst (distributeFee fee outs) == fee"
             (checkCoverage propDistributeFeeSame)
         it "snd (distributeFee fee outs) == outs"
@@ -459,6 +465,54 @@ propDistributeFeeFair (fee, coins) = (.&&.)
         = fromIntegral c
         * fromIntegral (getFee fee)
         % fromIntegral (sum $ getCoin <$> coins)
+
+-- | Verify that fees are distributed optimally across coins, such that the
+-- absolute deviation from the ideal (unrounded) fee distribution is minimal.
+propDistributeFeeOptimal
+    :: Fee
+    -> NonEmpty Coin
+    -> Property
+propDistributeFeeOptimal fee coins = property $
+    computeDeviation (fst <$> distributeFee fee coins)
+        `shouldBe` minimumPossibleDeviation
+  where
+    -- Compute the deviation of a fee portion distribution from the ideal
+    -- unrounded fee portion distribution.
+    computeDeviation :: NonEmpty Fee -> Rational
+    computeDeviation feesRounded = F.sum $
+        NE.zipWith (\(Fee f) u -> abs (fromIntegral f - u))
+            feesRounded
+            idealUnroundedDistribution
+
+    -- The minimum deviation across all possible distributions for the given
+    -- fee and set of coins.
+    minimumPossibleDeviation :: Rational
+    minimumPossibleDeviation =
+        F.minimum $ computeDeviation <$> allPossibleDistributions
+
+    -- The set of all possible fee distributions for the given fee and coins.
+    allPossibleDistributions :: [NonEmpty Fee]
+    allPossibleDistributions = filter isValidDistribution $ NE.zipWith
+        (\f roundDir -> Fee $ fromIntegral @Integer $ round roundDir f)
+        idealUnroundedDistribution <$> allPossibleRoundings
+      where
+        -- Indicates whether the given distribution has the correct total fee.
+        isValidDistribution :: NonEmpty Fee -> Bool
+        isValidDistribution r = sum (getFee <$> r) == getFee fee
+
+        -- All possible ways to round an unrounded fee distribution.
+        allPossibleRoundings :: [NonEmpty RoundingDirection]
+        allPossibleRoundings = traverse (const [RoundUp, RoundDown]) coins
+
+    -- The ideal unrounded fee distribution.
+    idealUnroundedDistribution :: NonEmpty Rational
+    idealUnroundedDistribution = computeIdealFee <$> coins
+      where
+        computeIdealFee :: Coin -> Rational
+        computeIdealFee (Coin c)
+            = fromIntegral c
+            * fromIntegral (getFee fee)
+            % fromIntegral (sum $ getCoin <$> coins)
 
 -- | Sum of the fees divvied over each output is the same as the initial total
 -- fee.
