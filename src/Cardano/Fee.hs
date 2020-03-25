@@ -32,7 +32,8 @@ module Cardano.Fee
     , adjustForFee
     ) where
 
-import Prelude
+import Prelude hiding
+    ( round )
 
 import Cardano.CoinSelection
     ( CoinSelection (..), changeBalance, inputBalance, outputBalance )
@@ -299,58 +300,68 @@ distributeFee (Fee feeTotal) coins =
     feesRounded :: NonEmpty Fee
     feesRounded
         -- 1. Start with the list of ideal unrounded fee portions for each coin:
-        = feesIdeal
+        = feesUnrounded
         -- 2. Attach an index to each fee portion, so that we can remember the
         --    original order:
         & NE.zip indices
         -- 3. Sort the fees into descending order of their fractional parts:
         & NE.sortBy (comparing (Down . fractionalPart . snd))
-        -- 4. Apply pre-computed adjustments to each fee portion:
-        --    * fees with the greatest fractional parts are rounded up;
-        --    * fees with the smallest fractional parts are rounded down.
-        & NE.zipWith (\adj (idx, fee) -> (idx, floor fee + adj)) feeAdjustments
+        -- 4. Apply pre-computed roundings to each fee portion:
+        --    * portions with the greatest fractional parts are rounded up;
+        --    * portions with the smallest fractional parts are rounded down.
+        & NE.zipWith (\roundDir (i, f) -> (i, round roundDir f)) feeRoundings
         -- 5. Restore the original order:
         & NE.sortBy (comparing fst)
         -- 6. Strip away the indices:
-        & fmap (Fee . fromIntegral . snd)
+        & fmap (Fee . fromIntegral @Integer . snd)
       where
         indices :: NonEmpty Int
         indices = 0 :| [1 ..]
 
-    -- A list of fee portion adjustments, with one adjustment per coin.
+    -- A list of rounding directions, one per fee portion.
     --
     -- Since the ideal fee portion for each coin is a rational value, we must
-    -- therefore round the rational value to produce a final integer result.
+    -- therefore round each rational value either /up/ or /down/ to produce a
+    -- final integer result.
     --
-    -- * A fee adjustment of '1' indicates a fee portion to be rounded /up/.
-    -- * A fee adjustment of '0' indicates a fee portion to be rounded /down/.
+    -- However, we can't take the simple approach of either rounding /all/ fee
+    -- portions down or rounding /all/ fee portions up, as this could cause the
+    -- sum of fee portions to either undershoot or overshoot the original fee.
     --
-    -- The total count of '1's corresponds to the value of 'feeShortfall'.
+    -- So in order to hit the fee exactly, we must round /some/ of the portions
+    -- up, and /some/ of the portions down.
     --
-    -- All '1's are at the front of the list.
+    -- Fortunately, we can calculate exactly how many fee portions must be
+    -- rounded up, by first rounding /all/ portions down, and then computing
+    -- the /shortfall/ between the sum of the rounded-down portions and the
+    -- original fee.
     --
-    feeAdjustments :: NonEmpty Integer
-    feeAdjustments = applyN
-        (fromIntegral . getFee $ feeShortfall)
-        (NE.cons 1)
-        (NE.repeat 0)
+    -- We return a list where all values of 'RoundUp' occur in a contiguous
+    -- section at the start of the list, of the following form:
+    --
+    --     [RoundUp, RoundUp, ..., RoundDown, RoundDown, ...]
+    --
+    feeRoundings :: NonEmpty RoundingDirection
+    feeRoundings =
+        applyN feeShortfall (NE.cons RoundUp) (NE.repeat RoundDown)
+      where
+         -- The part of the total fee that we'd lose if we were to take the
+         -- simple approach of rounding all ideal fee portions /down/.
+        feeShortfall
+            = fromIntegral feeTotal
+            - fromIntegral @Integer (F.sum $ round RoundDown <$> feesUnrounded)
 
     -- A list of ideal unrounded fee portions, with one fee portion per coin.
     --
     -- A coin's ideal fee portion is the rational portion of the total fee that
     -- corresponds to that coin's relative size when compared to other coins.
-    feesIdeal :: NonEmpty Rational
-    feesIdeal = calculateIdealFee <$> coins
+    feesUnrounded :: NonEmpty Rational
+    feesUnrounded = calculateIdealFee <$> coins
       where
         calculateIdealFee (Coin c)
             = fromIntegral c
             * fromIntegral feeTotal
             % fromIntegral (getCoin totalCoinValue)
-
-    -- The part of the total fee that we'd lose if we were to take the simple
-    -- approach of rounding down all ideal fee portions.
-    feeShortfall :: Fee
-    feeShortfall = Fee $ fromIntegral feeTotal - F.sum (floor <$> feesIdeal)
 
     -- The total value of all coins.
     totalCoinValue :: Coin
@@ -456,3 +467,23 @@ fractionalPart = snd . properFraction @_ @Integer
 --
 applyN :: Int -> (a -> a) -> a -> a
 applyN n f = F.foldr (.) id (replicate n f)
+
+-- | Indicates a rounding direction to be used when converting from a
+--   fractional value to an integral value.
+--
+-- See 'round'.
+--
+data RoundingDirection
+    = RoundUp
+      -- ^ Round up to the nearest integral value.
+    | RoundDown
+      -- ^ Round down to the nearest integral value.
+    deriving (Eq, Show)
+
+-- | Use the given rounding direction to round the given fractional value,
+--   producing an integral result.
+--
+round :: (RealFrac a, Integral b) => RoundingDirection -> a -> b
+round = \case
+    RoundUp -> ceiling
+    RoundDown -> floor
