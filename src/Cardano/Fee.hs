@@ -131,9 +131,11 @@ data FeeOptions = FeeOptions
       --     b: 43.946 # additional minimal fees per byte of transaction size
     , dustThreshold
       :: Coin
-      -- ^ Change addresses below the given threshold will be evicted
-      -- from the created transaction. Setting 'dustThreshold' to 0
-      -- removes output equal to 0
+      -- ^ Defines the maximum size of a dust coin.
+      --
+      -- Change values that are less than or equal to this threshold will be
+      -- evicted from created transactions.
+      --
     } deriving (Generic)
 
 newtype ErrAdjustForFee
