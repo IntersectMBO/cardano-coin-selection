@@ -27,6 +27,7 @@ import Cardano.Fee
     , adjustForFee
     , coalesceDust
     , distributeFee
+    , rebalanceChangeOutputs
     )
 import Cardano.Types
     ( Address (..)
@@ -381,6 +382,12 @@ spec = do
         it "length coins >= (coalesceDust threshold coins)"
             (checkCoverage propCoalesceDustNeverLengthensList)
 
+    describe "rebalanceChangeOutputs" $ do
+        it "data coverage is adequate"
+            (checkCoverage propRebalanceChangeOutputsDataCoverage)
+        it "preserves sum"
+            (checkCoverage propRebalanceChangeOutputsPreservesSum)
+
 {-------------------------------------------------------------------------------
                          Fee Adjustment - Properties
 -------------------------------------------------------------------------------}
@@ -637,6 +644,61 @@ propCoalesceDustLeavesAtMostOneDustCoin (CoalesceDustData threshold coins) =
 propCoalesceDustNeverLengthensList :: CoalesceDustData -> Property
 propCoalesceDustNeverLengthensList (CoalesceDustData threshold coins) =
     property $ length coins >= length (coalesceDust threshold coins)
+
+{-------------------------------------------------------------------------------
+                     rebalanceChangeOutputs - Properties
+-------------------------------------------------------------------------------}
+
+data RebalanceChangeOutputsData = RebalanceChangeOutputsData
+    { rcodFee :: Fee
+    , rcodThreshold :: DustThreshold
+    , rcodCoins :: [Coin]
+    } deriving (Eq, Generic, Show)
+
+instance Arbitrary RebalanceChangeOutputsData where
+    arbitrary = do
+        coalesceDustData <- arbitrary
+        let threshold = cddThreshold coalesceDustData
+        let coins = F.toList $ cddCoins coalesceDustData
+        let coinSum = sum $ getCoin <$> coins
+        fee <- Fee <$> oneof
+            [ pure 0
+            , choose (1, coinSum - 1)
+            , pure coinSum
+            , choose (coinSum + 1, coinSum * 2)
+            ]
+        pure $ RebalanceChangeOutputsData fee threshold coins
+    shrink = genericShrink
+
+propRebalanceChangeOutputsDataCoverage :: RebalanceChangeOutputsData -> Property
+propRebalanceChangeOutputsDataCoverage
+    (RebalanceChangeOutputsData (Fee fee) _ coins) =
+        let coinSum = sum $ getCoin <$> coins in
+        property
+            -- Test coverage of fee amount, relative to sum of coins:
+            $ cover 8 (fee == 0)
+                "fee = 0"
+            $ cover 8 (0 < fee && fee < coinSum)
+                "0 < fee < sum coins"
+            $ cover 8 (fee == coinSum)
+                "fee = sum coins"
+            $ cover 8 (fee > coinSum)
+                "fee > sum coins"
+            True
+
+propRebalanceChangeOutputsPreservesSum :: RebalanceChangeOutputsData -> Property
+propRebalanceChangeOutputsPreservesSum
+    (RebalanceChangeOutputsData (Fee fee) threshold coins) = property check
+  where
+    coinsRemaining = rebalanceChangeOutputs threshold (Fee fee) coins
+    -- We can only expect the total sum to be preserved if the supplied coins
+    -- are enough to pay for the fee:
+    check
+        | fee < sum (getCoin <$> coins) =
+            sum (getCoin <$> coins) ==
+            sum (getCoin <$> coinsRemaining) + fee
+        | otherwise =
+            null coinsRemaining
 
 {-------------------------------------------------------------------------------
                          Fee Adjustment - Unit Tests
