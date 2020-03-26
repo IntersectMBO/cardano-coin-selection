@@ -27,6 +27,7 @@ import Cardano.Fee
     , adjustForFee
     , coalesceDust
     , distributeFee
+    , rebalanceChangeOutputs
     )
 import Cardano.Types
     ( Address (..)
@@ -384,6 +385,8 @@ spec = do
     describe "rebalanceChangeOutputs" $ do
         it "data coverage is adequate"
             (checkCoverage propRebalanceChangeOutputsDataCoverage)
+        it "preserves sum"
+            (checkCoverage propRebalanceChangeOutputsPreservesSum)
 
 {-------------------------------------------------------------------------------
                          Fee Adjustment - Properties
@@ -682,6 +685,20 @@ propRebalanceChangeOutputsDataCoverage
             $ cover 8 (fee > coinSum)
                 "fee > sum coins"
             True
+
+propRebalanceChangeOutputsPreservesSum :: RebalanceChangeOutputsData -> Property
+propRebalanceChangeOutputsPreservesSum
+    (RebalanceChangeOutputsData (Fee fee) threshold coins) = property check
+  where
+    coinsRemaining = rebalanceChangeOutputs threshold (Fee fee) coins
+    -- We can only expect the total sum to be preserved if the supplied coins
+    -- are enough to pay for the fee:
+    check
+        | fee < sum (getCoin <$> coins) =
+            sum (getCoin <$> coins) ==
+            sum (getCoin <$> coinsRemaining) + fee
+        | otherwise =
+            null coinsRemaining
 
 {-------------------------------------------------------------------------------
                          Fee Adjustment - Unit Tests
