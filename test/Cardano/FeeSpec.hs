@@ -604,6 +604,9 @@ propCoalesceDustLeavesNoZeroCoins
     :: CoalesceDustInput -> Property
 propCoalesceDustLeavesNoZeroCoins (CoalesceDustInput threshold coins) =
     property $
+    cover 4 (F.all  (== Coin 0) coins) "∀ coin ∈ coins . coin = 0" $
+    cover 4 (F.elem    (Coin 0) coins) "∃ coin ∈ coins . coin = 0" $
+    cover 8 (F.notElem (Coin 0) coins) "∀ coin ∈ coins . coin > 0" $
     notElem (Coin 0) $ coalesceDust threshold coins
 
 propCoalesceDustLeavesAtMostOneDustCoin
