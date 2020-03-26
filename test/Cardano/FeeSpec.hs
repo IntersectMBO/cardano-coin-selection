@@ -567,52 +567,46 @@ propDistributeFeeNoNullFee (fee, outs) =
                          coalesceDust - Properties
 -------------------------------------------------------------------------------}
 
-data CoalesceDustInput = CoalesceDustInput
-    { getThreshold :: DustThreshold
-    , getCoins :: NonEmpty Coin
-    }
-    deriving (Eq, Generic, Show)
+data CoalesceDustData = CoalesceDustData
+    { cddThreshold :: DustThreshold
+    , cddCoins :: NonEmpty Coin
+    } deriving (Eq, Generic, Show)
 
-instance Arbitrary CoalesceDustInput where
+instance Arbitrary CoalesceDustData where
     arbitrary = do
         coinCount <- genCoinCount
         coins <- (:|) <$> genCoin <*> replicateM coinCount genCoin
-        -- The threshold coin can be either:
-        --  * a coin picked from the existing coin set; OR
-        --  * a completely fresh coin.
         threshold <- DustThreshold . getCoin <$> oneof
-            [ genCoin
+            [ -- Two possibilities:
+              genCoin
+              -- ^ A completely fresh coin.
             , elements (F.toList coins)
+              -- ^ A coin picked from the existing coin set.
             ]
-        pure $ CoalesceDustInput threshold coins
+        pure $ CoalesceDustData threshold coins
       where
-        genCoin =
-            Coin <$> oneof [pure 0, choose (1, 100)]
-        genCoinCount =
-            choose (0, 10)
+        genCoin = Coin <$> oneof [pure 0, choose (1, 100)]
+        genCoinCount = choose (0, 10)
     shrink = genericShrink
 
-propCoalesceDustPreservesSum
-    :: CoalesceDustInput -> Property
-propCoalesceDustPreservesSum (CoalesceDustInput threshold coins) =
+propCoalesceDustPreservesSum :: CoalesceDustData -> Property
+propCoalesceDustPreservesSum (CoalesceDustData threshold coins) =
     property $
     let total = sum (getCoin <$> coins) in
     cover 8 (total == 0) "sum coins = 0" $
     cover 8 (total /= 0) "sum coins ≠ 0" $
     total == F.sum (getCoin <$> coalesceDust threshold coins)
 
-propCoalesceDustLeavesNoZeroCoins
-    :: CoalesceDustInput -> Property
-propCoalesceDustLeavesNoZeroCoins (CoalesceDustInput threshold coins) =
+propCoalesceDustLeavesNoZeroCoins :: CoalesceDustData -> Property
+propCoalesceDustLeavesNoZeroCoins (CoalesceDustData threshold coins) =
     property $
     cover 4 (F.all  (== Coin 0) coins) "∀ coin ∈ coins . coin = 0" $
     cover 4 (F.elem    (Coin 0) coins) "∃ coin ∈ coins . coin = 0" $
     cover 8 (F.notElem (Coin 0) coins) "∀ coin ∈ coins . coin > 0" $
     F.notElem (Coin 0) $ coalesceDust threshold coins
 
-propCoalesceDustLeavesAtMostOneDustCoin
-    :: CoalesceDustInput -> Property
-propCoalesceDustLeavesAtMostOneDustCoin (CoalesceDustInput threshold coins) =
+propCoalesceDustLeavesAtMostOneDustCoin :: CoalesceDustData -> Property
+propCoalesceDustLeavesAtMostOneDustCoin (CoalesceDustData threshold coins) =
     property $
     let result = coalesceDust threshold coins in
     -- Check that we cover different kinds of threshold conditions:
@@ -631,11 +625,9 @@ propCoalesceDustLeavesAtMostOneDustCoin (CoalesceDustInput threshold coins) =
   where
     threshold' = Coin $ getDustThreshold threshold
 
-propCoalesceDustNeverLengthensList
-    :: CoalesceDustInput -> Property
-propCoalesceDustNeverLengthensList (CoalesceDustInput threshold coins) =
-    property $
-    length coins >= length (coalesceDust threshold coins)
+propCoalesceDustNeverLengthensList :: CoalesceDustData -> Property
+propCoalesceDustNeverLengthensList (CoalesceDustData threshold coins) =
+    property $ length coins >= length (coalesceDust threshold coins)
 
 {-------------------------------------------------------------------------------
                          Fee Adjustment - Unit Tests
