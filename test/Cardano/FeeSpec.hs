@@ -55,6 +55,8 @@ import Data.Functor.Identity
     ( Identity (runIdentity) )
 import Data.List.NonEmpty
     ( NonEmpty (..) )
+import Data.Monoid
+    ( All (..) )
 import Data.Ratio
     ( (%) )
 import Data.Word
@@ -609,11 +611,18 @@ propCoalesceDustLeavesAtMostOneDustCoin :: CoalesceDustData -> Property
 propCoalesceDustLeavesAtMostOneDustCoin (CoalesceDustData threshold coins) =
     property $
     let result = coalesceDust threshold coins in
-    -- Check that we cover different kinds of threshold conditions:
-    cover 8 (F.any (>  threshold') coins) "∃ coin ∈ coins . coin < threshold" $
-    cover 8 (F.any (<  threshold') coins) "∃ coin ∈ coins . coin > threshold" $
-    cover 8 (F.any (== threshold') coins) "∃ coin ∈ coins . coin = threshold" $
-    cover 8 (F.all (/= threshold') coins) "∀ coin ∈ coins . coin ≠ threshold" $
+    -- Check that we cover different kinds of extreme threshold conditions:
+    cover 2 (F.all (<  threshold') coins) "∀ coin ∈ coins . coin < threshold" $
+    cover 2 (F.all (>  threshold') coins) "∀ coin ∈ coins . coin > threshold" $
+    cover 2 (F.all (== threshold') coins) "∀ coin ∈ coins . coin = threshold" $
+    cover 2 (F.all (/= threshold') coins) "∀ coin ∈ coins . coin ≠ threshold" $
+    -- Check that we cover typical threshold conditions:
+    let haveMixture = getAll $ mconcat $ All <$>
+          [ F.any (<  threshold') coins
+          , F.any (== threshold') coins
+          , F.any (>  threshold') coins
+          ] in
+    cover 8 haveMixture "have mixture of coin values in relation to threshold" $
     -- Check that we cover different result lengths:
     cover 8 (null result)        "length result = 0" $
     cover 8 (length result == 1) "length result = 1" $
