@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -19,10 +20,12 @@ import Cardano.CoinSelection
 import Cardano.CoinSelection.LargestFirst
     ( largestFirst )
 import Cardano.Fee
-    ( ErrAdjustForFee (..)
+    ( DustThreshold (..)
+    , ErrAdjustForFee (..)
     , Fee (..)
     , FeeOptions (..)
     , adjustForFee
+    , coalesceDust
     , distributeFee
     )
 import Cardano.Types
@@ -52,12 +55,16 @@ import Data.Functor.Identity
     ( Identity (runIdentity) )
 import Data.List.NonEmpty
     ( NonEmpty (..) )
+import Data.Monoid
+    ( All (..) )
 import Data.Ratio
     ( (%) )
 import Data.Word
     ( Word64 )
 import Fmt
     ( Buildable (..), nameF, tupleF )
+import GHC.Generics
+    ( Generic )
 import Numeric.Rounding
     ( RoundingDirection (..), round )
 import Test.Hspec
@@ -68,12 +75,14 @@ import Test.QuickCheck
     , Property
     , checkCoverage
     , choose
+    , cover
     , coverTable
     , disjoin
     , elements
     , expectFailure
     , generate
     , genericShrink
+    , oneof
     , property
     , scale
     , tabulate
@@ -362,6 +371,16 @@ spec = do
         it "expectFailure: not (any null (fst <$> distributeFee fee outs))"
             (expectFailure propDistributeFeeNoNullFee)
 
+    describe "coalesceDust" $ do
+        it "sum coins = sum (coalesceDust threshold coins)"
+            (checkCoverage propCoalesceDustPreservesSum)
+        it "all (/= Coin 0) (coalesceDust threshold coins)"
+            (checkCoverage propCoalesceDustLeavesNoZeroCoins)
+        it "leaves at most one dust coin"
+            (checkCoverage propCoalesceDustLeavesAtMostOneDustCoin)
+        it "length coins >= (coalesceDust threshold coins)"
+            (checkCoverage propCoalesceDustNeverLengthensList)
+
 {-------------------------------------------------------------------------------
                          Fee Adjustment - Properties
 -------------------------------------------------------------------------------}
@@ -547,6 +566,79 @@ propDistributeFeeNoNullFee (fee, outs) =
     prop = property $ Fee 0 `F.notElem` (fst <$> distributeFee fee outs)
 
 {-------------------------------------------------------------------------------
+                         coalesceDust - Properties
+-------------------------------------------------------------------------------}
+
+data CoalesceDustData = CoalesceDustData
+    { cddThreshold :: DustThreshold
+    , cddCoins :: NonEmpty Coin
+    } deriving (Eq, Generic, Show)
+
+instance Arbitrary CoalesceDustData where
+    arbitrary = do
+        coinCount <- genCoinCount
+        coins <- (:|) <$> genCoin <*> replicateM coinCount genCoin
+        threshold <- DustThreshold . getCoin <$> oneof
+            [ -- Two possibilities:
+              genCoin
+              -- ^ A completely fresh coin.
+            , elements (F.toList coins)
+              -- ^ A coin picked from the existing coin set.
+            ]
+        pure $ CoalesceDustData threshold coins
+      where
+        genCoin = Coin <$> oneof [pure 0, choose (1, 100)]
+        genCoinCount = choose (0, 10)
+    shrink = genericShrink
+
+propCoalesceDustPreservesSum :: CoalesceDustData -> Property
+propCoalesceDustPreservesSum (CoalesceDustData threshold coins) =
+    property $
+    let total = sum (getCoin <$> coins) in
+    cover 8 (total == 0) "sum coins = 0" $
+    cover 8 (total /= 0) "sum coins ≠ 0" $
+    total == F.sum (getCoin <$> coalesceDust threshold coins)
+
+propCoalesceDustLeavesNoZeroCoins :: CoalesceDustData -> Property
+propCoalesceDustLeavesNoZeroCoins (CoalesceDustData threshold coins) =
+    property $
+    cover 4 (F.all  (== Coin 0) coins) "∀ coin ∈ coins . coin = 0" $
+    cover 4 (F.elem    (Coin 0) coins) "∃ coin ∈ coins . coin = 0" $
+    cover 8 (F.notElem (Coin 0) coins) "∀ coin ∈ coins . coin > 0" $
+    F.notElem (Coin 0) $ coalesceDust threshold coins
+
+propCoalesceDustLeavesAtMostOneDustCoin :: CoalesceDustData -> Property
+propCoalesceDustLeavesAtMostOneDustCoin (CoalesceDustData threshold coins) =
+    property $
+    let result = coalesceDust threshold coins in
+    -- Check that we cover different kinds of extreme threshold conditions:
+    cover 2 (F.all (<  threshold') coins) "∀ coin ∈ coins . coin < threshold" $
+    cover 2 (F.all (>  threshold') coins) "∀ coin ∈ coins . coin > threshold" $
+    cover 2 (F.all (== threshold') coins) "∀ coin ∈ coins . coin = threshold" $
+    cover 2 (F.all (/= threshold') coins) "∀ coin ∈ coins . coin ≠ threshold" $
+    -- Check that we cover typical threshold conditions:
+    let haveMixture = getAll $ mconcat $ All <$>
+          [ F.any (<  threshold') coins
+          , F.any (== threshold') coins
+          , F.any (>  threshold') coins
+          ] in
+    cover 8 haveMixture "have mixture of coin values in relation to threshold" $
+    -- Check that we cover different result lengths:
+    cover 8 (null result)        "length result = 0" $
+    cover 8 (length result == 1) "length result = 1" $
+    cover 8 (length result >= 2) "length result ≥ 2" $
+    case result of
+        [ ] -> F.sum (getCoin <$> coins) == 0
+        [x] -> Coin (F.sum (getCoin <$> coins)) == x
+        cxs -> all (> threshold') cxs
+  where
+    threshold' = Coin $ getDustThreshold threshold
+
+propCoalesceDustNeverLengthensList :: CoalesceDustData -> Property
+propCoalesceDustNeverLengthensList (CoalesceDustData threshold coins) =
+    property $ length coins >= length (coalesceDust threshold coins)
+
+{-------------------------------------------------------------------------------
                          Fee Adjustment - Unit Tests
 -------------------------------------------------------------------------------}
 
@@ -558,7 +650,7 @@ feeOptions fee dust = FeeOptions
     { estimateFee =
         \_ -> Fee fee
     , dustThreshold =
-        Coin dust
+        DustThreshold dust
     }
 
 feeUnitTest
@@ -658,6 +750,10 @@ instance Arbitrary Coin where
     shrink (Coin c) = Coin <$> filter (> 0) (shrink $ fromIntegral c)
     arbitrary = Coin <$> choose (1, 200000)
 
+instance Arbitrary DustThreshold where
+    arbitrary = DustThreshold <$> choose (0, 100)
+    shrink = genericShrink
+
 instance Arbitrary Fee where
     shrink (Fee c) = Fee <$> filter (> 0) (shrink $ fromIntegral c)
     arbitrary = Fee . getCoin <$> arbitrary
@@ -729,7 +825,7 @@ instance Arbitrary FeeOptions where
                 \s -> Fee
                     $ fromIntegral
                     $ c + a * (length (inputs s) + length (outputs s))
-            , dustThreshold = Coin t
+            , dustThreshold = DustThreshold t
             }
 
 instance Arbitrary a => Arbitrary (NonEmpty a) where

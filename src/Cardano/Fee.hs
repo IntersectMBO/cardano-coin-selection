@@ -30,6 +30,11 @@ module Cardano.Fee
     , FeeOptions (..)
     , ErrAdjustForFee(..)
     , adjustForFee
+
+      -- * Dust Processing
+    , DustThreshold (..)
+    , coalesceDust
+
     ) where
 
 import Prelude hiding
@@ -80,18 +85,31 @@ import Quiet
     ( Quiet (Quiet) )
 
 import qualified Data.Foldable as F
-import qualified Data.List as L
 import qualified Data.List.NonEmpty as NE
 
 {-------------------------------------------------------------------------------
                                     Types
 -------------------------------------------------------------------------------}
 
--- | A 'Fee', isomorph to 'Coin' but ease type-signatures and readability.
+-- | Represents a fee to be paid on a transaction.
+--
+-- This type is isomorphic to 'Coin'.
+--
 newtype Fee = Fee
     { getFee :: Word64 }
     deriving stock (Eq, Generic, Ord)
     deriving Show via (Quiet Fee)
+
+-- | Defines the maximum size of a dust coin.
+--
+-- See function 'dustThreshold' within 'FeeOptions'.
+--
+-- This type is isomorphic to 'Coin'.
+--
+newtype DustThreshold = DustThreshold
+    { getDustThreshold :: Word64 }
+    deriving stock (Eq, Generic, Ord)
+    deriving Show via (Quiet DustThreshold)
 
 {-------------------------------------------------------------------------------
                                 Fee Calculation
@@ -126,10 +144,12 @@ data FeeOptions = FeeOptions
       --     a: 155381 # absolute minimal fees per transaction
       --     b: 43.946 # additional minimal fees per byte of transaction size
     , dustThreshold
-      :: Coin
-      -- ^ Change addresses below the given threshold will be evicted
-      -- from the created transaction. Setting 'dustThreshold' to 0
-      -- removes output equal to 0
+      :: DustThreshold
+      -- ^ Defines the maximum size of a dust coin.
+      --
+      -- Change values that are less than or equal to this threshold will be
+      -- evicted from created transactions.
+      --
     } deriving (Generic)
 
 newtype ErrAdjustForFee
@@ -199,7 +219,8 @@ senderPaysFee opt utxo sel = evalStateT (go sel) utxo where
         let coinSel' = CoinSelection
                 { inputs = inps
                 , outputs = outs
-                , change = rebalanceChangeOutputs opt upperBound chgs
+                , change =
+                    rebalanceChangeOutputs (dustThreshold opt) upperBound chgs
                 }
         let remFee = remainingFee opt coinSel'
         -- 3.1/
@@ -250,14 +271,13 @@ coverRemainingFee (Fee fee) = go [] where
 --
 -- We divvy up the fee over all change outputs proportionally, to try and keep
 -- any output:change ratio as unchanged as possible
-rebalanceChangeOutputs :: FeeOptions -> Fee -> [Coin] -> [Coin]
-rebalanceChangeOutputs opt totalFee chgs =
-    case removeDust (Coin 0) chgs of
+rebalanceChangeOutputs :: DustThreshold -> Fee -> [Coin] -> [Coin]
+rebalanceChangeOutputs threshold totalFee chgs =
+    case filter (> Coin 0) chgs of
         [] -> []
         x : xs ->
-            removeDust (dustThreshold opt)
-            $ map reduceSingleChange
-            $ F.toList
+            coalesceDust threshold
+            $ fmap reduceSingleChange
             $ distributeFee totalFee
             $ x :| xs
 
@@ -373,20 +393,21 @@ distributeFee (Fee feeTotal) coinsUnsafe =
     totalCoinValue :: Coin
     totalCoinValue = Coin $ F.sum $ getCoin <$> coins
 
--- | Remove coins that are below a given threshold. Note that we can't simply
--- "remove" coins from the list because this could create an unbalanced
--- transaction. Therefore, we want `removeDust` to have the following property:
+-- | From the given list of coins, remove dust coins with a value less than or
+--   equal to the given threshold value, redistributing their total value over
+--   the coins that remain.
 --
---     ∀δ≥0. sum coins == sum (removeDust δcoins)
+-- This function satisfies the following properties:
 --
-removeDust :: Coin -> [Coin] -> [Coin]
-removeDust threshold coins =
-    let
-        filtered = L.filter (> threshold) coins
-        diff = balance coins - balance filtered
-            where balance = L.foldl' (\total (Coin c) -> c + total) 0
-    in
-        splitChange (Coin diff) filtered
+-- >>> sum coins = sum (coalesceDust threshold coins)
+-- >>> all (/= Coin 0) (coalesceDust threshold coins)
+--
+coalesceDust :: DustThreshold -> NonEmpty Coin -> [Coin]
+coalesceDust (DustThreshold threshold) coins =
+    splitChange valueToDistribute coinsToKeep
+  where
+    (coinsToKeep, coinsToRemove) = NE.partition (> Coin threshold) coins
+    valueToDistribute = Coin $ sum $ getCoin <$> coinsToRemove
 
 -- | Computes how much is left to pay given a particular selection
 remainingFee
