@@ -615,25 +615,19 @@ propCoalesceDustLeavesAtMostOneDustCoin
 propCoalesceDustLeavesAtMostOneDustCoin (CoalesceDustInput threshold coins) =
     property $
     let result = coalesceDust threshold coins in
-
     -- Check that we cover different kinds of threshold conditions:
     cover 8 (F.any (>  threshold') coins) "∃ coin ∈ coins . coin < threshold" $
     cover 8 (F.any (<  threshold') coins) "∃ coin ∈ coins . coin > threshold" $
     cover 8 (F.any (== threshold') coins) "∃ coin ∈ coins . coin = threshold" $
     cover 8 (F.all (/= threshold') coins) "∀ coin ∈ coins . coin ≠ threshold" $
-
     -- Check that we cover different result lengths:
     cover 8 (null result)        "length result = 0" $
     cover 8 (length result == 1) "length result = 1" $
     cover 8 (length result >= 2) "length result ≥ 2" $
-
     case result of
-        [] ->
-            F.sum (getCoin <$> coins) == 0
-        [x] ->
-            Coin (F.sum (getCoin <$> coins)) == x
-        xs ->
-            all (> threshold') xs
+        [ ] -> F.sum (getCoin <$> coins) == 0
+        [x] -> Coin (F.sum (getCoin <$> coins)) == x
+        cxs -> all (> threshold') cxs
   where
     threshold' = Coin $ getDustThreshold threshold
 
