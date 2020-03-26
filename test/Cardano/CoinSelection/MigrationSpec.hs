@@ -15,7 +15,7 @@ import Cardano.CoinSelection.Migration
 import Cardano.CoinSelectionSpec
     ()
 import Cardano.Fee
-    ( Fee (..), FeeOptions (..) )
+    ( DustThreshold (..), Fee (..), FeeOptions (..) )
 import Cardano.FeeSpec
     ()
 import Cardano.Types
@@ -117,7 +117,7 @@ spec = do
     describe "depleteUTxO regressions" $ do
         it "regression #1" $ do
             let feeOpts = FeeOptions
-                    { dustThreshold = Coin 9
+                    { dustThreshold = DustThreshold 9
                     , estimateFee = \s -> Fee
                         $ fromIntegral
                         $ 5 * (length (inputs s) + length (outputs s))
@@ -161,8 +161,10 @@ prop_noLessThanThreshold feeOpts batchSize utxo = do
     let allChange = change
             =<< depleteUTxO feeOpts batchSize utxo
     let undersizedCoins =
-            filter (< (dustThreshold feeOpts)) allChange
+            filter (< threshold) allChange
     property (undersizedCoins `shouldSatisfy` null)
+  where
+    threshold = Coin $ getDustThreshold $ dustThreshold feeOpts
 
 -- | Total input UTxO value >= sum of selection change coins
 prop_inputsGreaterThanOutputs
@@ -240,7 +242,7 @@ genFeeOptions (Coin dust) = do
         { estimateFee = \s ->
             let x = fromIntegral (length (inputs s) + length (outputs s))
             in Fee $ (dust `div` 100) * x + dust
-        , dustThreshold = Coin dust
+        , dustThreshold = DustThreshold dust
         }
 
 -- | Generate a given UTxO with a particular percentage of dust

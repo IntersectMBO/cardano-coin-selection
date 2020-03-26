@@ -568,7 +568,7 @@ propDistributeFeeNoNullFee (fee, outs) =
 -------------------------------------------------------------------------------}
 
 data CoalesceDustInput = CoalesceDustInput
-    { getThreshold :: Coin
+    { getThreshold :: DustThreshold
     , getCoins :: NonEmpty Coin
     }
     deriving (Eq, Generic, Show)
@@ -580,7 +580,7 @@ instance Arbitrary CoalesceDustInput where
         -- The threshold coin can be either:
         --  * a coin picked from the existing coin set; OR
         --  * a completely fresh coin.
-        threshold <- oneof
+        threshold <- DustThreshold . getCoin <$> oneof
             [ genCoin
             , elements (F.toList coins)
             ]
@@ -617,10 +617,10 @@ propCoalesceDustLeavesAtMostOneDustCoin (CoalesceDustInput threshold coins) =
     let result = coalesceDust threshold coins in
 
     -- Check that we cover different kinds of threshold conditions:
-    cover 8 (F.any (>  threshold) coins) "∃ coin ∈ coins . coin < threshold" $
-    cover 8 (F.any (<  threshold) coins) "∃ coin ∈ coins . coin > threshold" $
-    cover 8 (F.any (== threshold) coins) "∃ coin ∈ coins . coin = threshold" $
-    cover 8 (F.all (/= threshold) coins) "∀ coin ∈ coins . coin ≠ threshold" $
+    cover 8 (F.any (>  threshold') coins) "∃ coin ∈ coins . coin < threshold" $
+    cover 8 (F.any (<  threshold') coins) "∃ coin ∈ coins . coin > threshold" $
+    cover 8 (F.any (== threshold') coins) "∃ coin ∈ coins . coin = threshold" $
+    cover 8 (F.all (/= threshold') coins) "∀ coin ∈ coins . coin ≠ threshold" $
 
     -- Check that we cover different result lengths:
     cover 8 (null result)        "length result = 0" $
@@ -633,7 +633,9 @@ propCoalesceDustLeavesAtMostOneDustCoin (CoalesceDustInput threshold coins) =
         [x] ->
             Coin (F.sum (getCoin <$> coins)) == x
         xs ->
-            all (> threshold) xs
+            all (> threshold') xs
+  where
+    threshold' = Coin $ getDustThreshold threshold
 
 propCoalesceDustNeverLengthensList
     :: CoalesceDustInput -> Property
@@ -653,7 +655,7 @@ feeOptions fee dust = FeeOptions
     { estimateFee =
         \_ -> Fee fee
     , dustThreshold =
-        Coin dust
+        DustThreshold dust
     }
 
 feeUnitTest
@@ -828,7 +830,7 @@ instance Arbitrary FeeOptions where
                 \s -> Fee
                     $ fromIntegral
                     $ c + a * (length (inputs s) + length (outputs s))
-            , dustThreshold = Coin t
+            , dustThreshold = DustThreshold t
             }
 
 instance Arbitrary a => Arbitrary (NonEmpty a) where

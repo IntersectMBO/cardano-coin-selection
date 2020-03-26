@@ -45,7 +45,7 @@ import Cardano.CoinSelection
     , inputBalance
     )
 import Cardano.Fee
-    ( Fee (..), FeeOptions (..) )
+    ( DustThreshold (..), Fee (..), FeeOptions (..) )
 import Cardano.Types
     ( Coin (..), TxIn (..), TxOut (..), UTxO (..) )
 import Control.Monad.Trans.State
@@ -100,12 +100,13 @@ depleteUTxO feeOpts batchSize utxo =
         , outputs = []
         , change =
             let chgs = mapMaybe (noDust . snd) inps
-            in if null chgs then [dustThreshold feeOpts] else chgs
+            in if null chgs then [threshold] else chgs
         }
       where
+        threshold = Coin $ getDustThreshold $ dustThreshold feeOpts
         noDust :: TxOut -> Maybe Coin
         noDust (TxOut _ c)
-            | c < dustThreshold feeOpts = Nothing
+            | c < threshold = Nothing
             | otherwise = Just c
 
     -- | Attempt to balance the coin selection by reducing or increasing the
@@ -153,7 +154,7 @@ depleteUTxO feeOpts batchSize utxo =
         c' = op (integer c)
 
         threshold :: Integer
-        threshold = integer (getCoin (dustThreshold feeOpts))
+        threshold = integer (getDustThreshold (dustThreshold feeOpts))
 
     getNextBatch :: State [a] [a]
     getNextBatch = do

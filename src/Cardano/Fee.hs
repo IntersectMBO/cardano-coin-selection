@@ -144,7 +144,7 @@ data FeeOptions = FeeOptions
       --     a: 155381 # absolute minimal fees per transaction
       --     b: 43.946 # additional minimal fees per byte of transaction size
     , dustThreshold
-      :: Coin
+      :: DustThreshold
       -- ^ Defines the maximum size of a dust coin.
       --
       -- Change values that are less than or equal to this threshold will be
@@ -401,11 +401,11 @@ distributeFee (Fee feeTotal) coinsUnsafe =
 -- >>> sum coins = sum (coalesceDust threshold coins)
 -- >>> all (/= Coin 0) (coalesceDust threshold coins)
 --
-coalesceDust :: Coin -> NonEmpty Coin -> [Coin]
-coalesceDust threshold coins =
+coalesceDust :: DustThreshold -> NonEmpty Coin -> [Coin]
+coalesceDust (DustThreshold threshold) coins =
     splitChange valueToDistribute coinsToKeep
   where
-    (coinsToKeep, coinsToRemove) = NE.partition (> threshold) coins
+    (coinsToKeep, coinsToRemove) = NE.partition (> Coin threshold) coins
     valueToDistribute = Coin $ sum $ getCoin <$> coinsToRemove
 
 -- | Computes how much is left to pay given a particular selection
