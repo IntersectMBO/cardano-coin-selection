@@ -20,7 +20,8 @@ import Cardano.CoinSelection
 import Cardano.CoinSelection.LargestFirst
     ( largestFirst )
 import Cardano.Fee
-    ( ErrAdjustForFee (..)
+    ( DustThreshold (..)
+    , ErrAdjustForFee (..)
     , Fee (..)
     , FeeOptions (..)
     , adjustForFee
@@ -751,6 +752,10 @@ instance Arbitrary TxIn where
 instance Arbitrary Coin where
     shrink (Coin c) = Coin <$> filter (> 0) (shrink $ fromIntegral c)
     arbitrary = Coin <$> choose (1, 200000)
+
+instance Arbitrary DustThreshold where
+    arbitrary = DustThreshold <$> choose (0, 100)
+    shrink = genericShrink
 
 instance Arbitrary Fee where
     shrink (Fee c) = Fee <$> filter (> 0) (shrink $ fromIntegral c)

@@ -32,6 +32,7 @@ module Cardano.Fee
     , adjustForFee
 
       -- * Dust Processing
+    , DustThreshold (..)
     , coalesceDust
 
     ) where
@@ -98,6 +99,17 @@ newtype Fee = Fee
     { getFee :: Word64 }
     deriving stock (Eq, Generic, Ord)
     deriving Show via (Quiet Fee)
+
+-- | Defines the maximum size of a dust coin.
+--
+-- See function 'dustThreshold' within 'FeeOptions'.
+--
+-- This type is isomorphic to 'Coin'.
+--
+newtype DustThreshold = DustThreshold
+    { getDustThreshold :: Word64 }
+    deriving stock (Eq, Generic, Ord)
+    deriving Show via (Quiet DustThreshold)
 
 {-------------------------------------------------------------------------------
                                 Fee Calculation
