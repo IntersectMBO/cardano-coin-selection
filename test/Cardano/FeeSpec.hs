@@ -568,25 +568,25 @@ propDistributeFeeNoNullFee (fee, outs) =
 
 data CoalesceDustInput = CoalesceDustInput
     { getThreshold :: Coin
-    , getCoins :: [Coin]
+    , getCoins :: NonEmpty Coin
     }
     deriving (Eq, Generic, Show)
 
 instance Arbitrary CoalesceDustInput where
     arbitrary = do
         coinCount <- genCoinCount
-        coins <- replicateM coinCount genCoin
+        coins <- (:|) <$> genCoin <*> replicateM coinCount genCoin
         -- The threshold coin can be either:
         --  * a coin picked from the existing coin set; OR
         --  * a completely fresh coin.
         threshold <- oneof
             [ genCoin
-            , elements coins
+            , elements (F.toList coins)
             ]
         pure $ CoalesceDustInput threshold coins
       where
-        genCoin = Coin <$>
-            choose (0, 100)
+        genCoin =
+            Coin <$> oneof [pure 0, choose (1, 100)]
         genCoinCount =
             choose (0, 10)
     shrink = genericShrink
@@ -607,7 +607,7 @@ propCoalesceDustLeavesNoZeroCoins (CoalesceDustInput threshold coins) =
     cover 4 (F.all  (== Coin 0) coins) "∀ coin ∈ coins . coin = 0" $
     cover 4 (F.elem    (Coin 0) coins) "∃ coin ∈ coins . coin = 0" $
     cover 8 (F.notElem (Coin 0) coins) "∀ coin ∈ coins . coin > 0" $
-    notElem (Coin 0) $ coalesceDust threshold coins
+    F.notElem (Coin 0) $ coalesceDust threshold coins
 
 propCoalesceDustLeavesAtMostOneDustCoin
     :: CoalesceDustInput -> Property

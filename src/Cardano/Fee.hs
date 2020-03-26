@@ -84,7 +84,6 @@ import Quiet
     ( Quiet (Quiet) )
 
 import qualified Data.Foldable as F
-import qualified Data.List as L
 import qualified Data.List.NonEmpty as NE
 
 {-------------------------------------------------------------------------------
@@ -258,12 +257,11 @@ coverRemainingFee (Fee fee) = go [] where
 -- any output:change ratio as unchanged as possible
 rebalanceChangeOutputs :: FeeOptions -> Fee -> [Coin] -> [Coin]
 rebalanceChangeOutputs opt totalFee chgs =
-    case coalesceDust (Coin 0) chgs of
+    case filter (> Coin 0) chgs of
         [] -> []
         x : xs ->
             coalesceDust (dustThreshold opt)
-            $ map reduceSingleChange
-            $ F.toList
+            $ fmap reduceSingleChange
             $ distributeFee totalFee
             $ x :| xs
 
@@ -388,11 +386,11 @@ distributeFee (Fee feeTotal) coinsUnsafe =
 -- >>> sum coins = sum (coalesceDust threshold coins)
 -- >>> all (/= Coin 0) (coalesceDust threshold coins)
 --
-coalesceDust :: Coin -> [Coin] -> [Coin]
+coalesceDust :: Coin -> NonEmpty Coin -> [Coin]
 coalesceDust threshold coins =
     splitChange valueToDistribute coinsToKeep
   where
-    (coinsToKeep, coinsToRemove) = L.partition (> threshold) coins
+    (coinsToKeep, coinsToRemove) = NE.partition (> threshold) coins
     valueToDistribute = Coin $ sum $ getCoin <$> coinsToRemove
 
 -- | Computes how much is left to pay given a particular selection
