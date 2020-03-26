@@ -390,12 +390,10 @@ distributeFee (Fee feeTotal) coinsUnsafe =
 --
 coalesceDust :: Coin -> [Coin] -> [Coin]
 coalesceDust threshold coins =
-    let
-        filtered = L.filter (> threshold) coins
-        diff = balance coins - balance filtered
-            where balance = L.foldl' (\total (Coin c) -> c + total) 0
-    in
-        splitChange (Coin diff) filtered
+    splitChange valueToDistribute coinsToKeep
+  where
+    (coinsToKeep, coinsToRemove) = L.partition (> threshold) coins
+    valueToDistribute = Coin $ sum $ getCoin <$> coinsToRemove
 
 -- | Computes how much is left to pay given a particular selection
 remainingFee
