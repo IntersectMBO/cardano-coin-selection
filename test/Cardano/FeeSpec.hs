@@ -595,9 +595,10 @@ propCoalesceDustPreservesSum
     :: CoalesceDustInput -> Property
 propCoalesceDustPreservesSum (CoalesceDustInput threshold coins) =
     property $
-    F.sum (getCoin <$> coins)
-    ==
-    F.sum (getCoin <$> coalesceDust threshold coins)
+    let total = sum (getCoin <$> coins) in
+    cover 8 (total == 0) "sum coins = 0" $
+    cover 8 (total /= 0) "sum coins ≠ 0" $
+    total == F.sum (getCoin <$> coalesceDust threshold coins)
 
 propCoalesceDustLeavesNoZeroCoins
     :: CoalesceDustInput -> Property
