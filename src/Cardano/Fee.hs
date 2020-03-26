@@ -219,7 +219,8 @@ senderPaysFee opt utxo sel = evalStateT (go sel) utxo where
         let coinSel' = CoinSelection
                 { inputs = inps
                 , outputs = outs
-                , change = rebalanceChangeOutputs opt upperBound chgs
+                , change =
+                    rebalanceChangeOutputs (dustThreshold opt) upperBound chgs
                 }
         let remFee = remainingFee opt coinSel'
         -- 3.1/
@@ -270,12 +271,12 @@ coverRemainingFee (Fee fee) = go [] where
 --
 -- We divvy up the fee over all change outputs proportionally, to try and keep
 -- any output:change ratio as unchanged as possible
-rebalanceChangeOutputs :: FeeOptions -> Fee -> [Coin] -> [Coin]
-rebalanceChangeOutputs opt totalFee chgs =
+rebalanceChangeOutputs :: DustThreshold -> Fee -> [Coin] -> [Coin]
+rebalanceChangeOutputs threshold totalFee chgs =
     case filter (> Coin 0) chgs of
         [] -> []
         x : xs ->
-            coalesceDust (dustThreshold opt)
+            coalesceDust threshold
             $ fmap reduceSingleChange
             $ distributeFee totalFee
             $ x :| xs
