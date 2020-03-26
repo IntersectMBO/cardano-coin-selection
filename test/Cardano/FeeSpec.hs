@@ -375,6 +375,8 @@ spec = do
             (checkCoverage propCoalesceDustLeavesNoZeroCoins)
         it "leaves at most one dust coin"
             (checkCoverage propCoalesceDustLeavesAtMostOneDustCoin)
+        it "length coins >= (coalesceDust threshold coins)"
+            (checkCoverage propCoalesceDustNeverLengthensList)
 
 {-------------------------------------------------------------------------------
                          Fee Adjustment - Properties
@@ -627,6 +629,12 @@ propCoalesceDustLeavesAtMostOneDustCoin (CoalesceDustInput threshold coins) =
             Coin (F.sum (getCoin <$> coins)) == x
         xs ->
             all (> threshold) xs
+
+propCoalesceDustNeverLengthensList
+    :: CoalesceDustInput -> Property
+propCoalesceDustNeverLengthensList (CoalesceDustInput threshold coins) =
+    property $
+    length coins >= length (coalesceDust threshold coins)
 
 {-------------------------------------------------------------------------------
                          Fee Adjustment - Unit Tests
