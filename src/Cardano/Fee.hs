@@ -30,6 +30,7 @@ module Cardano.Fee
     , FeeOptions (..)
     , ErrAdjustForFee(..)
     , adjustForFee
+    , rebalanceChangeOutputs
 
       -- * Dust Processing
     , DustThreshold (..)
