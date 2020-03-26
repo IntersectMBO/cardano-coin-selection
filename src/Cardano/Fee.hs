@@ -90,7 +90,10 @@ import qualified Data.List.NonEmpty as NE
                                     Types
 -------------------------------------------------------------------------------}
 
--- | A 'Fee', isomorph to 'Coin' but ease type-signatures and readability.
+-- | Represents a fee to be paid on a transaction.
+--
+-- This type is isomorphic to 'Coin'.
+--
 newtype Fee = Fee
     { getFee :: Word64 }
     deriving stock (Eq, Generic, Ord)
