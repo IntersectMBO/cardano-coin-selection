@@ -721,4 +721,10 @@ The [available UTxO set](#available-utxo-set) is returned to the caller as the
 
 ## Self Organization in Coin Selection
 
+This article analyzes the performance of various coin selection algorithms in
+relation to dust minimization and the maintenance of healthy UTxO sets over
+time, giving an experimental basis to this analysis. It highlights several
+principles of self-organization that inform the design of effective coin
+selection algorithms.
+
 https://cardanofoundation.org/en/news/self-organisation-in-coin-selection/
