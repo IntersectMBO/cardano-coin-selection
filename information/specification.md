@@ -435,10 +435,13 @@ There are two main algorithms used by Cardano Wallet:
   * [Random-Improve](#random-improve)
 
 In general, Cardano Wallet gives _priority_ to the
-[Random-Improve](#random-improve) algorithm.
+[Random-Improve](#random-improve) algorithm, as [experimental
+evidence](#self-organization-in-coin-selection) shows that it performs better
+at [minimising dust](#goals) and maintaining a UTxO set with [useful
+outputs](#goals).
 
-However, in the case where [Random-Improve](#random-improve) is unable to
-produce a result, Cardano Wallet will fall back to the
+However, in rare cases, the [Random-Improve](#random-improve) may fail to
+produce a result. In such cases, Cardano Wallet will fall back to the
 [Largest-First](#largest-first) algorithm.
 
 ## Largest-First
