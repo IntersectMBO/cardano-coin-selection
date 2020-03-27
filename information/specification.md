@@ -335,17 +335,16 @@ Where:
 
 ### Conservation of UTxO
 
-This property states that the [initial UTxO set](#initial-utxo-set) is
-_conserved_ in the [results](#results).
+This property states that every entry in the [initial UTxO
+set](#initial-utxo-set) is included in _either_ the [coin
+selection](#coin-selection) inputs, _or_ in the [remaining UTxO
+set](#remaining-utxo-set), but _not both_.
 
-There are two mutually-exclusive cases:
+  * If a UTxO entry _is_ selected by the coin selection algorithm, it is
+    included in the [coin selection](#coin-selection) inputs.
 
-  * If a UTxO entry is _selected_ by the coin selection algorithm, it is
-    included in the _inputs_ field of the [coin selection](#coin-selection)
-    result.
-
-  * If a UTxO entry is _not selected_ by the coin selection algorithm, it is
-    included in the [remaining UTxO set](#remaining-utxo-set) result.
+  * If a UTxO entry is _not_ selected by the coin selection algorithm, it is
+    included in the [remaining UTxO set](#remaining-utxo-set).
 
 The following laws hold:
 
