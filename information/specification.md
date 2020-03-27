@@ -153,7 +153,7 @@ algorithm to have. These properties include:
 
  * A coin selection algorithm should, over the course of time, aim to generate
    and maintain a UTxO set with _useful_ outputs: that is, outputs that allow
-   us to process future payments with a _minimum_ number of inputs.
+   us to process future payments with a _reasonably small_ number of inputs.
 
  * A coin selection algorithm should employ strategies to limit the
    amount of _dust_ that accumulates in the UTxO set.
@@ -577,7 +577,7 @@ amount of dust that accumulates in the UTxO set.
 As mentioned in the [Goals](#goals) section, it is desirable that coin
 selection algorithms, over time, are able to create UTxO sets that have
 _useful_ outputs: outputs that will allow us to process future payments with a
-minimum number of inputs.
+_reasonably small_ number of inputs.
 
 If for each payment request of value **v** we create a change output of
 _roughly_ the same value **v**, then we will end up with a distribution of
