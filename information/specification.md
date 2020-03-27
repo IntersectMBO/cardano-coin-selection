@@ -41,7 +41,6 @@ This draft has several **limitations**, to be addressed in future versions:
     * [Correctness of Change](#correctness-of-change)
     * [Conservation of UTxO](#conservation-of-utxo)
     * [Conservation of Outputs](#conservation-of-outputs)
-    * [Cardinality](#cardinality)
   * [Failure Modes](#failure-modes)
     * [UTxO Balance Insufficient](#utxo-balance-insufficient)
     * [UTxO Not Fragmented Enough](#utxo-not-fragmented-enough)
@@ -49,6 +48,7 @@ This draft has several **limitations**, to be addressed in future versions:
     * [Maximum Input Count Exceeded](#maximum-input-count-exceeded)
 * [Implementations](#implementations)
   * [Largest-First](#largest-first)
+    * [Cardinality](#cardinality)
     * [State](#state)
       * [Available UTxO List](#available-utxo-list)
       * [Unpaid Output List](#unpaid-output-list)
@@ -60,6 +60,7 @@ This draft has several **limitations**, to be addressed in future versions:
       * [Principle 1: Dust Management](#principle-1-dust-management)
       * [Principle 2: Change Management](#principle-2-change-management)
       * [Principle 3: Performance Management](#principle-3-performance-management)
+    * [Cardinality](#cardinality-1)
     * [State](#state-1)
       * [Available UTxO Set](#available-utxo-set)
       * [Accumulated Coin Selection](#accumulated-coin-selection-1)
@@ -138,9 +139,7 @@ complicated than it would initially appear.
    reduce the size of the UTxO set. This is bad for two reasons:
 
     1. Having a small UTxO set limits the number of payments that we can make
-       in parallel. Since a single UTxO entry can only be used to pay for a
-       single output, we need at least as many UTxO entries as there are
-       outputs.
+       in parallel.
 
     2. The approach of coalescing all change into a single output is widely
        considered to have negative privacy implications. The discussion of
@@ -377,18 +376,6 @@ is _conserved_ in the [coin selection](#coin-selection) result.
 In particular, the _outputs_ field of the [coin selection](#coin-selection)
 result should be _equal to_ the [requested output list](#requested-output-list).
 
-### Cardinality
-
-All algorithms require that:
-
- 1. Each output from the [requested output list](#requested-output-list) is
-    paid for by _one or more_ entries from the
-    [initial UTxO set](#initial-utxo-set).
-
- 2. Each entry from the [initial UTxO set](#initial-utxo-set) is used to pay
-    for _at most one_ output from the [requested output
-    list](#requested-output-list).
-
 ## Failure Modes
 
 There are a number of ways in which a coin selection algorithm can fail:
@@ -404,16 +391,21 @@ There are a number of ways in which a coin selection algorithm can fail:
 
     This failure occurs when the _number_ of entries in the [initial UTxO
     set](#initial-utxo-set) is _smaller than_ the number of entries in the
-    [requested output list](#requested-output-list).
-
-    All algorithms require that there is _at least one_ UTxO entry available
-    _for each_ requested output.
+    [requested output list](#requested-output-list), for algorithms that impose
+    the restriction that a single UTxO entry can only be used to pay for _at
+    most one_ output.
 
   * #### UTxO Fully Depleted
 
     This failure occurs if the algorithm depletes all entries from the [initial
     UTxO set](#initial-utxo-set) _before_ it is able to pay for all outputs in
     the [requested output list](#requested-output-list).
+
+    This can happen _even if_ the total value of entries within the [initial
+    UTxO set](#initial-utxo-set) is _greater than_ the total value of all
+    entries in the [requested output list](#requested-output-list), due to
+    various restrictions that coin selection algorithms impose on themselves
+    when selecting UTxO entries.
 
   * #### Maximum Input Count Exceeded
 
@@ -456,6 +448,19 @@ value of that output.
 
 The name of the algorithm is taken from the idea that the **largest** UTxO
 entry is always considered **first**.
+
+### Cardinality
+
+The Largest-First algorithm imposes the following cardinality restriction:
+
+  * Each entry from the [initial UTxO set](#initial-utxo-set) is used to pay
+    for _at most one_ output from the [requested output
+    list](#requested-output-list).
+
+As a result of this restriction, the algorithm will fail with a [UTxO Not
+Fragmented Enough](#utxo-not-fragmented-enough) error if the number of entries
+in the [initial UTxO set](#initial-utxo-set) is _smaller than_ the number of
+entries in the [requested output list](#requested-output-list).
 
 ### State
 
@@ -594,6 +599,19 @@ is _only_ useful if the UTxO set contains entries that are sufficiently
 small enough. But it is precisely when the UTxO set contains many small
 entries that it is less likely for a randomly-chosen UTxO entry to push the
 total above the upper bound.
+
+### Cardinality
+
+The Random-Improve algorithm imposes the following cardinality restriction:
+
+  * Each entry from the [initial UTxO set](#initial-utxo-set) is used to pay
+    for _at most one_ output from the [requested output
+    list](#requested-output-list).
+
+As a result of this restriction, the algorithm will fail with a [UTxO Not
+Fragmented Enough](#utxo-not-fragmented-enough) error if the number of entries
+in the [initial UTxO set](#initial-utxo-set) is _smaller than_ the number of
+entries in the [requested output list](#requested-output-list).
 
 ### State
 
