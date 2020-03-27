@@ -196,9 +196,12 @@ given UTxO set.
 
 A _transaction input_ is a pair of values (**_h_**, **_n_**), where:
 
-  * **_h_** is the hash of an existing transaction **_t_**;
+  * **_h_** is a _unique identifier_ for an existing transaction **_t_**;
   * **_n_** is a 0-based integer index into the output list of transaction
     **_t_**.
+
+In general, coin selection algorithms are agnostic to the choice of format for
+transaction identifiers. However, transaction identifiers must be _unique_.
 
 ### Transaction Output
 
