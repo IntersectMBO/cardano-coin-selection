@@ -167,7 +167,7 @@ Selection](#self-organization-in-coin-selection).
 
 An _address_ is a unique identifier that represents a destination for a payment.
 
-Addresses are owned (and generated) by individual wallets.
+Addresses are typically owned (and generated) by individual wallets.
 
 In general, coin selection algorithms are agnostic to the choice of address
 format. Therefore, the details of individual address formats are not described
