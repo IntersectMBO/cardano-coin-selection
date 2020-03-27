@@ -175,7 +175,7 @@ within this document.
 
 ### Coin Amount
 
-A _coin amount_ is a non-negative integer value that represents a number of
+A _coin amount_ is a positive integer value that represents a number of
 [Lovelace](https://cardanodocs.com/cardano/monetary-policy/).
 
 One [Ada](https://cardanodocs.com/cardano/monetary-policy/) is _exactly_ equal
