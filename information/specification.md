@@ -235,15 +235,13 @@ A coin selection function accepts the following parameters:
 
  2. #### Initial UTxO Set
 
-    A subset of a wallet's [UTxO set](#utxo-set).
-
-    The coin selection algorithm will select entries from within this set in
-    order to cover payments listed in the [requested output
+    A [UTxO set](#utxo-set) from which the coin selection algorithm can select
+    entries, to cover payments listed in the [requested output
     list](#requested-output-list).
 
-    Normally, this parameter would be assigned with the complete [UTxO
-    set](#utxo-set) of a wallet, giving the coin selection algorithm access to
-    the total value associated with that wallet.
+    In the context of a wallet, this parameter would normally be assigned with
+    the wallet's complete [UTxO set](#utxo-set), giving the coin selection
+    algorithm access to the total value associated with that wallet.
 
  3. #### Maximum Input Count
 
