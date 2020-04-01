@@ -111,24 +111,30 @@ _change_.
 
 ### Coin Selection in Cardano
 
-Similarly to how a physical wallet holds value in the form of unspent coins and
-banknotes, a Cardano wallet holds value in the form of a set of _unspent
-transaction outputs_ (UTxO), the results of previous transactions that
-transferred money to the wallet. Each output in the UTxO set has a particular
-_value_, and the total value of a wallet is the _sum_ of these values.
+Similarly to how a physical wallet holds value in the form of _unspent coins
+and banknotes_, a Cardano wallet holds value in the form of _unspent
+transaction outputs_. An [unspent transaction
+output](#unspent-transaction-output) is the result of a previous transaction
+that transferred money to the wallet, where the value has not yet been spent by
+another transaction. Each unspent transaction output has an associated [coin
+value](#coin-value), and the total value of a wallet is the _sum_ of these coin
+values. Collectively, the set of unspent transaction outputs is known as the
+[UTxO set](#utxo-set).
 
-When using a Cardano wallet to make a payment, the wallet software must choose
-unspent outputs from the wallet's UTxO set, so that the total value of selected
-outputs is enough to cover the target amount. Just as with physical money,
-outputs from the UTxO cannot be subdivided, and must be spent completely in a
-given transaction.  Consequently, in the case where it's not possible to cover
-the target amount exactly, the wallet software must arrange that change is paid
+When using a Cardano wallet to make a payment, the wallet software must select
+a combination of unspent outputs from the wallet's UTxO set, so that the total
+value of selected outputs is enough to cover the target amount. Just as with
+physical coins and notes, unspent outputs from the UTxO set _cannot_ be
+subdivided, and must either be spent completely in a given transaction, or not
+be spent at all. Similarly to a transaction with physical money, the wallet
+software must select a combination of unspent outputs whose total value is
+_greater_ than the target amount, and then arrange that _change_ is paid back
+to the wallet.
+
+Coin selection refers to the process of selecting a combination of unspent
+outputs from a wallet's [UTxO set](#utxo-set) in order to make one or more
+payments, and computing the set of [change outputs](#change-output) to be paid
 back to the wallet.
-
-Coin selection refers to the process of choosing _unspent outputs_ from a
-wallet's UTxO set in order to make one or more payments, and arranging for
-_change_ to be paid back to the wallet by creating one or more _change
-outputs_.
 
 ## Why is Coin Selection Non-Trivial?
 
