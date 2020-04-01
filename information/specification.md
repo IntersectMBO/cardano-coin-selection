@@ -172,14 +172,16 @@ complicated than it would initially appear.
 ### Goals
 
 There are several desirable properties that we would like a coin selection
-algorithm to have. These properties include:
+algorithm to have.
 
- * A coin selection algorithm should, over the course of time, aim to generate
-   and maintain a UTxO set with _useful_ outputs: that is, outputs that allow
-   us to process future payments with a _reasonably small_ number of inputs.
+In particular, a coin selection algorithm should:
 
- * A coin selection algorithm should employ strategies to limit the
-   amount of _dust_ that accumulates in the UTxO set.
+  * employ strategies to limit the amount of dust that accumulates in the UTxO
+    set.
+
+  * over the course of time, aim to generate and maintain a UTxO set with
+    useful outputs: that is, outputs that allow us to process future payments
+    with a reasonably small number of inputs.
 
 For more information on dust avoidance, see [Self Organisation in Coin
 Selection](#self-organization-in-coin-selection).
