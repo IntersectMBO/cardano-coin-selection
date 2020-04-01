@@ -205,35 +205,80 @@ A _coin value_ is a positive integer value that represents a number of
 One [Ada](https://cardanodocs.com/cardano/monetary-policy/) is _exactly_ equal
 to one million Lovelace.
 
-### UTxO Set
+### Transaction
 
-A _UTxO set_ represents the unspent value associated with a wallet.
+In a [UTxO](#utxo-set)-based blockchain, a _transaction_ is a binding between
+[inputs](#transaction-input) and [outputs](#transaction-output).
 
-Each member of the set is a pair of the form (**_i_**, **_o_**), where:
-
-  * **_i_** is a [transaction input](#transaction-input);
-  * **_o_** is a [transaction output](#transaction-output).
-
-A given [transaction input](#transaction-input) can only appear _once_ in a
-given UTxO set.
+```
+input #1  >---+          +---> output #1
+               \        /
+input #2  >-----+------+
+               /        \
+input #3  >---+          +---> output #2
+```
 
 ### Transaction Input
 
-A _transaction input_ is a pair of values (**_h_**, **_n_**), where:
+A _transaction input_ is a _unique reference_ to a single
+[output](#transaction-output) from a previous transaction.
+
+This reference consists of a pair of values (**_h_**, **_n_**), where:
 
   * **_h_** is a _unique identifier_ for an existing transaction **_t_**;
   * **_n_** is a 0-based integer index into the output list of transaction
     **_t_**.
 
-In general, coin selection algorithms are agnostic to the choice of format for
-transaction identifiers. However, transaction identifiers must be _unique_.
-
 ### Transaction Output
 
-A _transaction output_ is a pair of values (**_t_**, **_a_**), where:
+A _transaction output_ consists of a pair of values (**_a_**, **_v_**), where:
 
-  * **_t_** is a [target address](#address);
-  * **_a_** is a [coin value](#coin-value).
+  * **_a_** is the [address](#address) of a recipient.
+  * **_v_** is the [coin value](#coin-value) to pay to the recipient.
+
+### Spent Transaction Output
+
+A _spent transaction output_ is an [output](#transaction-output) from an
+existing transaction that has already been referenced as an
+[input](#transaction-input) within a later transaction on the blockchain.
+
+In effect, the coin value associated with that transaction output has been
+_spent_, and cannot be reused.
+
+### Unspent Transaction Output
+
+An _unspent transaction output_ is an [output](#transaction-output) from an
+existing transaction that has not yet been referenced as an
+[input](#transaction-input) within a later transaction.
+
+In effect, the coin value associated with that transaction output has _not yet_
+been spent, and is still available.
+
+### UTxO Set
+
+A _UTxO set_ is a set of [unspent transaction
+outputs](#unspent-transaction-output).
+
+This term is commonly used in two ways:
+
+  * To describe the _complete set_ of all unspent transaction outputs on a
+    _blockchain_.
+
+  * To describe the _subset_ of unspent transaction outputs associated with
+    a _wallet_. The UTxO set of a wallet represents the total unspent value
+    associated with that wallet.
+
+From the point of view of a coin selection algorithm, each member of a UTxO set
+can be represented as a pair of the form (**_u_**, **_v_**), where:
+
+  * **_u_** is a unique reference to an [unspent transaction
+    output](#unspent-transaction-output).
+  * **_v_** is the [coin value](#coin-value) associated with **_u_**.
+
+Typically, the format of each unique reference **_u_** is equivalent to the
+format of a [transaction input](#transaction-input). However, coin selection
+algorithms are generally _agnostic_ to this format, and only care that such
+references are _unique_.
 
 # Interface
 
