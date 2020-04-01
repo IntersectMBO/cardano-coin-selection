@@ -133,8 +133,7 @@ is paid back to the wallet.
 
 Coin selection refers to the process of selecting a combination of unspent
 outputs from a wallet's [UTxO set](#utxo-set) in order to make one or more
-payments, and computing the set of [change outputs](#change-output) to be paid
-back to the wallet.
+payments, and computing the set of change to be paid back to the wallet.
 
 ## Why is Coin Selection Non-Trivial?
 
