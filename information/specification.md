@@ -254,6 +254,13 @@ existing transaction that has not yet been referenced as an
 In effect, the coin value associated with that transaction output has _not yet_
 been spent, and is still available.
 
+### Dust Output
+
+A _dust output_ is a [transaction output](#transaction-output) with an
+associated [coin value](#coin-value) that is _too small_ to be worth including
+in a transaction, because doing so would incur a fee increase that
+significantly negates the value of including it.
+
 ### UTxO Set
 
 A _UTxO set_ is a set of [unspent transaction
