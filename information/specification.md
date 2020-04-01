@@ -19,6 +19,8 @@ This draft has several **limitations**, to be addressed in future versions:
 * [Purpose](#purpose)
 * [Background](#background)
   * [What is Coin Selection?](#what-is-coin-selection)
+    * [Coin Selection in the Physical World](#coin-selection-in-the-physical-world)
+    * [Coin Selection in Cardano](#coin-selection-in-cardano)
   * [Why is Coin Selection Non-Trivial?](#why-is-coin-selection-non-trivial)
     * [Issues](#issues)
     * [Goals](#goals)
@@ -84,6 +86,8 @@ ecosystem.
 Coin selection is the process of choosing unspent coins from a wallet in order
 to pay money to one or more recipients.
 
+### Coin Selection in the Physical World
+
 In the world of physical money, wallets hold value in the form of _coins and
 banknotes_.  When making a payment, we typically select a number of coins and
 banknotes from a wallet that, when added together, have enough value to cover
@@ -92,6 +96,19 @@ cover the exact amount.  However, given that coins and banknotes have fixed
 values (and cannot be subdivided), it's often _impossible_ to select the exact
 amount required. In such cases, we typically give the recipient _more_ than the
 required amount, and then receive the excess value back as _change_.
+
+> #### Example
+>
+> Alice wishes to pay for her lunch. The total price comes to €2.50 (2 euros
+> and 50 cents). In her wallet, she has **five** _one-euro_ coins, and **one**
+> _ten-euro_ note. Note that there is _no_ combination of coins (or notes) in
+> her wallet that when added together give a total of €2.50, but there are
+> several possible combinations that _exceed_ the total.  To solve this
+> problem, Alice selects _one_ of these combinations: **three** _one-euro_
+> coins. She uses the coins to make the payment, and then receives **one**
+> 50-cent coin as change.
+
+### Coin Selection in Cardano
 
 Similarly to how a physical wallet holds value in the form of unspent coins and
 banknotes, a Cardano wallet holds value in the form of a set of _unspent
