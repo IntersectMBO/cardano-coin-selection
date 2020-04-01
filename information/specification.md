@@ -122,14 +122,14 @@ values. Collectively, the set of unspent transaction outputs is known as the
 [UTxO set](#utxo-set).
 
 When using a Cardano wallet to make a payment, the wallet software must select
-a combination of unspent outputs from the wallet's UTxO set, so that the total
-value of selected outputs is enough to cover the target amount. Just as with
-physical coins and notes, unspent outputs from the UTxO set _cannot_ be
-subdivided, and must either be spent completely in a given transaction, or not
-be spent at all. Similarly to a transaction with physical money, the wallet
-software must select a combination of unspent outputs whose total value is
-_greater_ than the target amount, and then arrange that _change_ is paid back
-to the wallet.
+a combination of unspent outputs from the wallet's [UTxO set](#utxo-set), so
+that the total value of selected outputs is enough to cover the target amount.
+Just as with physical coins and notes, unspent outputs from the UTxO set
+_cannot_ be subdivided, and must either be spent completely in a given
+transaction, or not be spent at all. Similarly to a transaction with physical
+money, the wallet software must select a combination of unspent outputs whose
+total value is _greater_ than the target amount, and then arrange that _change_
+is paid back to the wallet.
 
 Coin selection refers to the process of selecting a combination of unspent
 outputs from a wallet's [UTxO set](#utxo-set) in order to make one or more
