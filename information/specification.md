@@ -88,14 +88,15 @@ to pay money to one or more recipients.
 
 ### Coin Selection in the Physical World
 
-In the world of physical money, wallets hold value in the form of _coins and
-banknotes_.  When making a payment, we typically select a number of coins and
-banknotes from a wallet that, when added together, have enough value to cover
-the amount required.  Ideally, we'd always be able to select _just enough_ to
-cover the exact amount.  However, given that coins and banknotes have fixed
-values (and cannot be subdivided), it's often _impossible_ to select the exact
-amount required. In such cases, we typically give the recipient _more_ than the
-required amount, and then receive the excess value back as _change_.
+In the world of _physical_ money, wallets hold value in the form of _coins and
+banknotes_.  When making a payment, we typically select a combination of coins
+and banknotes from a wallet that, when added together, have enough value to
+cover the amount required.  Ideally, we'd always be able to select _just
+enough_ to cover the exact amount.  However, given that coins and banknotes
+have fixed values (and cannot be subdivided), it's often _impossible_ to select
+the exact amount required. In such cases, we typically give the recipient
+_more_ than the required amount, and then receive the excess value back as
+_change_.
 
 > #### Example
 >
