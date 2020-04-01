@@ -26,7 +26,7 @@ This draft has several **limitations**, to be addressed in future versions:
     * [Goals](#goals)
 * [Definitions](#definitions)
   * [Address](#address)
-  * [Coin Amount](#coin-amount)
+  * [Coin Value](#coin-value)
   * [Transaction Input](#transaction-input)
   * [Transaction Output](#transaction-output)
   * [UTxO Set](#utxo-set)
@@ -196,9 +196,9 @@ In general, coin selection algorithms are agnostic to the choice of address
 format. Therefore, the details of individual address formats are not described
 within this document.
 
-### Coin Amount
+### Coin Value
 
-A _coin amount_ is a positive integer value that represents a number of
+A _coin value_ is a positive integer value that represents a number of
 [Lovelace](https://cardanodocs.com/cardano/monetary-policy/).
 
 One [Ada](https://cardanodocs.com/cardano/monetary-policy/) is _exactly_ equal
@@ -232,7 +232,7 @@ transaction identifiers. However, transaction identifiers must be _unique_.
 A _transaction output_ is a pair of values (**_t_**, **_a_**), where:
 
   * **_t_** is a [target address](#address);
-  * **_a_** is a [coin amount](#coin-amount).
+  * **_a_** is a [coin value](#coin-value).
 
 # Interface
 
@@ -294,7 +294,7 @@ A coin selection function produces the following result values:
         Represents the set of payments to be made to recipient addresses.
 
       * A set of **_change values_**, where each change value is simply a
-        [coin amount](#coin-amount).
+        [coin value](#coin-value).
 
         Represents the change to be returned to the wallet.
 
