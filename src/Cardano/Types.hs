@@ -123,7 +123,7 @@ instance Buildable TxOut where
       where
         addrF = build $ address txout
 
-instance Buildable (TxIn, TxOut) where
+instance Buildable u => Buildable (u, TxOut) where
     build (txin, txout) = build txin <> " ==> " <> build txout
 
 -- | A linear equation of a free variable `x`. Represents the @\x -> a + b*x@
@@ -187,19 +187,19 @@ isValidCoin c = c >= minBound && c <= maxBound
                                     UTxO
 -------------------------------------------------------------------------------}
 
-newtype UTxO = UTxO
-    { getUTxO :: Map TxIn TxOut }
+newtype UTxO u = UTxO
+    { getUTxO :: Map u TxOut }
     deriving stock (Eq, Generic, Ord)
     deriving newtype (Semigroup, Monoid)
-    deriving Show via (Quiet UTxO)
+    deriving Show via (Quiet (UTxO u))
 
-instance NFData UTxO
+instance NFData u => NFData (UTxO u)
 
-instance Dom UTxO where
-    type DomElem UTxO = TxIn
+instance Dom (UTxO u) where
+    type DomElem (UTxO u) = u
     dom (UTxO utxo) = Map.keysSet utxo
 
-instance Buildable UTxO where
+instance Buildable u => Buildable (UTxO u) where
     build (UTxO utxo) =
         blockListF' "-" utxoF (Map.toList utxo)
       where
@@ -209,8 +209,8 @@ instance Buildable UTxO where
 -- Otherwise, returns the selected entry and, the UTxO minus the selected one.
 pickRandom
     :: MonadRandom m
-    => UTxO
-    -> m (Maybe (TxIn, TxOut), UTxO)
+    => UTxO u
+    -> m (Maybe (u, TxOut), UTxO u)
 pickRandom (UTxO utxo)
     | Map.null utxo =
         return (Nothing, UTxO utxo)
@@ -219,7 +219,7 @@ pickRandom (UTxO utxo)
         return (Just $ Map.elemAt ix utxo, UTxO $ Map.deleteAt ix utxo)
 
 -- | Compute the balance of a UTxO.
-balance :: UTxO -> Natural
+balance :: UTxO u -> Natural
 balance =
     Map.foldl' fn 0 . getUTxO
   where
@@ -227,27 +227,27 @@ balance =
     fn tot out = tot + fromIntegral (getCoin (coin out))
 
 -- | Compute the balance of a unwrapped UTxO.
-balance' :: [(TxIn, TxOut)] -> Word64
+balance' :: Ord u => [(u, TxOut)] -> Word64
 balance' =
     fromIntegral . balance . UTxO . Map.fromList
 
 -- | ins⋪ u
-excluding :: UTxO -> Set TxIn ->  UTxO
+excluding :: Ord u => UTxO u -> Set u -> UTxO u
 excluding (UTxO utxo) =
     UTxO . Map.withoutKeys utxo
 
 -- | a ⊆ b
-isSubsetOf :: UTxO -> UTxO -> Bool
+isSubsetOf :: Ord u => UTxO u -> UTxO u -> Bool
 isSubsetOf (UTxO a) (UTxO b) =
     a `Map.isSubmapOf` b
 
 -- | ins⊲ u
-restrictedBy :: UTxO -> Set TxIn -> UTxO
+restrictedBy :: Ord u => UTxO u -> Set u -> UTxO u
 restrictedBy (UTxO utxo) =
     UTxO . Map.restrictKeys utxo
 
 -- | u ⊳ outs
-restrictedTo :: UTxO -> Set TxOut -> UTxO
+restrictedTo :: UTxO u -> Set TxOut -> UTxO u
 restrictedTo (UTxO utxo) outs =
     UTxO $ Map.filter (`Set.member` outs) utxo
 

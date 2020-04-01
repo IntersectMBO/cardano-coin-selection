@@ -1,5 +1,7 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies #-}
 
 -- |
 -- Copyright: © 2018-2020 IOHK
@@ -47,7 +49,7 @@ import Cardano.CoinSelection
 import Cardano.Fee
     ( DustThreshold (..), Fee (..), FeeOptions (..) )
 import Cardano.Types
-    ( Coin (..), TxIn (..), TxOut (..), UTxO (..) )
+    ( Coin (..), TxOut (..), UTxO (..) )
 import Control.Monad.Trans.State
     ( State, evalState, get, put )
 import Data.List.NonEmpty
@@ -70,17 +72,18 @@ import qualified Data.Map.Strict as Map
 -- The fee options are used to balance the coin selections and fix a threshold
 -- for dust that is removed from the selections.
 depleteUTxO
-    :: FeeOptions
+    :: forall i u . i ~ u
+    => FeeOptions i
         -- ^ Fee computation and threshold definition
     -> Word8
         -- ^ Maximum number of inputs we can select per transaction
-    -> UTxO
+    -> UTxO u
         -- ^ UTxO to deplete
-    -> [CoinSelection]
+    -> [CoinSelection i]
 depleteUTxO feeOpts batchSize utxo =
     evalState migrate (Map.toList (getUTxO utxo))
   where
-    migrate :: State [(TxIn, TxOut)] [CoinSelection]
+    migrate :: State [(u, TxOut)] [CoinSelection i]
     migrate = do
         batch <- getNextBatch
         if null batch then
@@ -94,7 +97,7 @@ depleteUTxO feeOpts batchSize utxo =
     -- Construct a provisional 'CoinSelection' from the given selected inputs.
     -- Note that the selection may look a bit weird at first sight as it has
     -- no outputs (we are paying everything to ourselves!).
-    mkCoinSelection :: [(TxIn, TxOut)] -> CoinSelection
+    mkCoinSelection :: [(u, TxOut)] -> CoinSelection i
     mkCoinSelection inps = CoinSelection
         { inputs = inps
         , outputs = []
@@ -111,7 +114,7 @@ depleteUTxO feeOpts batchSize utxo =
 
     -- | Attempt to balance the coin selection by reducing or increasing the
     -- change values based on the computed fees.
-    adjustForFee :: CoinSelection -> Maybe CoinSelection
+    adjustForFee :: CoinSelection i -> Maybe (CoinSelection i)
     adjustForFee !coinSel = case change coinSel of
         -- If there's no change, nothing to adjust
         [] -> Nothing
@@ -165,7 +168,7 @@ depleteUTxO feeOpts batchSize utxo =
 
 -- | Try to find a fix "ideal" number of input transactions that would generate
 -- rather balanced transactions.
-idealBatchSize :: CoinSelectionOptions e -> Word8
+idealBatchSize :: CoinSelectionOptions i e -> Word8
 idealBatchSize coinselOpts = fixPoint 1
   where
     fixPoint :: Word8 -> Word8

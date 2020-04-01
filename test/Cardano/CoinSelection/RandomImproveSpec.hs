@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeApplications #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Cardano.CoinSelection.RandomImproveSpec
@@ -27,6 +28,8 @@ import Cardano.CoinSelectionSpec
     , coinSelectionUnitTest
     , noValidation
     )
+import Cardano.Types
+    ( TxIn )
 import Control.Monad.Trans.Except
     ( runExceptT )
 import Crypto.Random
@@ -234,18 +237,19 @@ spec = do
         describe "Coin selection properties : random algorithm" $ do
             it "forall (UTxO, NonEmpty TxOut), running algorithm gives not \
                 \less UTxO fragmentation than LargestFirst algorithm"
-                (property . propFragmentation)
+                (property . propFragmentation @TxIn)
             it "forall (UTxO, NonEmpty TxOut), running algorithm gives the \
                 \same errors as LargestFirst algorithm"
-                (property . propErrors)
+                (property . propErrors @TxIn)
 
 {-------------------------------------------------------------------------------
                               Properties
 -------------------------------------------------------------------------------}
 
 propFragmentation
-    :: SystemDRG
-    -> CoinSelProp
+    :: Ord u
+    => SystemDRG
+    -> CoinSelProp u
     -> Property
 propFragmentation drg (CoinSelProp utxo txOuts) = do
     isRight selection1 && isRight selection2 ==>
@@ -262,8 +266,9 @@ propFragmentation drg (CoinSelProp utxo txOuts) = do
     opt = CoinSelectionOptions (const 100) noValidation
 
 propErrors
-    :: SystemDRG
-    -> CoinSelProp
+    :: Ord u
+    => SystemDRG
+    -> CoinSelProp u
     -> Property
 propErrors drg (CoinSelProp utxo txOuts) = do
     isLeft selection1 && isLeft selection2 ==>

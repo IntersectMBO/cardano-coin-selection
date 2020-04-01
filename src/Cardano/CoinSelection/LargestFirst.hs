@@ -1,3 +1,6 @@
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies #-}
+
 -- |
 -- Copyright: © 2018-2020 IOHK
 -- License: Apache-2.0
@@ -18,7 +21,7 @@ import Cardano.CoinSelection
     , ErrCoinSelection (..)
     )
 import Cardano.Types
-    ( Coin (..), TxIn, TxOut (..), UTxO (..), balance )
+    ( Coin (..), TxOut (..), UTxO (..), balance )
 import Control.Arrow
     ( left )
 import Control.Monad
@@ -169,15 +172,15 @@ import qualified Data.Map.Strict as Map
 --
 --      See: __'ErrMaximumInputCountExceeded'__.
 --
-largestFirst :: Monad m => CoinSelectionAlgorithm m e
+largestFirst :: (i ~ u, Ord u, Monad m) => CoinSelectionAlgorithm i u m e
 largestFirst = CoinSelectionAlgorithm payForOutputs
 
 payForOutputs
-    :: Monad m
-    => CoinSelectionOptions e
+    :: (i ~ u, Ord u, Monad m)
+    => CoinSelectionOptions i e
     -> NonEmpty TxOut
-    -> UTxO
-    -> ExceptT (ErrCoinSelection e) m (CoinSelection, UTxO)
+    -> UTxO u
+    -> ExceptT (ErrCoinSelection e) m (CoinSelection i, UTxO u)
 payForOutputs options outputsRequested utxo =
     case foldM payForOutput (utxoDescending, mempty) outputsDescending of
         Just (utxoRemaining, selection) ->
@@ -226,18 +229,19 @@ payForOutputs options outputsRequested utxo =
 -- required output amount, this function will return 'Nothing'.
 --
 payForOutput
-    :: ([(TxIn, TxOut)], CoinSelection)
+    :: forall i u . i ~ u
+    => ([(u, TxOut)], CoinSelection i)
     -> TxOut
-    -> Maybe ([(TxIn, TxOut)], CoinSelection)
+    -> Maybe ([(u, TxOut)], CoinSelection i)
 payForOutput (utxoAvailable, currentSelection) txout =
     let target = fromIntegral $ getCoin $ coin txout in
     coverTarget target utxoAvailable mempty
   where
     coverTarget
         :: Integer
-        -> [(TxIn, TxOut)]
-        -> [(TxIn, TxOut)]
-        -> Maybe ([(TxIn, TxOut)], CoinSelection)
+        -> [(u, TxOut)]
+        -> [(u, TxOut)]
+        -> Maybe ([(u, TxOut)], CoinSelection i)
     coverTarget target utxoRemaining utxoSelected
         | target <= 0 = Just
             -- We've selected enough to cover the target, so stop here.

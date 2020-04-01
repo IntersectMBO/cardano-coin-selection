@@ -1,5 +1,7 @@
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE TypeFamilies #-}
 
 -- |
 -- Copyright: © 2018-2020 IOHK
@@ -24,7 +26,6 @@ import Cardano.CoinSelection.LargestFirst
     ( largestFirst )
 import Cardano.Types
     ( Coin (..)
-    , TxIn
     , TxOut (..)
     , UTxO (..)
     , balance'
@@ -211,15 +212,15 @@ import qualified Data.List.NonEmpty as NE
 -- entries that it is less likely for a randomly-chosen UTxO entry to push the
 -- total above the upper bound.
 --
-randomImprove :: MonadRandom m => CoinSelectionAlgorithm m e
+randomImprove :: (i ~ u, Ord u, MonadRandom m) => CoinSelectionAlgorithm i u m e
 randomImprove = CoinSelectionAlgorithm payForOutputs
 
 payForOutputs
-    :: MonadRandom m
-    => CoinSelectionOptions e
+    :: (i ~ u, Ord u, MonadRandom m)
+    => CoinSelectionOptions i e
     -> NonEmpty TxOut
-    -> UTxO
-    -> ExceptT (ErrCoinSelection e) m (CoinSelection, UTxO)
+    -> UTxO u
+    -> ExceptT (ErrCoinSelection e) m (CoinSelection i, UTxO u)
 payForOutputs options outputsRequested utxo = do
     mRandomSelections <- lift $ runMaybeT $ foldM makeRandomSelection
         (inputCountMax, utxo, []) outputsDescending
@@ -253,10 +254,10 @@ payForOutputs options outputsRequested utxo = do
 -- the selection in any way.
 --
 makeRandomSelection
-    :: MonadRandom m
-    => (Word64, UTxO, [([CoinSelectionInput], TxOut)])
+    :: forall i u m . (i ~ u, Ord u, MonadRandom m)
+    => (Word64, UTxO u, [([CoinSelectionInput i], TxOut)])
     -> TxOut
-    -> MaybeT m (Word64, UTxO, [([CoinSelectionInput], TxOut)])
+    -> MaybeT m (Word64, UTxO u, [([CoinSelectionInput i], TxOut)])
 makeRandomSelection
     (inputCountRemaining, utxoRemaining, existingSelections) txout = do
         (utxoSelected, utxoRemaining') <- coverRandomly ([], utxoRemaining)
@@ -267,9 +268,8 @@ makeRandomSelection
             )
   where
     coverRandomly
-        :: MonadRandom m
-        => ([CoinSelectionInput], UTxO)
-        -> MaybeT m ([CoinSelectionInput], UTxO)
+        :: ([CoinSelectionInput i], UTxO u)
+        -> MaybeT m ([CoinSelectionInput i], UTxO u)
     coverRandomly (selected, remaining)
         | L.length selected > fromIntegral inputCountRemaining =
             MaybeT $ return Nothing
@@ -281,10 +281,10 @@ makeRandomSelection
 
 -- | Perform an improvement to random selection on a given output.
 improveSelection
-    :: MonadRandom m
-    => (Word64, CoinSelection, UTxO)
-    -> ([CoinSelectionInput], TxOut)
-    -> m (Word64, CoinSelection, UTxO)
+    :: forall i u m . (i ~ u, Ord u, MonadRandom m)
+    => (Word64, CoinSelection i, UTxO u)
+    -> ([CoinSelectionInput i], TxOut)
+    -> m (Word64, CoinSelection i, UTxO u)
 improveSelection (maxN0, selection, utxo0) (inps0, txout) = do
     (maxN, inps, utxo) <- improve (maxN0, inps0, utxo0)
     return
@@ -300,9 +300,8 @@ improveSelection (maxN0, selection, utxo0) (inps0, txout) = do
     target = mkTargetRange txout
 
     improve
-        :: MonadRandom m
-        => (Word64, [CoinSelectionInput], UTxO)
-        -> m (Word64, [CoinSelectionInput], UTxO)
+        :: (Word64, [CoinSelectionInput i], UTxO u)
+        -> m (Word64, [CoinSelectionInput i], UTxO u)
     improve (maxN, inps, utxo)
         | maxN >= 1 && balance' inps < targetAim target = do
             runMaybeT (pickRandomT utxo) >>= \case
@@ -317,7 +316,7 @@ improveSelection (maxN0, selection, utxo0) (inps0, txout) = do
         | otherwise =
             return (maxN, inps, utxo)
 
-    isImprovement :: CoinSelectionInput -> [CoinSelectionInput] -> Bool
+    isImprovement :: CoinSelectionInput i -> [CoinSelectionInput i] -> Bool
     isImprovement io selected =
         let
             condA = -- (a) It doesn’t exceed a specified upper limit.
@@ -339,7 +338,7 @@ improveSelection (maxN0, selection, utxo0) (inps0, txout) = do
 
 -- | Represents an entry from a 'UTxO' set that has been selected for inclusion
 --   in the set of 'inputs' of a 'CoinSelection'.
-type CoinSelectionInput = (TxIn, TxOut)
+type CoinSelectionInput i = (i, TxOut)
 
 -- | Represents a target range of /total input values/ for a given output.
 --
@@ -371,7 +370,10 @@ mkTargetRange (TxOut _ (Coin c)) = TargetRange
     }
 
 -- | Re-wrap 'pickRandom' in a 'MaybeT' monad
-pickRandomT :: MonadRandom m => UTxO -> MaybeT m (CoinSelectionInput, UTxO)
+pickRandomT
+    :: (i ~ u, MonadRandom m)
+    => UTxO u
+    -> MaybeT m (CoinSelectionInput i, UTxO u)
 pickRandomT =
     MaybeT . fmap (\(m,u) -> (,u) <$> m) . pickRandom
 
@@ -379,7 +381,7 @@ pickRandomT =
 -- of inputs.
 --
 -- > pre-condition: the output must be smaller (or eq) than the sum of inputs
-mkChange :: TxOut -> [CoinSelectionInput] -> [Coin]
+mkChange :: Ord i => TxOut -> [CoinSelectionInput i] -> [Coin]
 mkChange (TxOut _ (Coin out)) inps =
     let
         selected = invariant

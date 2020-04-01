@@ -28,7 +28,7 @@ module Cardano.CoinSelection
 import Prelude
 
 import Cardano.Types
-    ( Coin (..), TxIn, TxOut (..), UTxO (..) )
+    ( Coin (..), TxOut (..), UTxO (..) )
 import Control.Monad.Trans.Except
     ( ExceptT (..) )
 import Data.List
@@ -53,20 +53,20 @@ import GHC.Generics
 -- for all of the outputs, and a /remaining UTxO set/ from which all spent
 -- values have been removed.
 --
-newtype CoinSelectionAlgorithm m e = CoinSelectionAlgorithm
+newtype CoinSelectionAlgorithm i u m e = CoinSelectionAlgorithm
     { selectCoins
-        :: CoinSelectionOptions e
+        :: CoinSelectionOptions i e
         -> NonEmpty TxOut
-        -> UTxO
-        -> ExceptT (ErrCoinSelection e) m (CoinSelection, UTxO)
+        -> UTxO u
+        -> ExceptT (ErrCoinSelection e) m (CoinSelection i, UTxO u)
     }
 
 -- | Represents the result of running a /coin selection algorithm/.
 --
 -- See 'CoinSelectionAlgorithm'.
 --
-data CoinSelection = CoinSelection
-    { inputs :: [(TxIn, TxOut)]
+data CoinSelection i = CoinSelection
+    { inputs :: [(i, TxOut)]
       -- ^ A /subset/ of the original 'UTxO' that was passed to the coin
       -- selection algorithm, containing only the entries that were /selected/
       -- by the coin selection algorithm.
@@ -86,17 +86,17 @@ data CoinSelection = CoinSelection
 -- As an alternative to the current implementation, we could 'nub' the list or
 -- use a 'Set'.
 --
-instance Semigroup CoinSelection where
+instance Semigroup (CoinSelection i) where
     a <> b = CoinSelection
         { inputs = inputs a <> inputs b
         , outputs = outputs a <> outputs b
         , change = change a <> change b
         }
 
-instance Monoid CoinSelection where
+instance Monoid (CoinSelection i) where
     mempty = CoinSelection [] [] []
 
-instance Buildable CoinSelection where
+instance Buildable i => Buildable (CoinSelection i) where
     build s = mempty
         <> nameF "inputs"
             (blockListF' "-" build $ inputs s)
@@ -107,31 +107,31 @@ instance Buildable CoinSelection where
 
 -- | Represents a set of options to be passed to a coin selection algorithm.
 --
-data CoinSelectionOptions e = CoinSelectionOptions
+data CoinSelectionOptions i e = CoinSelectionOptions
     { maximumInputCount
         :: Word8 -> Word8
             -- ^ Calculate the maximum number of inputs allowed for a given
             -- number of outputs.
     , validate
-        :: CoinSelection -> Either e ()
+        :: CoinSelection i -> Either e ()
             -- ^ Validate the given coin selection, returning a backend-specific
             -- error.
     } deriving (Generic)
 
 -- | Calculate the total sum of all 'inputs' for the given 'CoinSelection'.
-inputBalance :: CoinSelection -> Word64
+inputBalance :: CoinSelection i -> Word64
 inputBalance =  foldl' (\total -> addTxOut total . snd) 0 . inputs
 
 -- | Calculate the total sum of all 'outputs' for the given 'CoinSelection'.
-outputBalance :: CoinSelection -> Word64
+outputBalance :: CoinSelection i -> Word64
 outputBalance = foldl' addTxOut 0 . outputs
 
 -- | Calculate the total sum of all 'change' for the given 'CoinSelection'.
-changeBalance :: CoinSelection -> Word64
+changeBalance :: CoinSelection i -> Word64
 changeBalance = foldl' addCoin 0 . change
 
 -- | Calculates the fee associated with a given 'CoinSelection'.
-feeBalance :: CoinSelection -> Word64
+feeBalance :: CoinSelection i -> Word64
 feeBalance sel = inputBalance sel - outputBalance sel - changeBalance sel
 
 -- | Represents the set of possible failures that can occur when attempting
