@@ -72,18 +72,18 @@ import qualified Data.Map.Strict as Map
 -- The fee options are used to balance the coin selections and fix a threshold
 -- for dust that is removed from the selections.
 depleteUTxO
-    :: forall i u . i ~ u
-    => FeeOptions i
+    :: forall i o u . i ~ u
+    => FeeOptions i o
         -- ^ Fee computation and threshold definition
     -> Word8
         -- ^ Maximum number of inputs we can select per transaction
     -> UTxO u
         -- ^ UTxO to deplete
-    -> [CoinSelection i]
+    -> [CoinSelection i o]
 depleteUTxO feeOpts batchSize utxo =
     evalState migrate (Map.toList (getUTxO utxo))
   where
-    migrate :: State [(u, Coin)] [CoinSelection i]
+    migrate :: State [(u, Coin)] [CoinSelection i o]
     migrate = do
         batch <- getNextBatch
         if null batch then
@@ -97,7 +97,7 @@ depleteUTxO feeOpts batchSize utxo =
     -- Construct a provisional 'CoinSelection' from the given selected inputs.
     -- Note that the selection may look a bit weird at first sight as it has
     -- no outputs (we are paying everything to ourselves!).
-    mkCoinSelection :: [(u, Coin)] -> CoinSelection i
+    mkCoinSelection :: [(u, Coin)] -> CoinSelection i o
     mkCoinSelection inps = CoinSelection
         { inputs = inps
         , outputs = []
@@ -114,7 +114,7 @@ depleteUTxO feeOpts batchSize utxo =
 
     -- | Attempt to balance the coin selection by reducing or increasing the
     -- change values based on the computed fees.
-    adjustForFee :: CoinSelection i -> Maybe (CoinSelection i)
+    adjustForFee :: CoinSelection i o -> Maybe (CoinSelection i o)
     adjustForFee !coinSel = case change coinSel of
         -- If there's no change, nothing to adjust
         [] -> Nothing
@@ -168,7 +168,7 @@ depleteUTxO feeOpts batchSize utxo =
 
 -- | Try to find a fix "ideal" number of input transactions that would generate
 -- rather balanced transactions.
-idealBatchSize :: CoinSelectionOptions i e -> Word8
+idealBatchSize :: CoinSelectionOptions i o e -> Word8
 idealBatchSize coinselOpts = fixPoint 1
   where
     fixPoint :: Word8 -> Word8

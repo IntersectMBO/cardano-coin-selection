@@ -26,7 +26,6 @@ import Cardano.CoinSelection.LargestFirst
     ( largestFirst )
 import Cardano.Types
     ( Coin (..)
-    , TxOut (..)
     , UTxO (..)
     , balance'
     , distance
@@ -212,15 +211,17 @@ import qualified Data.List.NonEmpty as NE
 -- entries that it is less likely for a randomly-chosen UTxO entry to push the
 -- total above the upper bound.
 --
-randomImprove :: (i ~ u, Ord u, MonadRandom m) => CoinSelectionAlgorithm i u m e
+randomImprove
+    :: (i ~ u, Ord u, MonadRandom m)
+    => CoinSelectionAlgorithm i o u m e
 randomImprove = CoinSelectionAlgorithm payForOutputs
 
 payForOutputs
     :: (i ~ u, Ord u, MonadRandom m)
-    => CoinSelectionOptions i e
-    -> NonEmpty TxOut
+    => CoinSelectionOptions i o e
+    -> NonEmpty (o, Coin)
     -> UTxO u
-    -> ExceptT (ErrCoinSelection e) m (CoinSelection i, UTxO u)
+    -> ExceptT (ErrCoinSelection e) m (CoinSelection i o, UTxO u)
 payForOutputs options outputsRequested utxo = do
     mRandomSelections <- lift $ runMaybeT $ foldM makeRandomSelection
         (inputCountMax, utxo, []) outputsDescending
@@ -242,7 +243,7 @@ payForOutputs options outputsRequested utxo = do
     outputCount =
         fromIntegral $ NE.length outputsRequested
     outputsDescending =
-        L.sortOn (Down . coin) $ NE.toList outputsRequested
+        L.sortOn (Down . snd) $ NE.toList outputsRequested
     validateSelection =
         except . left ErrInvalidSelection . validate options
 
@@ -254,10 +255,10 @@ payForOutputs options outputsRequested utxo = do
 -- the selection in any way.
 --
 makeRandomSelection
-    :: forall i u m . (i ~ u, Ord u, MonadRandom m)
-    => (Word64, UTxO u, [([CoinSelectionInput i], TxOut)])
-    -> TxOut
-    -> MaybeT m (Word64, UTxO u, [([CoinSelectionInput i], TxOut)])
+    :: forall i o u m . (i ~ u, Ord u, MonadRandom m)
+    => (Word64, UTxO u, [([CoinSelectionInput i], (o, Coin))])
+    -> (o, Coin)
+    -> MaybeT m (Word64, UTxO u, [([CoinSelectionInput i], (o, Coin))])
 makeRandomSelection
     (inputCountRemaining, utxoRemaining, existingSelections) txout = do
         (utxoSelected, utxoRemaining') <- coverRandomly ([], utxoRemaining)
@@ -281,10 +282,10 @@ makeRandomSelection
 
 -- | Perform an improvement to random selection on a given output.
 improveSelection
-    :: forall i u m . (i ~ u, Ord u, MonadRandom m)
-    => (Word64, CoinSelection i, UTxO u)
-    -> ([CoinSelectionInput i], TxOut)
-    -> m (Word64, CoinSelection i, UTxO u)
+    :: forall i o u m . (i ~ u, Ord u, MonadRandom m)
+    => (Word64, CoinSelection i o, UTxO u)
+    -> ([CoinSelectionInput i], (o, Coin))
+    -> m (Word64, CoinSelection i o, UTxO u)
 improveSelection (maxN0, selection, utxo0) (inps0, txout) = do
     (maxN, inps, utxo) <- improve (maxN0, inps0, utxo0)
     return
@@ -362,8 +363,8 @@ data TargetRange = TargetRange
 --
 -- See 'TargetRange'.
 --
-mkTargetRange :: TxOut -> TargetRange
-mkTargetRange (TxOut _ (Coin c)) = TargetRange
+mkTargetRange :: (o, Coin) -> TargetRange
+mkTargetRange (_, Coin c) = TargetRange
     { targetMin = c
     , targetAim = 2 * c
     , targetMax = 3 * c
@@ -381,8 +382,8 @@ pickRandomT =
 -- of inputs.
 --
 -- > pre-condition: the output must be smaller (or eq) than the sum of inputs
-mkChange :: Ord i => TxOut -> [CoinSelectionInput i] -> [Coin]
-mkChange (TxOut _ (Coin out)) inps =
+mkChange :: Ord i => (o, Coin) -> [CoinSelectionInput i] -> [Coin]
+mkChange (_, Coin out) inps =
     let
         selected = invariant
             "mkChange: output is smaller than selected inputs!"

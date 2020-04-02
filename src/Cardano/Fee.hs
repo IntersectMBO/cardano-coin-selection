@@ -137,9 +137,9 @@ computeFee policy (Quantity sz) =
                                 Fee Adjustment
 -------------------------------------------------------------------------------}
 
-data FeeOptions i = FeeOptions
+data FeeOptions i o = FeeOptions
     { estimateFee
-      :: CoinSelection i -> Fee
+      :: CoinSelection i o -> Fee
       -- ^ Estimate fees based on number of inputs and values of the outputs
       -- Some pointers / order of magnitude from the current configuration:
       --     a: 155381 # absolute minimal fees per transaction
@@ -185,11 +185,11 @@ newtype ErrAdjustForFee
 -- outputs the algorithm happened to choose).
 --
 adjustForFee
-    :: (i ~ u, Buildable u, Ord u, MonadRandom m)
-    => FeeOptions i
+    :: (i ~ u, Buildable o, Buildable u, Ord u, MonadRandom m)
+    => FeeOptions i o
     -> UTxO u
-    -> CoinSelection i
-    -> ExceptT ErrAdjustForFee m (CoinSelection i)
+    -> CoinSelection i o
+    -> ExceptT ErrAdjustForFee m (CoinSelection i o)
 adjustForFee unsafeOpt utxo coinSel = do
     let opt = invariant
             "adjustForFee: fee must be non-null" unsafeOpt (not . nullFee)
@@ -200,15 +200,15 @@ adjustForFee unsafeOpt utxo coinSel = do
 -- | The sender pays fee in this scenario, so fees are removed from the change
 -- outputs, and new inputs are selected if necessary.
 senderPaysFee
-    :: forall i u m . (i ~ u, Buildable u, Ord u, MonadRandom m)
-    => FeeOptions i
+    :: forall i o u m . (i ~ u, Buildable o, Buildable u, Ord u, MonadRandom m)
+    => FeeOptions i o
     -> UTxO u
-    -> CoinSelection i
-    -> ExceptT ErrAdjustForFee m (CoinSelection i)
+    -> CoinSelection i o
+    -> ExceptT ErrAdjustForFee m (CoinSelection i o)
 senderPaysFee opt utxo sel = evalStateT (go sel) utxo where
     go
-        :: CoinSelection i
-        -> StateT (UTxO u) (ExceptT ErrAdjustForFee m) (CoinSelection i)
+        :: CoinSelection i o
+        -> StateT (UTxO u) (ExceptT ErrAdjustForFee m) (CoinSelection i o)
     go coinSel@(CoinSelection inps outs chgs) = do
         -- 1/
         -- We compute fees using all inputs, outputs and changes since all of
@@ -413,8 +413,9 @@ coalesceDust (DustThreshold threshold) coins =
 remainingFee
     :: HasCallStack
     => Buildable i
-    => FeeOptions i
-    -> CoinSelection i
+    => Buildable o
+    => FeeOptions i o
+    -> CoinSelection i o
     -> Fee
 remainingFee opts s = do
     if fee >= diff

@@ -106,23 +106,23 @@ prop_utxoToListOrderDeterministic u = monadicIO $ QC.run $ do
 -------------------------------------------------------------------------------}
 
 -- | Data for running
-data CoinSelProp u = CoinSelProp
+data CoinSelProp o u = CoinSelProp
     { csUtxO :: UTxO u
         -- ^ Available UTxO for the selection
-    , csOuts :: NonEmpty TxOut
+    , csOuts :: NonEmpty (o, Coin)
         -- ^ Requested outputs for the payment
     } deriving Show
 
-instance Buildable u => Buildable (CoinSelProp u) where
+instance (Buildable o, Buildable u) => Buildable (CoinSelProp o u) where
     build (CoinSelProp utxo outs) = mempty
         <> build utxo
         <> nameF "outs" (blockListF outs)
 
 -- | A fixture for testing the coin selection
-data CoinSelectionFixture i = CoinSelectionFixture
+data CoinSelectionFixture i o = CoinSelectionFixture
     { maxNumOfInputs :: Word8
         -- ^ Maximum number of inputs that can be selected
-    , validateSelection :: CoinSelection i -> Either ErrValidation ()
+    , validateSelection :: CoinSelection i o -> Either ErrValidation ()
         -- ^ A extra validation function on the resulting selection
     , utxoInputs :: [Word64]
         -- ^ Value (in Lovelace) & number of available coins in the UTxO
@@ -134,11 +134,11 @@ data CoinSelectionFixture i = CoinSelectionFixture
 data ErrValidation = ErrValidation deriving (Eq, Show)
 
 -- | Smart constructor for the validation function that always succeeds.
-noValidation :: CoinSelection i -> Either ErrValidation ()
+noValidation :: CoinSelection i o -> Either ErrValidation ()
 noValidation = const (Right ())
 
 -- | Smart constructor for the validation function that always fails.
-alwaysFail :: CoinSelection i -> Either ErrValidation ()
+alwaysFail :: CoinSelection i o -> Either ErrValidation ()
 alwaysFail = const (Left ErrValidation)
 
 -- | Testing-friendly format for 'CoinSelection' results of unit tests.
@@ -151,10 +151,10 @@ data CoinSelectionResult = CoinSelectionResult
 -- | Generate a 'UTxO' and 'TxOut' matching the given 'Fixture', and perform
 -- the given coin selection on it.
 coinSelectionUnitTest
-    :: CoinSelectionAlgorithm TxIn TxIn IO ErrValidation
+    :: CoinSelectionAlgorithm TxIn Address TxIn IO ErrValidation
     -> String
     -> Either (ErrCoinSelection ErrValidation) CoinSelectionResult
-    -> CoinSelectionFixture TxIn
+    -> CoinSelectionFixture TxIn Address
     -> SpecWith ()
 coinSelectionUnitTest alg lbl expected (CoinSelectionFixture n fn utxoF outsF) =
     it title $ do
@@ -165,7 +165,7 @@ coinSelectionUnitTest alg lbl expected (CoinSelectionFixture n fn utxoF outsF) =
             return $ CoinSelectionResult
                 { rsInputs = map (getCoin . snd) inps
                 , rsChange = map getCoin chngs
-                , rsOutputs = map (getCoin . coin) outs
+                , rsOutputs = map (getCoin . snd) outs
                 }
         result `shouldBe` expected
   where
@@ -177,7 +177,7 @@ coinSelectionUnitTest alg lbl expected (CoinSelectionFixture n fn utxoF outsF) =
         <> ", Output=" <> show (NE.toList outsF)
         <> " --> " <> show (rsInputs <$> expected)
 
-    setup :: IO (UTxO TxIn, NonEmpty TxOut)
+    setup :: IO (UTxO TxIn, NonEmpty (Address, Coin))
     setup = do
         utxo <- generate (genUTxO utxoF)
         outs <- generate (genTxOut $ NE.toList outsF)
@@ -189,7 +189,7 @@ coinSelectionUnitTest alg lbl expected (CoinSelectionFixture n fn utxoF outsF) =
 
 deriving instance Arbitrary a => Arbitrary (ShowFmt a)
 
-instance Arbitrary (CoinSelectionOptions i e) where
+instance Arbitrary (CoinSelectionOptions i o e) where
     arbitrary = do
         -- NOTE Functions have to be decreasing functions
         fn <- elements
@@ -202,7 +202,7 @@ instance Arbitrary (CoinSelectionOptions i e) where
             ]
         pure $ CoinSelectionOptions fn (const (pure ()))
 
-instance Show (CoinSelectionOptions i e) where
+instance Show (CoinSelectionOptions i o e) where
     show _ = "CoinSelectionOptions"
 
 instance Arbitrary a => Arbitrary (NonEmpty a) where
@@ -211,7 +211,7 @@ instance Arbitrary a => Arbitrary (NonEmpty a) where
         n <- choose (1, 10)
         NE.fromList <$> vectorOf n arbitrary
 
-instance (Arbitrary u, Ord u) => Arbitrary (CoinSelProp u) where
+instance (Arbitrary o, Arbitrary u, Ord u) => Arbitrary (CoinSelProp o u) where
     shrink (CoinSelProp utxo outs) = uncurry CoinSelProp
         <$> zip (shrink utxo) (shrink outs)
     arbitrary = CoinSelProp
@@ -264,8 +264,8 @@ genUTxO coins = do
     inps <- vectorOf n arbitrary
     return $ UTxO $ Map.fromList $ zip inps (Coin <$> coins)
 
-genTxOut :: [Word64] -> Gen [TxOut]
+genTxOut :: [Word64] -> Gen [(Address, Coin)]
 genTxOut coins = do
     let n = length coins
     outs <- vectorOf n arbitrary
-    return $ zipWith TxOut outs (map Coin coins)
+    return $ zip outs (map Coin coins)

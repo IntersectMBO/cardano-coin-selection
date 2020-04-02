@@ -4,6 +4,7 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -36,7 +37,6 @@ import Cardano.Types
     , Hash (..)
     , ShowFmt (..)
     , TxIn (..)
-    , TxOut (..)
     , UTxO (..)
     )
 import Control.Arrow
@@ -352,14 +352,14 @@ spec = do
 
     describe "Fee Calculation: Generators" $ do
         it "Arbitrary CoinSelection" $ property $ \(ShowFmt cs) ->
-            property $ isValidSelection @TxIn cs
+            property $ isValidSelection @TxIn @Address cs
 
     before getSystemDRG $ describe "Fee Adjustment properties" $ do
         it "Fee adjustment is deterministic when there's no extra inputs"
-            (\_ -> property $ propDeterministic @TxIn)
+            (\_ -> property $ propDeterministic @TxIn @Address)
         it "Adjusting for fee (/= 0) reduces the change outputs or increase \
             \inputs"
-            (property . propReducedChanges @TxIn)
+            (property . propReducedChanges @TxIn @Address)
 
     describe "distributeFee" $ do
         it "fee portions are all within unity of ideal unrounded portions"
@@ -394,18 +394,18 @@ spec = do
 -------------------------------------------------------------------------------}
 
 -- Check whether a selection is valid
-isValidSelection :: CoinSelection i -> Bool
+isValidSelection :: CoinSelection i o -> Bool
 isValidSelection (CoinSelection i o c) =
     let
-        oAmt = sum $ map (fromIntegral . getCoin . coin) o
+        oAmt = sum $ map (fromIntegral . getCoin . snd) o
         cAmt = sum $ map (fromIntegral . getCoin) c
         iAmt = sum $ map (fromIntegral . getCoin . snd) i
     in
         (iAmt :: Integer) >= (oAmt + cAmt)
 
 -- | Data for running fee calculation properties
-data FeeProp i u = FeeProp
-    { selection :: CoinSelection i
+data FeeProp i o u = FeeProp
+    { selection :: CoinSelection i o
      -- ^ inputs from wich largestFirst can be calculated
     , availableUtxo :: UTxO u
      -- ^ additional UTxO from which fee calculation will pick needed coins
@@ -413,15 +413,24 @@ data FeeProp i u = FeeProp
      -- ^ constant fee and dust threshold
     } deriving Show
 
-instance (Buildable i, Buildable u) => Buildable (FeeProp i u) where
-    build (FeeProp cc utxo opt) = mempty
-        <> nameF "selection" (build cc)
-        <> build utxo
-        <> nameF "options" (tupleF opt)
+instance (Buildable i, Buildable o, Buildable u) =>
+    Buildable (FeeProp i o u) where
+        build (FeeProp cc utxo opt) = mempty
+            <> nameF "selection" (build cc)
+            <> build utxo
+            <> nameF "options" (tupleF opt)
 
 propDeterministic
-    :: (i ~ u, Buildable u, Ord u, Show u)
-    => ShowFmt (FeeProp i u)
+    :: forall i o u .
+        ( i ~ u
+        , Buildable o
+        , Buildable u
+        , Ord o
+        , Ord u
+        , Show o
+        , Show u
+        )
+    => ShowFmt (FeeProp i o u)
     -> Property
 propDeterministic (ShowFmt (FeeProp coinSel _ (fee, dust))) =
     monadicIO $ liftIO $ do
@@ -432,9 +441,9 @@ propDeterministic (ShowFmt (FeeProp coinSel _ (fee, dust))) =
         resultOne `shouldBe` resultTwo
 
 propReducedChanges
-    :: (i ~ u, Buildable u, Ord u)
+    :: forall i o u . (i ~ u, Buildable o, Buildable u, Ord u)
     => SystemDRG
-    -> ShowFmt (FeeProp i u)
+    -> ShowFmt (FeeProp i o u)
     -> Property
 propReducedChanges drg (ShowFmt (FeeProp coinSel utxo (fee, dust))) = do
     isRight coinSel' ==> let Right s = coinSel' in prop s
@@ -710,7 +719,7 @@ propRebalanceChangeOutputsPreservesSum
 feeOptions
     :: Word64
     -> Word64
-    -> FeeOptions i
+    -> FeeOptions i o
 feeOptions fee dust = FeeOptions
     { estimateFee =
         \_ -> Fee fee
@@ -724,18 +733,20 @@ feeUnitTest
     -> SpecWith ()
 feeUnitTest (FeeFixture inpsF outsF chngsF utxoF feeF dustF) expected =
     it title $ do
-        (utxo, sel) <- setup @TxIn
+        (utxo, sel) <- setup @TxIn @Address
         result <- runExceptT $ do
             (CoinSelection inps outs chngs) <-
                 adjustForFee (feeOptions feeF dustF) utxo sel
             return $ FeeOutput
                 { csInps = map (getCoin . snd) inps
-                , csOuts = map (getCoin . coin) outs
+                , csOuts = map (getCoin . snd) outs
                 , csChngs = map getCoin chngs
                 }
         result `shouldBe` expected
   where
-    setup :: (i ~ u, Arbitrary u, Ord u) => IO (UTxO u, CoinSelection i)
+    setup
+        :: forall i o u . (i ~ u, Arbitrary o, Arbitrary u, Ord u)
+        => IO (UTxO u, CoinSelection i o)
     setup = do
         utxo <- generate (genUTxO $ Coin <$> utxoF)
         inps <- (Map.toList . getUTxO) <$> generate (genUTxO $ Coin <$> inpsF)
@@ -793,16 +804,16 @@ genUTxO coins = do
     inps <- vectorOf n arbitrary
     return $ UTxO $ Map.fromList $ zip inps coins
 
-genTxOut :: [Coin] -> Gen [TxOut]
+genTxOut :: Arbitrary o => [Coin] -> Gen [(o, Coin)]
 genTxOut coins = do
     let n = length coins
     outs <- vectorOf n arbitrary
-    return $ zipWith TxOut outs coins
+    return $ zip outs coins
 
 genSelection
     :: (Arbitrary i, Ord i)
-    => NonEmpty TxOut
-    -> Gen (CoinSelection i)
+    => NonEmpty (o, Coin)
+    -> Gen (CoinSelection i o)
 genSelection outs = do
     let opts = CS.CoinSelectionOptions (const 100) (const $ pure ())
     utxo <- vectorOf (NE.length outs * 3) arbitrary >>= genUTxO
@@ -828,7 +839,9 @@ instance Arbitrary Fee where
     shrink (Fee c) = Fee <$> filter (> 0) (shrink $ fromIntegral c)
     arbitrary = Fee . getCoin <$> arbitrary
 
-instance (i ~ u, Arbitrary u, Ord u) => Arbitrary (FeeProp i u) where
+instance (i ~ u, Arbitrary o, Arbitrary u, Ord o, Ord u) =>
+    Arbitrary (FeeProp i o u)
+  where
     shrink (FeeProp cs utxo opts) =
         case Map.toList $ getUTxO utxo  of
             [] ->
@@ -863,7 +876,9 @@ instance Arbitrary Address where
         , Address "addr-3"
         ]
 
-instance (Arbitrary i, Ord i) => Arbitrary (CoinSelection i) where
+instance (Arbitrary i, Arbitrary o, Ord i, Ord o) =>
+    Arbitrary (CoinSelection i o)
+  where
     shrink sel@(CoinSelection inps outs chgs) = case (inps, outs, chgs) of
         ([_], [_], []) ->
             []
@@ -885,7 +900,7 @@ instance (Arbitrary i, Ord i) => Arbitrary (CoinSelection i) where
             >>= genTxOut
         genSelection (NE.fromList outs)
 
-instance Arbitrary (FeeOptions i) where
+instance Arbitrary (FeeOptions i o) where
     arbitrary = do
         t <- choose (0, 10) -- dust threshold
         c <- choose (0, 10) -- price per transaction
@@ -904,5 +919,5 @@ instance Arbitrary a => Arbitrary (NonEmpty a) where
         (:|) <$> arbitrary <*> replicateM tailLength arbitrary
     shrink = genericShrink
 
-instance Show (FeeOptions i) where
+instance Show (FeeOptions i o) where
     show (FeeOptions _ dust) = show dust

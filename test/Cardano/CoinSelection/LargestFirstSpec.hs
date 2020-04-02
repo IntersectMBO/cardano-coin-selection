@@ -27,7 +27,7 @@ import Cardano.CoinSelectionSpec
     , noValidation
     )
 import Cardano.Types
-    ( Coin (..), TxIn, UTxO (..), excluding )
+    ( Address, Coin (..), TxIn, UTxO (..), excluding )
 import Control.Monad
     ( unless )
 import Control.Monad.Trans.Except
@@ -222,22 +222,22 @@ spec = do
         it "forall (UTxO, NonEmpty TxOut), running algorithm yields exactly \
             \the same result regardless of the way in which requested outputs \
             \are ordered"
-            (property $ propOutputOrderIrrelevant @TxIn)
+            (property $ propOutputOrderIrrelevant @TxIn @Address)
         it "forall (UTxO, NonEmpty TxOut), there's at least as many selected \
             \inputs as there are requested outputs"
-            (property $ propAtLeast @TxIn)
+            (property $ propAtLeast @TxIn @Address)
         it "forall (UTxO, NonEmpty TxOut), for all selected input, there's no \
             \bigger input in the UTxO that is not already in the selected \
             \inputs"
-            (property $ propInputDecreasingOrder @TxIn)
+            (property $ propInputDecreasingOrder @TxIn @Address)
 
 {-------------------------------------------------------------------------------
                                   Properties
 -------------------------------------------------------------------------------}
 
 propOutputOrderIrrelevant
-    :: (Ord u, Show u)
-    => CoinSelProp u
+    :: (Eq o, Show o, Ord u, Show u)
+    => CoinSelProp o u
     -> Property
 propOutputOrderIrrelevant (CoinSelProp utxo txOuts) = monadicIO $ QC.run $ do
     txOutsShuffled <- shuffleNonEmpty txOuts
@@ -252,7 +252,7 @@ propOutputOrderIrrelevant (CoinSelProp utxo txOuts) = monadicIO $ QC.run $ do
 
 propAtLeast
     :: Ord u
-    => CoinSelProp u
+    => CoinSelProp o u
     -> Property
 propAtLeast (CoinSelProp utxo txOuts) =
     isRight selection ==> let Right (s,_) = selection in prop s
@@ -264,7 +264,7 @@ propAtLeast (CoinSelProp utxo txOuts) =
 
 propInputDecreasingOrder
     :: Ord u
-    => CoinSelProp u
+    => CoinSelProp o u
     -> Property
 propInputDecreasingOrder (CoinSelProp utxo txOuts) =
     isRight selection ==> let Right (s,_) = selection in prop s

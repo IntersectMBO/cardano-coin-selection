@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 
@@ -22,7 +23,7 @@ import Cardano.Fee
 import Cardano.FeeSpec
     ()
 import Cardano.Types
-    ( Coin (..), Hash (..), TxIn (..), UTxO (..), balance )
+    ( Address, Coin (..), Hash (..), TxIn (..), UTxO (..), balance )
 import Data.ByteString
     ( ByteString )
 import Data.Function
@@ -96,27 +97,27 @@ spec = do
     describe "depleteUTxO properties" $ do
         it "No coin selection has outputs" $
             property $ withMaxSuccess 1000 $ prop_onlyChangeOutputs
-                @(Wrapped TxIn)
+                @(Wrapped TxIn) @Address
 
         it "Every coin in the selection change >= minimum threshold coin" $
             property $ withMaxSuccess 1000 $ prop_noLessThanThreshold
-                @(Wrapped TxIn)
+                @(Wrapped TxIn) @Address
 
         it "Total input UTxO value >= sum of selection change coins" $
             property $ withMaxSuccess 1000 $ prop_inputsGreaterThanOutputs
-                @(Wrapped TxIn)
+                @(Wrapped TxIn) @Address
 
         it "Every selection input is unique" $
             property $ withMaxSuccess 1000 $ prop_inputsAreUnique
-                @(Wrapped TxIn)
+                @(Wrapped TxIn) @Address
 
         it "Every selection input is a member of the UTxO" $
             property $ withMaxSuccess 1000 $ prop_inputsStillInUTxO
-                @(Wrapped TxIn)
+                @(Wrapped TxIn) @Address
 
         it "Every coin selection is well-balanced" $
             property $ withMaxSuccess 1000 $ prop_wellBalanced
-                @(Wrapped TxIn)
+                @(Wrapped TxIn) @Address
 
     describe "depleteUTxO regressions" $ do
         it "regression #1" $ do
@@ -135,7 +136,8 @@ spec = do
                       , Coin 2
                       )
                     ]
-            property (prop_inputsGreaterThanOutputs feeOpts batchSize utxo)
+            property $ prop_inputsGreaterThanOutputs
+                @TxIn @Address feeOpts batchSize utxo
 
 {-------------------------------------------------------------------------------
                                   Properties
@@ -143,8 +145,8 @@ spec = do
 
 -- | No coin selection has outputs
 prop_onlyChangeOutputs
-    :: i ~ u
-    => FeeOptions i
+    :: forall i o u . (i ~ u, Show o)
+    => FeeOptions i o
     -> Word8
     -> UTxO u
     -> Property
@@ -155,8 +157,8 @@ prop_onlyChangeOutputs feeOpts batchSize utxo = do
 
 -- | Every coin in the selection change >= minimum threshold coin
 prop_noLessThanThreshold
-    :: i ~ u
-    => FeeOptions i
+    :: forall i o u . i ~ u
+    => FeeOptions i o
     -> Word8
     -> UTxO u
     -> Property
@@ -171,8 +173,8 @@ prop_noLessThanThreshold feeOpts batchSize utxo = do
 
 -- | Total input UTxO value >= sum of selection change coins
 prop_inputsGreaterThanOutputs
-    :: (i ~ u, Show u)
-    => FeeOptions i
+    :: forall i o u . (i ~ u, Show o, Show u)
+    => FeeOptions i o
     -> Word8
     -> UTxO u
     -> Property
@@ -187,8 +189,8 @@ prop_inputsGreaterThanOutputs feeOpts batchSize utxo = do
 
 -- | Every selected input is unique, i.e. selected only once
 prop_inputsAreUnique
-    :: (i ~ u, Ord u)
-    => FeeOptions i
+    :: forall i o u . (i ~ u, Ord u)
+    => FeeOptions i o
     -> Word8
     -> UTxO u
     -> Property
@@ -201,8 +203,8 @@ prop_inputsAreUnique feeOpts batchSize utxo = do
 
 -- | Every selection input is still a member of the UTxO" $
 prop_inputsStillInUTxO
-    :: (i ~ u, Ord u)
-    => FeeOptions i
+    :: forall i o u . (i ~ u, Ord u)
+    => FeeOptions i o
     -> Word8
     -> UTxO u
     -> Property
@@ -217,8 +219,8 @@ prop_inputsStillInUTxO feeOpts batchSize utxo = do
 -- | Every coin selection is well-balanced (i.e. actual fees are exactly the
 -- expected fees)
 prop_wellBalanced
-    :: (i ~ u, Show u)
-    => FeeOptions i
+    :: forall i o u . (i ~ u, Show o, Show u)
+    => FeeOptions i o
     -> Word8
     -> UTxO u
     -> Property
@@ -261,7 +263,7 @@ instance Arbitrary (Wrapped (Hash "Tx")) where
 genBatchSize :: Gen Word8
 genBatchSize = choose (50, 150)
 
-genFeeOptions :: Coin -> Gen (FeeOptions i)
+genFeeOptions :: Coin -> Gen (FeeOptions i o)
 genFeeOptions (Coin dust) = do
     pure $ FeeOptions
         { estimateFee = \s ->

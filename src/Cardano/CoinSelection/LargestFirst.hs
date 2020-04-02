@@ -21,7 +21,7 @@ import Cardano.CoinSelection
     , ErrCoinSelection (..)
     )
 import Cardano.Types
-    ( Coin (..), TxOut (..), UTxO (..), balance )
+    ( Coin (..), UTxO (..), balance )
 import Control.Arrow
     ( left )
 import Control.Monad
@@ -172,15 +172,17 @@ import qualified Data.Map.Strict as Map
 --
 --      See: __'ErrMaximumInputCountExceeded'__.
 --
-largestFirst :: (i ~ u, Ord u, Monad m) => CoinSelectionAlgorithm i u m e
+largestFirst
+    :: (i ~ u, Ord u, Monad m)
+    => CoinSelectionAlgorithm i o u m e
 largestFirst = CoinSelectionAlgorithm payForOutputs
 
 payForOutputs
     :: (i ~ u, Ord u, Monad m)
-    => CoinSelectionOptions i e
-    -> NonEmpty TxOut
+    => CoinSelectionOptions i o e
+    -> NonEmpty (o, Coin)
     -> UTxO u
-    -> ExceptT (ErrCoinSelection e) m (CoinSelection i, UTxO u)
+    -> ExceptT (ErrCoinSelection e) m (CoinSelection i o, UTxO u)
 payForOutputs options outputsRequested utxo =
     case foldM payForOutput (utxoDescending, mempty) outputsDescending of
         Just (utxoRemaining, selection) ->
@@ -201,13 +203,13 @@ payForOutputs options outputsRequested utxo =
     amountAvailable =
         fromIntegral $ balance utxo
     amountRequested =
-        sum $ (getCoin . coin) <$> outputsRequested
+        sum $ (getCoin . snd) <$> outputsRequested
     inputCountMax =
         fromIntegral $ maximumInputCount options $ fromIntegral outputCount
     outputCount =
         fromIntegral $ NE.length outputsRequested
     outputsDescending =
-        L.sortOn (Down . coin) $ NE.toList outputsRequested
+        L.sortOn (Down . snd) $ NE.toList outputsRequested
     utxoCount =
         fromIntegral $ L.length $ (Map.toList . getUTxO) utxo
     utxoDescending =
@@ -229,19 +231,19 @@ payForOutputs options outputsRequested utxo =
 -- required output amount, this function will return 'Nothing'.
 --
 payForOutput
-    :: forall i u . i ~ u
-    => ([(u, Coin)], CoinSelection i)
-    -> TxOut
-    -> Maybe ([(u, Coin)], CoinSelection i)
+    :: forall i o u . i ~ u
+    => ([(u, Coin)], CoinSelection i o)
+    -> (o, Coin)
+    -> Maybe ([(u, Coin)], CoinSelection i o)
 payForOutput (utxoAvailable, currentSelection) txout =
-    let target = fromIntegral $ getCoin $ coin txout in
+    let target = fromIntegral $ getCoin $ snd txout in
     coverTarget target utxoAvailable mempty
   where
     coverTarget
         :: Integer
         -> [(u, Coin)]
         -> [(u, Coin)]
-        -> Maybe ([(u, Coin)], CoinSelection i)
+        -> Maybe ([(u, Coin)], CoinSelection i o)
     coverTarget target utxoRemaining utxoSelected
         | target <= 0 = Just
             -- We've selected enough to cover the target, so stop here.

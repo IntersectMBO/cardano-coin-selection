@@ -29,7 +29,7 @@ import Cardano.CoinSelectionSpec
     , noValidation
     )
 import Cardano.Types
-    ( TxIn )
+    ( Address, TxIn )
 import Control.Monad.Trans.Except
     ( runExceptT )
 import Crypto.Random
@@ -237,10 +237,10 @@ spec = do
         describe "Coin selection properties : random algorithm" $ do
             it "forall (UTxO, NonEmpty TxOut), running algorithm gives not \
                 \less UTxO fragmentation than LargestFirst algorithm"
-                (property . propFragmentation @TxIn)
+                (property . propFragmentation @TxIn @Address)
             it "forall (UTxO, NonEmpty TxOut), running algorithm gives the \
                 \same errors as LargestFirst algorithm"
-                (property . propErrors @TxIn)
+                (property . propErrors @TxIn @Address)
 
 {-------------------------------------------------------------------------------
                               Properties
@@ -249,7 +249,7 @@ spec = do
 propFragmentation
     :: Ord u
     => SystemDRG
-    -> CoinSelProp u
+    -> CoinSelProp o u
     -> Property
 propFragmentation drg (CoinSelProp utxo txOuts) = do
     isRight selection1 && isRight selection2 ==>
@@ -268,7 +268,7 @@ propFragmentation drg (CoinSelProp utxo txOuts) = do
 propErrors
     :: Ord u
     => SystemDRG
-    -> CoinSelProp u
+    -> CoinSelProp o u
     -> Property
 propErrors drg (CoinSelProp utxo txOuts) = do
     isLeft selection1 && isLeft selection2 ==>
