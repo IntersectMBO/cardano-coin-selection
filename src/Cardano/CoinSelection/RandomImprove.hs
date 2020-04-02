@@ -256,9 +256,9 @@ payForOutputs options outputsRequested utxo = do
 --
 makeRandomSelection
     :: forall i o u m . (i ~ u, Ord u, MonadRandom m)
-    => (Word64, UTxO u, [([CoinSelectionInput i], (o, Coin))])
+    => (Word64, UTxO u, [([(i, Coin)], (o, Coin))])
     -> (o, Coin)
-    -> MaybeT m (Word64, UTxO u, [([CoinSelectionInput i], (o, Coin))])
+    -> MaybeT m (Word64, UTxO u, [([(i, Coin)], (o, Coin))])
 makeRandomSelection
     (inputCountRemaining, utxoRemaining, existingSelections) txout = do
         (utxoSelected, utxoRemaining') <- coverRandomly ([], utxoRemaining)
@@ -269,8 +269,8 @@ makeRandomSelection
             )
   where
     coverRandomly
-        :: ([CoinSelectionInput i], UTxO u)
-        -> MaybeT m ([CoinSelectionInput i], UTxO u)
+        :: ([(i, Coin)], UTxO u)
+        -> MaybeT m ([(i, Coin)], UTxO u)
     coverRandomly (selected, remaining)
         | L.length selected > fromIntegral inputCountRemaining =
             MaybeT $ return Nothing
@@ -284,7 +284,7 @@ makeRandomSelection
 improveSelection
     :: forall i o u m . (i ~ u, Ord u, MonadRandom m)
     => (Word64, CoinSelection i o, UTxO u)
-    -> ([CoinSelectionInput i], (o, Coin))
+    -> ([(i, Coin)], (o, Coin))
     -> m (Word64, CoinSelection i o, UTxO u)
 improveSelection (maxN0, selection, utxo0) (inps0, txout) = do
     (maxN, inps, utxo) <- improve (maxN0, inps0, utxo0)
@@ -301,8 +301,8 @@ improveSelection (maxN0, selection, utxo0) (inps0, txout) = do
     target = mkTargetRange txout
 
     improve
-        :: (Word64, [CoinSelectionInput i], UTxO u)
-        -> m (Word64, [CoinSelectionInput i], UTxO u)
+        :: (Word64, [(i, Coin)], UTxO u)
+        -> m (Word64, [(i, Coin)], UTxO u)
     improve (maxN, inps, utxo)
         | maxN >= 1 && balance' inps < targetAim target = do
             runMaybeT (pickRandomT utxo) >>= \case
@@ -317,7 +317,7 @@ improveSelection (maxN0, selection, utxo0) (inps0, txout) = do
         | otherwise =
             return (maxN, inps, utxo)
 
-    isImprovement :: CoinSelectionInput i -> [CoinSelectionInput i] -> Bool
+    isImprovement :: (i, Coin) -> [(i, Coin)] -> Bool
     isImprovement io selected =
         let
             condA = -- (a) It doesn’t exceed a specified upper limit.
@@ -336,10 +336,6 @@ improveSelection (maxN0, selection, utxo0) (inps0, txout) = do
 {-------------------------------------------------------------------------------
                                  Internals
 -------------------------------------------------------------------------------}
-
--- | Represents an entry from a 'UTxO' set that has been selected for inclusion
---   in the set of 'inputs' of a 'CoinSelection'.
-type CoinSelectionInput i = (i, Coin)
 
 -- | Represents a target range of /total input values/ for a given output.
 --
@@ -374,7 +370,7 @@ mkTargetRange (_, Coin c) = TargetRange
 pickRandomT
     :: (i ~ u, MonadRandom m)
     => UTxO u
-    -> MaybeT m (CoinSelectionInput i, UTxO u)
+    -> MaybeT m ((i, Coin), UTxO u)
 pickRandomT =
     MaybeT . fmap (\(m,u) -> (,u) <$> m) . pickRandom
 
@@ -382,7 +378,7 @@ pickRandomT =
 -- of inputs.
 --
 -- > pre-condition: the output must be smaller (or eq) than the sum of inputs
-mkChange :: Ord i => (o, Coin) -> [CoinSelectionInput i] -> [Coin]
+mkChange :: Ord i => (o, Coin) -> [(i, Coin)] -> [Coin]
 mkChange (_, Coin out) inps =
     let
         selected = invariant
