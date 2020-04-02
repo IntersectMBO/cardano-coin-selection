@@ -4,7 +4,9 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeFamilies #-}
 
 -- |
 -- Copyright: © 2018-2020 IOHK
@@ -42,14 +44,16 @@ import Prelude hiding
     ( round )
 
 import Cardano.CoinSelection
-    ( CoinSelection (..), changeBalance, inputBalance, outputBalance )
+    ( CoinSelection (..)
+    , Input (..)
+    , changeBalance
+    , inputBalance
+    , outputBalance
+    )
 import Cardano.Types
     ( Coin (..)
     , FeePolicy (..)
-    , TxIn
-    , TxOut (..)
     , UTxO (..)
-    , balance'
     , invariant
     , isValidCoin
     , pickRandom
@@ -75,7 +79,7 @@ import Data.Ratio
 import Data.Word
     ( Word64 )
 import Fmt
-    ( pretty )
+    ( Buildable (..), pretty )
 import GHC.Generics
     ( Generic )
 import GHC.Stack
@@ -137,9 +141,9 @@ computeFee policy (Quantity sz) =
                                 Fee Adjustment
 -------------------------------------------------------------------------------}
 
-data FeeOptions = FeeOptions
+data FeeOptions i o = FeeOptions
     { estimateFee
-      :: CoinSelection -> Fee
+      :: CoinSelection i o -> Fee
       -- ^ Estimate fees based on number of inputs and values of the outputs
       -- Some pointers / order of magnitude from the current configuration:
       --     a: 155381 # absolute minimal fees per transaction
@@ -185,11 +189,11 @@ newtype ErrAdjustForFee
 -- outputs the algorithm happened to choose).
 --
 adjustForFee
-    :: MonadRandom m
-    => FeeOptions
-    -> UTxO
-    -> CoinSelection
-    -> ExceptT ErrAdjustForFee m CoinSelection
+    :: (i ~ u, Buildable o, Buildable u, MonadRandom m)
+    => FeeOptions i o
+    -> UTxO u
+    -> CoinSelection i o
+    -> ExceptT ErrAdjustForFee m (CoinSelection i o)
 adjustForFee unsafeOpt utxo coinSel = do
     let opt = invariant
             "adjustForFee: fee must be non-null" unsafeOpt (not . nullFee)
@@ -200,16 +204,15 @@ adjustForFee unsafeOpt utxo coinSel = do
 -- | The sender pays fee in this scenario, so fees are removed from the change
 -- outputs, and new inputs are selected if necessary.
 senderPaysFee
-    :: MonadRandom m
-    => FeeOptions
-    -> UTxO
-    -> CoinSelection
-    -> ExceptT ErrAdjustForFee m CoinSelection
+    :: forall i o u m . (i ~ u, Buildable o, Buildable u, MonadRandom m)
+    => FeeOptions i o
+    -> UTxO u
+    -> CoinSelection i o
+    -> ExceptT ErrAdjustForFee m (CoinSelection i o)
 senderPaysFee opt utxo sel = evalStateT (go sel) utxo where
     go
-        :: MonadRandom m
-        => CoinSelection
-        -> StateT UTxO (ExceptT ErrAdjustForFee m) CoinSelection
+        :: CoinSelection i o
+        -> StateT (UTxO u) (ExceptT ErrAdjustForFee m) (CoinSelection i o)
     go coinSel@(CoinSelection inps outs chgs) = do
         -- 1/
         -- We compute fees using all inputs, outputs and changes since all of
@@ -246,26 +249,26 @@ senderPaysFee opt utxo sel = evalStateT (go sel) utxo where
             -- change plus the extra change brought up by this entry and see if
             -- we can now correctly cover fee.
             inps' <- coverRemainingFee remFee
-            let extraChange = splitChange (Coin $ balance' inps') chgs
+            let extraChange = splitChange (Coin $ sumInputs inps') chgs
             go $ CoinSelection (inps <> inps') outs extraChange
 
 -- | A short / simple version of the 'random' fee policy to cover for fee in
 -- case where existing change were not enough.
 coverRemainingFee
-    :: MonadRandom m
+    :: (i ~ u, MonadRandom m)
     => Fee
-    -> StateT UTxO (ExceptT ErrAdjustForFee m) [(TxIn, TxOut)]
+    -> StateT (UTxO u) (ExceptT ErrAdjustForFee m) [Input i]
 coverRemainingFee (Fee fee) = go [] where
     go acc
-        | balance' acc >= fee =
+        | sumInputs acc >= fee =
             return acc
         | otherwise = do
             -- We ignore the size of the fee, and just pick randomly
             StateT (lift . pickRandom) >>= \case
                 Just entry ->
-                    go (entry : acc)
+                    go (uncurry Input entry : acc)
                 Nothing -> do
-                    lift $ throwE $ ErrCannotCoverFee (fee - balance' acc)
+                    lift $ throwE $ ErrCannotCoverFee (fee - sumInputs acc)
 
 -- | Reduce the given change outputs by the total fee, returning the remainig
 -- change outputs if any are left, or the remaining fee otherwise
@@ -413,8 +416,10 @@ coalesceDust (DustThreshold threshold) coins =
 -- | Computes how much is left to pay given a particular selection
 remainingFee
     :: HasCallStack
-    => FeeOptions
-    -> CoinSelection
+    => Buildable i
+    => Buildable o
+    => FeeOptions i o
+    -> CoinSelection i o
     -> Fee
 remainingFee opts s = do
     if fee >= diff
@@ -495,3 +500,6 @@ fractionalPart = snd . properFraction @_ @Integer
 --
 applyN :: Int -> (a -> a) -> a -> a
 applyN n f = F.foldr (.) id (replicate n f)
+
+sumInputs :: [Input i] -> Word64
+sumInputs = sum . fmap (getCoin . inputValue)

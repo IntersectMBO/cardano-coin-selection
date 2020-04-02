@@ -1,4 +1,8 @@
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeFamilies #-}
 
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
@@ -9,7 +13,7 @@ module Cardano.CoinSelection.MigrationSpec
 import Prelude
 
 import Cardano.CoinSelection
-    ( CoinSelection (..), changeBalance, inputBalance )
+    ( CoinSelection (..), Input (..), changeBalance, inputBalance )
 import Cardano.CoinSelection.Migration
     ( depleteUTxO, idealBatchSize )
 import Cardano.CoinSelectionSpec
@@ -19,14 +23,7 @@ import Cardano.Fee
 import Cardano.FeeSpec
     ()
 import Cardano.Types
-    ( Address (..)
-    , Coin (..)
-    , Hash (..)
-    , TxIn (..)
-    , TxOut (..)
-    , UTxO (..)
-    , balance
-    )
+    ( Coin (..), UTxO (..), balance )
 import Data.ByteString
     ( ByteString )
 import Data.Function
@@ -35,6 +32,8 @@ import Data.Word
     ( Word8 )
 import Numeric.Natural
     ( Natural )
+import Test.Cardano.Types
+    ( Address, Hash (..), TxIn (..) )
 import Test.Hspec
     ( Spec, SpecWith, describe, it, shouldSatisfy )
 import Test.QuickCheck
@@ -47,6 +46,7 @@ import Test.QuickCheck
     , frequency
     , label
     , property
+    , scale
     , vectorOf
     , withMaxSuccess
     , (===)
@@ -54,6 +54,7 @@ import Test.QuickCheck
 import Test.QuickCheck.Monadic
     ( monadicIO, monitor, pick )
 
+import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as B8
 import qualified Data.Map as Map
 import qualified Data.Set as Set
@@ -97,22 +98,28 @@ spec = do
 
     describe "depleteUTxO properties" $ do
         it "No coin selection has outputs" $
-            property $ withMaxSuccess 1000 prop_onlyChangeOutputs
+            property $ withMaxSuccess 1000 $ prop_onlyChangeOutputs
+                @(Wrapped TxIn) @Address
 
         it "Every coin in the selection change >= minimum threshold coin" $
-            property $ withMaxSuccess 1000 prop_noLessThanThreshold
+            property $ withMaxSuccess 1000 $ prop_noLessThanThreshold
+                @(Wrapped TxIn) @Address
 
         it "Total input UTxO value >= sum of selection change coins" $
-            property $ withMaxSuccess 1000 prop_inputsGreaterThanOutputs
+            property $ withMaxSuccess 1000 $ prop_inputsGreaterThanOutputs
+                @(Wrapped TxIn) @Address
 
         it "Every selection input is unique" $
-            property $ withMaxSuccess 1000 prop_inputsAreUnique
+            property $ withMaxSuccess 1000 $ prop_inputsAreUnique
+                @(Wrapped TxIn) @Address
 
         it "Every selection input is a member of the UTxO" $
-            property $ withMaxSuccess 1000 prop_inputsStillInUTxO
+            property $ withMaxSuccess 1000 $ prop_inputsStillInUTxO
+                @(Wrapped TxIn) @Address
 
         it "Every coin selection is well-balanced" $
-            property $ withMaxSuccess 1000 prop_wellBalanced
+            property $ withMaxSuccess 1000 $ prop_wellBalanced
+                @(Wrapped TxIn) @Address
 
     describe "depleteUTxO regressions" $ do
         it "regression #1" $ do
@@ -125,16 +132,14 @@ spec = do
             let batchSize = 1
             let utxo = UTxO $ Map.fromList
                     [ ( TxIn
-                        { inputId = Hash "|\243^\SUBg\242\231\&1\213\203"
-                        , inputIx = 2
+                        { txinId = Hash "|\243^\SUBg\242\231\&1\213\203"
+                        , txinIx = 2
                         }
-                      , TxOut
-                        { address = Address "ADDR03"
-                        , coin = Coin 2
-                        }
+                      , Coin 2
                       )
                     ]
-            property (prop_inputsGreaterThanOutputs feeOpts batchSize utxo)
+            property $ prop_inputsGreaterThanOutputs
+                @TxIn @Address feeOpts batchSize utxo
 
 {-------------------------------------------------------------------------------
                                   Properties
@@ -142,9 +147,10 @@ spec = do
 
 -- | No coin selection has outputs
 prop_onlyChangeOutputs
-    :: FeeOptions
+    :: forall i o u . (i ~ u, Show o)
+    => FeeOptions i o
     -> Word8
-    -> UTxO
+    -> UTxO u
     -> Property
 prop_onlyChangeOutputs feeOpts batchSize utxo = do
     let allOutputs = outputs =<<
@@ -153,9 +159,10 @@ prop_onlyChangeOutputs feeOpts batchSize utxo = do
 
 -- | Every coin in the selection change >= minimum threshold coin
 prop_noLessThanThreshold
-    :: FeeOptions
+    :: forall i o u . i ~ u
+    => FeeOptions i o
     -> Word8
-    -> UTxO
+    -> UTxO u
     -> Property
 prop_noLessThanThreshold feeOpts batchSize utxo = do
     let allChange = change
@@ -168,9 +175,10 @@ prop_noLessThanThreshold feeOpts batchSize utxo = do
 
 -- | Total input UTxO value >= sum of selection change coins
 prop_inputsGreaterThanOutputs
-    :: FeeOptions
+    :: forall i o u . (i ~ u, Show o, Show u)
+    => FeeOptions i o
     -> Word8
-    -> UTxO
+    -> UTxO u
     -> Property
 prop_inputsGreaterThanOutputs feeOpts batchSize utxo = do
     let selections  = depleteUTxO feeOpts batchSize utxo
@@ -183,9 +191,10 @@ prop_inputsGreaterThanOutputs feeOpts batchSize utxo = do
 
 -- | Every selected input is unique, i.e. selected only once
 prop_inputsAreUnique
-    :: FeeOptions
+    :: forall i o u . (i ~ u, Ord u)
+    => FeeOptions i o
     -> Word8
-    -> UTxO
+    -> UTxO u
     -> Property
 prop_inputsAreUnique feeOpts batchSize utxo = do
     let selectionInputList = inputs =<<
@@ -196,24 +205,26 @@ prop_inputsAreUnique feeOpts batchSize utxo = do
 
 -- | Every selection input is still a member of the UTxO" $
 prop_inputsStillInUTxO
-    :: FeeOptions
+    :: forall i o u . (i ~ u, Ord u)
+    => FeeOptions i o
     -> Word8
-    -> UTxO
+    -> UTxO u
     -> Property
 prop_inputsStillInUTxO feeOpts batchSize utxo = do
     let selectionInputSet =
             Set.fromList $ inputs =<<
                 depleteUTxO feeOpts batchSize utxo
     let utxoSet =
-            Set.fromList $ Map.toList $ getUTxO utxo
+            Set.fromList $ fmap (uncurry Input) $ Map.toList $ getUTxO utxo
     property (selectionInputSet `Set.isSubsetOf` utxoSet)
 
 -- | Every coin selection is well-balanced (i.e. actual fees are exactly the
 -- expected fees)
 prop_wellBalanced
-    :: FeeOptions
+    :: forall i o u . (i ~ u, Show o, Show u)
+    => FeeOptions i o
     -> Word8
-    -> UTxO
+    -> UTxO u
     -> Property
 prop_wellBalanced feeOpts batchSize utxo = do
     let selections = depleteUTxO feeOpts batchSize utxo
@@ -230,13 +241,31 @@ prop_wellBalanced feeOpts batchSize utxo = do
         ]
 
 {-------------------------------------------------------------------------------
+                             Arbitrary Instances
+-------------------------------------------------------------------------------}
+
+-- A wrapper to avoid overlapping instances imported from other modules.
+newtype Wrapped a = Wrapped { unwrap :: a }
+    deriving (Eq, Ord, Show)
+
+-- TODO: Move similar Arbitrary instances to a shared module for better reuse.
+instance Arbitrary (Wrapped TxIn) where
+    arbitrary = fmap Wrapped . TxIn
+        <$> fmap unwrap arbitrary
+        <*> scale (`mod` 3) arbitrary
+
+-- TODO: Move similar Arbitrary instances to a shared module for better reuse.
+instance Arbitrary (Wrapped (Hash "Tx")) where
+    arbitrary = Wrapped . Hash <$> (BS.pack <$> vectorOf 32 arbitrary)
+
+{-------------------------------------------------------------------------------
                                   Generators
 -------------------------------------------------------------------------------}
 
 genBatchSize :: Gen Word8
 genBatchSize = choose (50, 150)
 
-genFeeOptions :: Coin -> Gen FeeOptions
+genFeeOptions :: Coin -> Gen (FeeOptions i o)
 genFeeOptions (Coin dust) = do
     pure $ FeeOptions
         { estimateFee = \s ->
@@ -246,24 +275,18 @@ genFeeOptions (Coin dust) = do
         }
 
 -- | Generate a given UTxO with a particular percentage of dust
-genUTxO :: Double -> Coin -> Gen UTxO
+genUTxO :: Double -> Coin -> Gen (UTxO TxIn)
 genUTxO r (Coin dust) = do
     n <- choose (10, 1000)
     inps <- genTxIn n
-    outs <- genTxOut n
-    pure $ UTxO $ Map.fromList $ zip inps outs
+    coins <- vectorOf n genCoin
+    pure $ UTxO $ Map.fromList $ zip inps coins
   where
     genTxIn :: Int -> Gen [TxIn]
     genTxIn n = do
         ids <- vectorOf n (Hash <$> genBytes 8)
         ixs <- vectorOf n arbitrary
         pure $ zipWith TxIn ids ixs
-
-    genTxOut :: Int -> Gen [TxOut]
-    genTxOut n = do
-        coins <- vectorOf n genCoin
-        addrs <- vectorOf n (Address <$> genBytes 8)
-        pure $ zipWith TxOut addrs coins
 
     genBytes :: Int -> Gen ByteString
     genBytes n = B8.pack <$> vectorOf n arbitrary

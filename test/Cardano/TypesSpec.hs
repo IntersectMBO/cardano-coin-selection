@@ -3,6 +3,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TypeApplications #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Cardano.TypesSpec
@@ -12,13 +13,9 @@ module Cardano.TypesSpec
 import Prelude
 
 import Cardano.Types
-    ( Address (..)
-    , Coin (..)
+    ( Coin (..)
     , Dom (..)
-    , Hash (..)
     , ShowFmt (..)
-    , TxIn (..)
-    , TxOut (..)
     , UTxO (..)
     , balance
     , excluding
@@ -29,6 +26,8 @@ import Cardano.Types
     )
 import Data.Set
     ( Set, (\\) )
+import Test.Cardano.Types
+    ( Address (..), Hash (..), TxIn (..), TxOut (..) )
 import Test.Hspec
     ( Spec, describe, it )
 import Test.QuickCheck
@@ -56,49 +55,49 @@ spec = do
 
     describe "Lemma 2.1 - Properties of UTxO operations" $ do
         it "2.1.1) ins⊲ u ⊆ u"
-            (checkCoverage prop_2_1_1)
+            (checkCoverage $ prop_2_1_1 @TxIn)
         it "2.1.2) ins⋪ u ⊆ u"
-            (checkCoverage prop_2_1_2)
+            (checkCoverage $ prop_2_1_2 @TxIn)
         it "2.1.3) u ⊳ outs ⊆ u"
-            (checkCoverage prop_2_1_3)
+            (checkCoverage $ prop_2_1_3 @TxIn)
         it "2.1.4) ins⊲ (u ⋃ v) = (ins⊲ u) ⋃ (ins⊲ v)"
-            (checkCoverage prop_2_1_4)
+            (checkCoverage $ prop_2_1_4 @TxIn)
         it "2.1.5) ins⋪ (u ⋃ v) = (ins⋪ u) ⋃ (ins⋪ v)"
-            (checkCoverage prop_2_1_5)
+            (checkCoverage $ prop_2_1_5 @TxIn)
         it "2.1.6) (dom u ⋂ ins) ⊲ u = ins⊲ u"
-            (checkCoverage prop_2_1_6)
+            (checkCoverage $ prop_2_1_6 @TxIn)
         it "2.1.7) (dom u ⋂ ins) ⋪ u = ins⋪ u"
-            (checkCoverage prop_2_1_7)
+            (checkCoverage $ prop_2_1_7 @TxIn)
         it "2.1.8) (dom u ⋃ ins) ⋪ (u ⋃ v) = (ins ⋃ dom u) ⋪ v"
-            (checkCoverage prop_2_1_8)
+            (checkCoverage $ prop_2_1_8 @TxIn)
         it "2.1.9) ins⋪ u = (dom u \\ ins)⊲ u"
-            (checkCoverage prop_2_1_9)
+            (checkCoverage $ prop_2_1_9 @TxIn)
 
     describe "Lemma 2.6 - Properties of balance" $ do
         it "2.6.1) dom u ⋂ dom v ==> balance (u ⋃ v) = balance u + balance v"
-            (checkCoverage prop_2_6_1)
+            (checkCoverage $ prop_2_6_1 @TxIn)
         it "2.6.2) balance (ins⋪ u) = balance u - balance (ins⊲ u)"
-            (checkCoverage prop_2_6_2)
+            (checkCoverage $ prop_2_6_2 @TxIn)
 
 {-------------------------------------------------------------------------------
        Wallet Specification - Lemma 2.1 - Properties of UTxO operations
 -------------------------------------------------------------------------------}
 
-prop_2_1_1 :: (Set TxIn, UTxO) -> Property
+prop_2_1_1 :: Ord u => (Set u, UTxO u) -> Property
 prop_2_1_1 (ins, u) =
     cover 50 cond "dom u ⋂ ins ≠ ∅" (property prop)
   where
     cond = not $ Set.null $ dom u `Set.intersection` ins
     prop = (u `restrictedBy` ins) `isSubsetOf` u
 
-prop_2_1_2 :: (Set TxIn, UTxO) -> Property
+prop_2_1_2 :: Ord u => (Set u, UTxO u) -> Property
 prop_2_1_2 (ins, u) =
     cover 50 cond "dom u ⋂ ins ≠ ∅" (property prop)
   where
     cond = not $ Set.null $ dom u `Set.intersection` ins
     prop = (u `excluding` ins) `isSubsetOf` u
 
-prop_2_1_3 :: (Set TxOut, UTxO) -> Property
+prop_2_1_3 :: Ord u => (Set Coin, UTxO u) -> Property
 prop_2_1_3 (outs, u) =
     cover 50 cond "u ⋂ outs ≠ ∅" (property prop)
   where
@@ -106,7 +105,7 @@ prop_2_1_3 (outs, u) =
         Set.fromList (Map.elems (getUTxO u)) `Set.intersection` outs
     prop = (u `restrictedTo` outs) `isSubsetOf` u
 
-prop_2_1_4 :: (Set TxIn, UTxO, UTxO) -> Property
+prop_2_1_4 :: (Ord u, Show u) => (Set u, UTxO u, UTxO u) -> Property
 prop_2_1_4 (ins, u, v) =
     cover 50 cond "(dom u ⋃ dom v) ⋂ ins ≠ ∅" (property prop)
   where
@@ -116,7 +115,7 @@ prop_2_1_4 (ins, u, v) =
             ===
         (u `restrictedBy` ins) <> (v `restrictedBy` ins)
 
-prop_2_1_5 :: (Set TxIn, UTxO, UTxO) -> Property
+prop_2_1_5 :: (Ord u, Show u) => (Set u, UTxO u, UTxO u) -> Property
 prop_2_1_5 (ins, u, v) =
     cover 50 cond "(dom u ⋃ dom v) ⋂ ins ≠ ∅" (property prop)
   where
@@ -126,7 +125,7 @@ prop_2_1_5 (ins, u, v) =
             ===
         (u `excluding` ins) <> (v `excluding` ins)
 
-prop_2_1_6 :: (Set TxIn, UTxO) -> Property
+prop_2_1_6 :: (Ord u, Show u) => (Set u, UTxO u) -> Property
 prop_2_1_6 (ins, u) =
     cover 50 cond "dom u ⋂ ins ≠ ∅" (property prop)
   where
@@ -136,7 +135,7 @@ prop_2_1_6 (ins, u) =
             ===
         (u `restrictedBy` ins)
 
-prop_2_1_7 :: (Set TxIn, UTxO) -> Property
+prop_2_1_7 :: (Ord u, Show u) => (Set u, UTxO u) -> Property
 prop_2_1_7 (ins, u) =
     cover 50 cond "dom u ⋂ ins ≠ ∅" (property prop)
   where
@@ -146,7 +145,7 @@ prop_2_1_7 (ins, u) =
             ===
         (u `excluding` ins)
 
-prop_2_1_8 :: (Set TxIn, UTxO, UTxO) -> Property
+prop_2_1_8 :: (Ord u, Show u) => (Set u, UTxO u, UTxO u) -> Property
 prop_2_1_8 (ins, u, v) =
     cover 50 cond "dom u ⋂ ins ≠ ∅" (property prop)
   where
@@ -156,7 +155,7 @@ prop_2_1_8 (ins, u, v) =
             ===
         v `excluding` (ins <> dom u)
 
-prop_2_1_9 :: (Set TxIn, UTxO) -> Property
+prop_2_1_9 :: (Ord u, Show u) => (Set u, UTxO u) -> Property
 prop_2_1_9 (ins, u) =
     cover 50 cond "dom u ⋂ ins ≠ ∅" (property prop)
   where
@@ -167,7 +166,7 @@ prop_2_1_9 (ins, u) =
        Wallet Specification - Lemma 2.6 - Properties of Balance
 -------------------------------------------------------------------------------}
 
-prop_2_6_1 :: (UTxO, UTxO) -> Property
+prop_2_6_1 :: Ord u => (UTxO u, UTxO u) -> Property
 prop_2_6_1 (u, v) =
     cover 50 cond "u ≠ ∅ , v ≠ ∅" (property prop)
   where
@@ -179,7 +178,7 @@ prop_2_6_1 (u, v) =
     cond = not (u `isSubsetOf` mempty || v' `isSubsetOf` mempty)
     prop = balance (u <> v') === balance u + balance v'
 
-prop_2_6_2 :: (Set TxIn, UTxO) -> Property
+prop_2_6_2 :: Ord u => (Set u, UTxO u) -> Property
 prop_2_6_2 (ins, u) =
     cover 50 cond "dom u ⋂ ins ≠ ∅" (property prop)
   where
@@ -235,7 +234,7 @@ instance Arbitrary TxIn where
         <$> arbitrary
         <*> scale (`mod` 3) arbitrary -- No need for a crazy high indexes
 
-instance Arbitrary UTxO where
+instance (Arbitrary u, Ord u) => Arbitrary (UTxO u) where
     shrink (UTxO utxo) = UTxO <$> shrink utxo
     arbitrary = do
         n <- choose (0, 10)

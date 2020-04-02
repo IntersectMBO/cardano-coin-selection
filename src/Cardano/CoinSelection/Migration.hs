@@ -1,5 +1,7 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies #-}
 
 -- |
 -- Copyright: © 2018-2020 IOHK
@@ -41,13 +43,14 @@ import Prelude
 import Cardano.CoinSelection
     ( CoinSelection (..)
     , CoinSelectionOptions (..)
+    , Input (..)
     , changeBalance
     , inputBalance
     )
 import Cardano.Fee
     ( DustThreshold (..), Fee (..), FeeOptions (..) )
 import Cardano.Types
-    ( Coin (..), TxIn (..), TxOut (..), UTxO (..) )
+    ( Coin (..), UTxO (..) )
 import Control.Monad.Trans.State
     ( State, evalState, get, put )
 import Data.List.NonEmpty
@@ -70,17 +73,18 @@ import qualified Data.Map.Strict as Map
 -- The fee options are used to balance the coin selections and fix a threshold
 -- for dust that is removed from the selections.
 depleteUTxO
-    :: FeeOptions
+    :: forall i o u . i ~ u
+    => FeeOptions i o
         -- ^ Fee computation and threshold definition
     -> Word8
         -- ^ Maximum number of inputs we can select per transaction
-    -> UTxO
+    -> UTxO u
         -- ^ UTxO to deplete
-    -> [CoinSelection]
+    -> [CoinSelection i o]
 depleteUTxO feeOpts batchSize utxo =
-    evalState migrate (Map.toList (getUTxO utxo))
+    evalState migrate (uncurry Input <$> Map.toList (getUTxO utxo))
   where
-    migrate :: State [(TxIn, TxOut)] [CoinSelection]
+    migrate :: State [Input i] [CoinSelection i o]
     migrate = do
         batch <- getNextBatch
         if null batch then
@@ -94,24 +98,24 @@ depleteUTxO feeOpts batchSize utxo =
     -- Construct a provisional 'CoinSelection' from the given selected inputs.
     -- Note that the selection may look a bit weird at first sight as it has
     -- no outputs (we are paying everything to ourselves!).
-    mkCoinSelection :: [(TxIn, TxOut)] -> CoinSelection
+    mkCoinSelection :: [Input i] -> CoinSelection i o
     mkCoinSelection inps = CoinSelection
         { inputs = inps
         , outputs = []
         , change =
-            let chgs = mapMaybe (noDust . snd) inps
+            let chgs = mapMaybe (noDust . inputValue) inps
             in if null chgs then [threshold] else chgs
         }
       where
         threshold = Coin $ getDustThreshold $ dustThreshold feeOpts
-        noDust :: TxOut -> Maybe Coin
-        noDust (TxOut _ c)
+        noDust :: Coin -> Maybe Coin
+        noDust c
             | c < threshold = Nothing
             | otherwise = Just c
 
     -- | Attempt to balance the coin selection by reducing or increasing the
     -- change values based on the computed fees.
-    adjustForFee :: CoinSelection -> Maybe CoinSelection
+    adjustForFee :: CoinSelection i o -> Maybe (CoinSelection i o)
     adjustForFee !coinSel = case change coinSel of
         -- If there's no change, nothing to adjust
         [] -> Nothing
@@ -165,7 +169,7 @@ depleteUTxO feeOpts batchSize utxo =
 
 -- | Try to find a fix "ideal" number of input transactions that would generate
 -- rather balanced transactions.
-idealBatchSize :: CoinSelectionOptions e -> Word8
+idealBatchSize :: CoinSelectionOptions i o e -> Word8
 idealBatchSize coinselOpts = fixPoint 1
   where
     fixPoint :: Word8 -> Word8

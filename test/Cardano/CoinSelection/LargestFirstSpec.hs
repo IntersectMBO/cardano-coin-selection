@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeApplications #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Cardano.CoinSelection.LargestFirstSpec
@@ -13,6 +14,7 @@ import Cardano.CoinSelection
     , CoinSelectionAlgorithm (..)
     , CoinSelectionOptions (..)
     , ErrCoinSelection (..)
+    , Input (..)
     )
 import Cardano.CoinSelection.LargestFirst
     ( largestFirst )
@@ -26,7 +28,7 @@ import Cardano.CoinSelectionSpec
     , noValidation
     )
 import Cardano.Types
-    ( Coin (..), TxOut (..), UTxO (..), excluding )
+    ( Coin (..), UTxO (..), excluding )
 import Control.Monad
     ( unless )
 import Control.Monad.Trans.Except
@@ -37,6 +39,8 @@ import Data.Functor.Identity
     ( Identity (runIdentity) )
 import Data.List.NonEmpty
     ( NonEmpty (..) )
+import Test.Cardano.Types
+    ( Address, TxIn )
 import Test.Hspec
     ( Spec, describe, it, shouldSatisfy )
 import Test.QuickCheck
@@ -221,21 +225,22 @@ spec = do
         it "forall (UTxO, NonEmpty TxOut), running algorithm yields exactly \
             \the same result regardless of the way in which requested outputs \
             \are ordered"
-            (property propOutputOrderIrrelevant)
+            (property $ propOutputOrderIrrelevant @TxIn @Address)
         it "forall (UTxO, NonEmpty TxOut), there's at least as many selected \
             \inputs as there are requested outputs"
-            (property propAtLeast)
+            (property $ propAtLeast @TxIn @Address)
         it "forall (UTxO, NonEmpty TxOut), for all selected input, there's no \
             \bigger input in the UTxO that is not already in the selected \
             \inputs"
-            (property propInputDecreasingOrder)
+            (property $ propInputDecreasingOrder @TxIn @Address)
 
 {-------------------------------------------------------------------------------
                                   Properties
 -------------------------------------------------------------------------------}
 
 propOutputOrderIrrelevant
-    :: CoinSelProp
+    :: (Eq o, Show o, Ord u, Show u)
+    => CoinSelProp o u
     -> Property
 propOutputOrderIrrelevant (CoinSelProp utxo txOuts) = monadicIO $ QC.run $ do
     txOutsShuffled <- shuffleNonEmpty txOuts
@@ -249,7 +254,8 @@ propOutputOrderIrrelevant (CoinSelProp utxo txOuts) = monadicIO $ QC.run $ do
         runIdentity $ runExceptT $ selectCoins largestFirst options outs utxo
 
 propAtLeast
-    :: CoinSelProp
+    :: Ord u
+    => CoinSelProp o u
     -> Property
 propAtLeast (CoinSelProp utxo txOuts) =
     isRight selection ==> let Right (s,_) = selection in prop s
@@ -260,7 +266,8 @@ propAtLeast (CoinSelProp utxo txOuts) =
         largestFirst (CoinSelectionOptions (const 100) noValidation) txOuts utxo
 
 propInputDecreasingOrder
-    :: CoinSelProp
+    :: Ord u
+    => CoinSelProp o u
     -> Property
 propInputDecreasingOrder (CoinSelProp utxo txOuts) =
     isRight selection ==> let Right (s,_) = selection in prop s
@@ -268,11 +275,11 @@ propInputDecreasingOrder (CoinSelProp utxo txOuts) =
     prop (CoinSelection inps _ _) =
         let
             utxo' = (Map.toList . getUTxO) $
-                utxo `excluding` (Set.fromList . map fst $ inps)
+                utxo `excluding` (Set.fromList . map inputId $ inps)
         in unless (L.null utxo') $
-            (getExtremumValue L.minimum inps)
+            (getExtremumValue L.minimum (inputValue <$> inps))
             `shouldSatisfy`
-            (>= (getExtremumValue L.maximum utxo'))
-    getExtremumValue f = f . map (getCoin . coin . snd)
+            (>= (getExtremumValue L.maximum (snd <$> utxo')))
+    getExtremumValue f = f . map getCoin
     selection = runIdentity $ runExceptT $ selectCoins largestFirst
         (CoinSelectionOptions (const 100) noValidation) txOuts utxo

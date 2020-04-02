@@ -44,7 +44,6 @@ library
     , cryptonite
     , deepseq
     , fmt
-    , memory
     , quiet
     , text
     , transformers
@@ -78,11 +77,13 @@ test-suite unit
     , cardano-coin-selection
     , containers
     , cryptonite
+    , deepseq
     , fmt
     , hspec
     , memory
     , QuickCheck
     , random
+    , quiet
     , text
     , transformers
     , vector
@@ -101,6 +102,7 @@ test-suite unit
       Cardano.CoinSelectionSpec
       Cardano.FeeSpec
       Cardano.TypesSpec
+      Test.Cardano.Types
       Test.Unsafe
       Test.Vector.Shuffle
       Test.Vector.ShuffleSpec

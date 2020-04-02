@@ -1,3 +1,6 @@
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies #-}
+
 -- |
 -- Copyright: © 2018-2020 IOHK
 -- License: Apache-2.0
@@ -16,9 +19,11 @@ import Cardano.CoinSelection
     , CoinSelectionAlgorithm (..)
     , CoinSelectionOptions (..)
     , ErrCoinSelection (..)
+    , Input (..)
+    , Output (..)
     )
 import Cardano.Types
-    ( Coin (..), TxIn, TxOut (..), UTxO (..), balance )
+    ( Coin (..), UTxO (..), balance )
 import Control.Arrow
     ( left )
 import Control.Monad
@@ -169,15 +174,17 @@ import qualified Data.Map.Strict as Map
 --
 --      See: __'ErrMaximumInputCountExceeded'__.
 --
-largestFirst :: Monad m => CoinSelectionAlgorithm m e
+largestFirst
+    :: (i ~ u, Ord u, Monad m)
+    => CoinSelectionAlgorithm i o u m e
 largestFirst = CoinSelectionAlgorithm payForOutputs
 
 payForOutputs
-    :: Monad m
-    => CoinSelectionOptions e
-    -> NonEmpty TxOut
-    -> UTxO
-    -> ExceptT (ErrCoinSelection e) m (CoinSelection, UTxO)
+    :: (i ~ u, Ord u, Monad m)
+    => CoinSelectionOptions i o e
+    -> NonEmpty (Output o)
+    -> UTxO u
+    -> ExceptT (ErrCoinSelection e) m (CoinSelection i o, UTxO u)
 payForOutputs options outputsRequested utxo =
     case foldM payForOutput (utxoDescending, mempty) outputsDescending of
         Just (utxoRemaining, selection) ->
@@ -198,18 +205,18 @@ payForOutputs options outputsRequested utxo =
     amountAvailable =
         fromIntegral $ balance utxo
     amountRequested =
-        sum $ (getCoin . coin) <$> outputsRequested
+        sum $ (getCoin . outputValue) <$> outputsRequested
     inputCountMax =
         fromIntegral $ maximumInputCount options $ fromIntegral outputCount
     outputCount =
         fromIntegral $ NE.length outputsRequested
     outputsDescending =
-        L.sortOn (Down . coin) $ NE.toList outputsRequested
+        L.sortOn (Down . outputValue) $ NE.toList outputsRequested
     utxoCount =
         fromIntegral $ L.length $ (Map.toList . getUTxO) utxo
     utxoDescending =
         take (fromIntegral inputCountMax)
-            $ L.sortOn (Down . coin . snd)
+            $ L.sortOn (Down . snd)
             $ Map.toList
             $ getUTxO utxo
     validateSelection =
@@ -226,25 +233,26 @@ payForOutputs options outputsRequested utxo =
 -- required output amount, this function will return 'Nothing'.
 --
 payForOutput
-    :: ([(TxIn, TxOut)], CoinSelection)
-    -> TxOut
-    -> Maybe ([(TxIn, TxOut)], CoinSelection)
-payForOutput (utxoAvailable, currentSelection) txout =
-    let target = fromIntegral $ getCoin $ coin txout in
+    :: forall i o u . i ~ u
+    => ([(u, Coin)], CoinSelection i o)
+    -> Output o
+    -> Maybe ([(u, Coin)], CoinSelection i o)
+payForOutput (utxoAvailable, currentSelection) out =
+    let target = fromIntegral $ getCoin $ outputValue out in
     coverTarget target utxoAvailable mempty
   where
     coverTarget
         :: Integer
-        -> [(TxIn, TxOut)]
-        -> [(TxIn, TxOut)]
-        -> Maybe ([(TxIn, TxOut)], CoinSelection)
+        -> [(u, Coin)]
+        -> [(u, Coin)]
+        -> Maybe ([(u, Coin)], CoinSelection i o)
     coverTarget target utxoRemaining utxoSelected
         | target <= 0 = Just
             -- We've selected enough to cover the target, so stop here.
             ( utxoRemaining
             , currentSelection <> CoinSelection
-                { inputs  = utxoSelected
-                , outputs = [txout]
+                { inputs  = uncurry Input <$> utxoSelected
+                , outputs = [out]
                 , change  = [Coin $ fromIntegral $ abs target | target < 0]
                 }
             )
@@ -254,7 +262,7 @@ payForOutput (utxoAvailable, currentSelection) txout =
             case utxoRemaining of
                 (i, o):utxoRemaining' ->
                     let utxoSelected' = (i, o):utxoSelected
-                        target' = target - fromIntegral (getCoin (coin o))
+                        target' = target - fromIntegral (getCoin o)
                     in
                     coverTarget target' utxoRemaining' utxoSelected'
                 [] ->

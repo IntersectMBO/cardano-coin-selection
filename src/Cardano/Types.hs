@@ -14,33 +14,24 @@
 --
 module Cardano.Types
     (
-    -- * Tx
-      TxIn(..)
-    , TxOut(..)
-
-    -- * Address
-    , Address (..)
-
     -- * Coin
-    , Coin (..)
+      Coin (..)
     , isValidCoin
 
     -- * UTxO
     , UTxO (..)
     , balance
-    , balance'
     , pickRandom
     , excluding
     , isSubsetOf
     , restrictedBy
     , restrictedTo
-    , Dom(..)
+    , Dom (..)
 
     -- * BlockchainParameters
     , FeePolicy (..)
 
     -- * Polymorphic
-    , Hash (..)
     , ShowFmt (..)
     , invariant
     , distance
@@ -54,12 +45,6 @@ import Crypto.Number.Generate
     ( generateBetween )
 import Crypto.Random.Types
     ( MonadRandom )
-import Data.ByteArray
-    ( ByteArrayAccess )
-import Data.ByteArray.Encoding
-    ( Base (Base16), convertToBase )
-import Data.ByteString
-    ( ByteString )
 import Data.Kind
     ( Type )
 import Data.Map.Strict
@@ -69,13 +54,11 @@ import Data.Quantity
 import Data.Set
     ( Set )
 import Data.Word
-    ( Word32, Word64 )
+    ( Word64 )
 import Fmt
-    ( Buildable (..), blockListF', fmt, ordinalF, prefixF, suffixF )
+    ( Buildable (..), blockListF', fmt )
 import GHC.Generics
     ( Generic )
-import GHC.TypeLits
-    ( Symbol )
 import Numeric.Natural
     ( Natural )
 import Quiet
@@ -83,48 +66,10 @@ import Quiet
 
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
-import qualified Data.Text.Encoding as T
 
 {-------------------------------------------------------------------------------
-                                      Tx
+                             Blockchain Parameters
 -------------------------------------------------------------------------------}
-
-data TxIn = TxIn
-    { inputId
-        :: !(Hash "Tx")
-    , inputIx
-        :: !Word32
-    } deriving (Show, Generic, Eq, Ord)
-
-instance NFData TxIn
-
-instance Buildable TxIn where
-    build txin = mempty
-        <> ordinalF (inputIx txin + 1)
-        <> " "
-        <> build (inputId txin)
-
-data TxOut = TxOut
-    { address
-        :: !Address
-    , coin
-        :: !Coin
-    } deriving (Show, Generic, Eq, Ord)
-
-instance NFData TxOut
-
-instance Buildable TxOut where
-    build txout = mempty
-        <> build (coin txout)
-        <> " @ "
-        <> prefixF 8 addrF
-        <> "..."
-        <> suffixF 8 addrF
-      where
-        addrF = build $ address txout
-
-instance Buildable (TxIn, TxOut) where
-    build (txin, txout) = build txin <> " ==> " <> build txout
 
 -- | A linear equation of a free variable `x`. Represents the @\x -> a + b*x@
 -- function where @x@ can be the transaction size in bytes or, a number of
@@ -138,28 +83,6 @@ data FeePolicy = LinearFee
     deriving (Eq, Show, Generic)
 
 instance NFData FeePolicy
-
-{-------------------------------------------------------------------------------
-                                    Address
--------------------------------------------------------------------------------}
-
-newtype Address = Address
-    { unAddress :: ByteString }
-    deriving stock (Eq, Generic, Ord)
-    deriving Show via (Quiet Address)
-
-instance NFData Address
-
-instance Buildable Address where
-    build addr = mempty
-        <> prefixF 8 addrF
-        <> "..."
-        <> suffixF 8 addrF
-      where
-        addrF = build (toText addr)
-        toText = T.decodeUtf8
-            . convertToBase Base16
-            . unAddress
 
 {-------------------------------------------------------------------------------
                                      Coin
@@ -187,19 +110,19 @@ isValidCoin c = c >= minBound && c <= maxBound
                                     UTxO
 -------------------------------------------------------------------------------}
 
-newtype UTxO = UTxO
-    { getUTxO :: Map TxIn TxOut }
+newtype UTxO u = UTxO
+    { getUTxO :: Map u Coin }
     deriving stock (Eq, Generic, Ord)
     deriving newtype (Semigroup, Monoid)
-    deriving Show via (Quiet UTxO)
+    deriving Show via (Quiet (UTxO u))
 
-instance NFData UTxO
+instance NFData u => NFData (UTxO u)
 
-instance Dom UTxO where
-    type DomElem UTxO = TxIn
+instance Dom (UTxO u) where
+    type DomElem (UTxO u) = u
     dom (UTxO utxo) = Map.keysSet utxo
 
-instance Buildable UTxO where
+instance Buildable u => Buildable (UTxO u) where
     build (UTxO utxo) =
         blockListF' "-" utxoF (Map.toList utxo)
       where
@@ -209,8 +132,8 @@ instance Buildable UTxO where
 -- Otherwise, returns the selected entry and, the UTxO minus the selected one.
 pickRandom
     :: MonadRandom m
-    => UTxO
-    -> m (Maybe (TxIn, TxOut), UTxO)
+    => UTxO u
+    -> m (Maybe (u, Coin), UTxO u)
 pickRandom (UTxO utxo)
     | Map.null utxo =
         return (Nothing, UTxO utxo)
@@ -219,35 +142,30 @@ pickRandom (UTxO utxo)
         return (Just $ Map.elemAt ix utxo, UTxO $ Map.deleteAt ix utxo)
 
 -- | Compute the balance of a UTxO.
-balance :: UTxO -> Natural
+balance :: UTxO u -> Natural
 balance =
     Map.foldl' fn 0 . getUTxO
   where
-    fn :: Natural -> TxOut -> Natural
-    fn tot out = tot + fromIntegral (getCoin (coin out))
-
--- | Compute the balance of a unwrapped UTxO.
-balance' :: [(TxIn, TxOut)] -> Word64
-balance' =
-    fromIntegral . balance . UTxO . Map.fromList
+    fn :: Natural -> Coin -> Natural
+    fn tot out = tot + fromIntegral (getCoin out)
 
 -- | ins⋪ u
-excluding :: UTxO -> Set TxIn ->  UTxO
+excluding :: Ord u => UTxO u -> Set u -> UTxO u
 excluding (UTxO utxo) =
     UTxO . Map.withoutKeys utxo
 
 -- | a ⊆ b
-isSubsetOf :: UTxO -> UTxO -> Bool
+isSubsetOf :: Ord u => UTxO u -> UTxO u -> Bool
 isSubsetOf (UTxO a) (UTxO b) =
     a `Map.isSubmapOf` b
 
 -- | ins⊲ u
-restrictedBy :: UTxO -> Set TxIn -> UTxO
+restrictedBy :: Ord u => UTxO u -> Set u -> UTxO u
 restrictedBy (UTxO utxo) =
     UTxO . Map.restrictKeys utxo
 
 -- | u ⊳ outs
-restrictedTo :: UTxO -> Set TxOut -> UTxO
+restrictedTo :: UTxO u -> Set Coin -> UTxO u
 restrictedTo (UTxO utxo) outs =
     UTxO $ Map.filter (`Set.member` outs) utxo
 
@@ -263,20 +181,6 @@ restrictedTo (UTxO utxo) outs =
 class Dom a where
     type DomElem a :: Type
     dom :: a -> Set (DomElem a)
-
-newtype Hash (tag :: Symbol) = Hash { getHash :: ByteString }
-    deriving stock (Eq, Generic, Ord)
-    deriving newtype (ByteArrayAccess)
-    deriving Show via (Quiet (Hash tag))
-
-instance NFData (Hash tag)
-
-instance Buildable (Hash tag) where
-    build h = mempty
-        <> prefixF 8 builder
-      where
-        builder = build . toText $ h
-        toText = T.decodeUtf8 . convertToBase Base16 . getHash
 
 -- | A polymorphic wrapper type with a custom show instance to display data
 -- through 'Buildable' instances.

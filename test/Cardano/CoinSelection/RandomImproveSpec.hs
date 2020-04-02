@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeApplications #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Cardano.CoinSelection.RandomImproveSpec
@@ -39,6 +40,8 @@ import Data.Functor.Identity
     ( Identity (..) )
 import Data.List.NonEmpty
     ( NonEmpty (..) )
+import Test.Cardano.Types
+    ( Address, TxIn )
 import Test.Hspec
     ( Spec, before, describe, it, shouldSatisfy )
 import Test.QuickCheck
@@ -234,18 +237,19 @@ spec = do
         describe "Coin selection properties : random algorithm" $ do
             it "forall (UTxO, NonEmpty TxOut), running algorithm gives not \
                 \less UTxO fragmentation than LargestFirst algorithm"
-                (property . propFragmentation)
+                (property . propFragmentation @TxIn @Address)
             it "forall (UTxO, NonEmpty TxOut), running algorithm gives the \
                 \same errors as LargestFirst algorithm"
-                (property . propErrors)
+                (property . propErrors @TxIn @Address)
 
 {-------------------------------------------------------------------------------
                               Properties
 -------------------------------------------------------------------------------}
 
 propFragmentation
-    :: SystemDRG
-    -> CoinSelProp
+    :: Ord u
+    => SystemDRG
+    -> CoinSelProp o u
     -> Property
 propFragmentation drg (CoinSelProp utxo txOuts) = do
     isRight selection1 && isRight selection2 ==>
@@ -262,8 +266,9 @@ propFragmentation drg (CoinSelProp utxo txOuts) = do
     opt = CoinSelectionOptions (const 100) noValidation
 
 propErrors
-    :: SystemDRG
-    -> CoinSelProp
+    :: Ord u
+    => SystemDRG
+    -> CoinSelProp o u
     -> Property
 propErrors drg (CoinSelProp utxo txOuts) = do
     isLeft selection1 && isLeft selection2 ==>
