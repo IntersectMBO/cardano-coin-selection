@@ -13,7 +13,7 @@ module Cardano.CoinSelection.MigrationSpec
 import Prelude
 
 import Cardano.CoinSelection
-    ( CoinSelection (..), changeBalance, inputBalance )
+    ( CoinSelection (..), Input (..), changeBalance, inputBalance )
 import Cardano.CoinSelection.Migration
     ( depleteUTxO, idealBatchSize )
 import Cardano.CoinSelectionSpec
@@ -130,8 +130,8 @@ spec = do
             let batchSize = 1
             let utxo = UTxO $ Map.fromList
                     [ ( TxIn
-                        { inputId = Hash "|\243^\SUBg\242\231\&1\213\203"
-                        , inputIx = 2
+                        { txinId = Hash "|\243^\SUBg\242\231\&1\213\203"
+                        , txinIx = 2
                         }
                       , Coin 2
                       )
@@ -213,7 +213,7 @@ prop_inputsStillInUTxO feeOpts batchSize utxo = do
             Set.fromList $ inputs =<<
                 depleteUTxO feeOpts batchSize utxo
     let utxoSet =
-            Set.fromList $ Map.toList $ getUTxO utxo
+            Set.fromList $ fmap (uncurry Input) $ Map.toList $ getUTxO utxo
     property (selectionInputSet `Set.isSubsetOf` utxoSet)
 
 -- | Every coin selection is well-balanced (i.e. actual fees are exactly the

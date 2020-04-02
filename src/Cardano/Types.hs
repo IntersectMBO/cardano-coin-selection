@@ -28,7 +28,6 @@ module Cardano.Types
     -- * UTxO
     , UTxO (..)
     , balance
-    , balance'
     , pickRandom
     , excluding
     , isSubsetOf
@@ -90,9 +89,9 @@ import qualified Data.Text.Encoding as T
 -------------------------------------------------------------------------------}
 
 data TxIn = TxIn
-    { inputId
+    { txinId
         :: !(Hash "Tx")
-    , inputIx
+    , txinIx
         :: !Word32
     } deriving (Show, Generic, Eq, Ord)
 
@@ -100,9 +99,9 @@ instance NFData TxIn
 
 instance Buildable TxIn where
     build txin = mempty
-        <> ordinalF (inputIx txin + 1)
+        <> ordinalF (txinIx txin + 1)
         <> " "
-        <> build (inputId txin)
+        <> build (txinId txin)
 
 data TxOut = TxOut
     { address
@@ -225,11 +224,6 @@ balance =
   where
     fn :: Natural -> Coin -> Natural
     fn tot out = tot + fromIntegral (getCoin out)
-
--- | Compute the balance of a unwrapped UTxO.
-balance' :: Ord u => [(u, Coin)] -> Word64
-balance' =
-    fromIntegral . balance . UTxO . Map.fromList
 
 -- | ins⋪ u
 excluding :: Ord u => UTxO u -> Set u -> UTxO u

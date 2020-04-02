@@ -18,7 +18,11 @@ import Prelude hiding
     ( round )
 
 import Cardano.CoinSelection
-    ( CoinSelection (..), CoinSelectionAlgorithm (..) )
+    ( CoinSelection (..)
+    , CoinSelectionAlgorithm (..)
+    , Input (..)
+    , Output (..)
+    )
 import Cardano.CoinSelection.LargestFirst
     ( largestFirst )
 import Cardano.Fee
@@ -397,9 +401,9 @@ spec = do
 isValidSelection :: CoinSelection i o -> Bool
 isValidSelection (CoinSelection i o c) =
     let
-        oAmt = sum $ map (fromIntegral . getCoin . snd) o
+        oAmt = sum $ map (fromIntegral . getCoin . outputValue) o
         cAmt = sum $ map (fromIntegral . getCoin) c
-        iAmt = sum $ map (fromIntegral . getCoin . snd) i
+        iAmt = sum $ map (fromIntegral . getCoin . inputValue) i
     in
         (iAmt :: Integer) >= (oAmt + cAmt)
 
@@ -441,7 +445,7 @@ propDeterministic (ShowFmt (FeeProp coinSel _ (fee, dust))) =
         resultOne `shouldBe` resultTwo
 
 propReducedChanges
-    :: forall i o u . (i ~ u, Buildable o, Buildable u, Ord u)
+    :: forall i o u . (i ~ u, Buildable o, Buildable u)
     => SystemDRG
     -> ShowFmt (FeeProp i o u)
     -> Property
@@ -738,8 +742,8 @@ feeUnitTest (FeeFixture inpsF outsF chngsF utxoF feeF dustF) expected =
             (CoinSelection inps outs chngs) <-
                 adjustForFee (feeOptions feeF dustF) utxo sel
             return $ FeeOutput
-                { csInps = map (getCoin . snd) inps
-                , csOuts = map (getCoin . snd) outs
+                { csInps = map (getCoin . inputValue) inps
+                , csOuts = map (getCoin . outputValue) outs
                 , csChngs = map getCoin chngs
                 }
         result `shouldBe` expected
@@ -749,8 +753,9 @@ feeUnitTest (FeeFixture inpsF outsF chngsF utxoF feeF dustF) expected =
         => IO (UTxO u, CoinSelection i o)
     setup = do
         utxo <- generate (genUTxO $ Coin <$> utxoF)
-        inps <- (Map.toList . getUTxO) <$> generate (genUTxO $ Coin <$> inpsF)
-        outs <- generate (genTxOut $ Coin <$> outsF)
+        inps <- (fmap (uncurry Input) . Map.toList . getUTxO) <$>
+            generate (genUTxO $ Coin <$> inpsF)
+        outs <- generate (genOutputs $ Coin <$> outsF)
         let chngs = map Coin chngsF
         pure (utxo, CoinSelection inps outs chngs)
 
@@ -804,15 +809,15 @@ genUTxO coins = do
     inps <- vectorOf n arbitrary
     return $ UTxO $ Map.fromList $ zip inps coins
 
-genTxOut :: Arbitrary o => [Coin] -> Gen [(o, Coin)]
-genTxOut coins = do
+genOutputs :: Arbitrary o => [Coin] -> Gen [Output o]
+genOutputs coins = do
     let n = length coins
     outs <- vectorOf n arbitrary
-    return $ zip outs coins
+    return $ zipWith Output outs coins
 
 genSelection
     :: (Arbitrary i, Ord i)
-    => NonEmpty (o, Coin)
+    => NonEmpty (Output o)
     -> Gen (CoinSelection i o)
 genSelection outs = do
     let opts = CS.CoinSelectionOptions (const 100) (const $ pure ())
@@ -897,7 +902,7 @@ instance (Arbitrary i, Arbitrary o, Ord i, Ord o) =>
     arbitrary = do
         outs <- choose (1, 10)
             >>= \n -> vectorOf n arbitrary
-            >>= genTxOut
+            >>= genOutputs
         genSelection (NE.fromList outs)
 
 instance Arbitrary (FeeOptions i o) where

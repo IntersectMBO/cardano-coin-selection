@@ -43,6 +43,7 @@ import Prelude
 import Cardano.CoinSelection
     ( CoinSelection (..)
     , CoinSelectionOptions (..)
+    , Input (..)
     , changeBalance
     , inputBalance
     )
@@ -81,9 +82,9 @@ depleteUTxO
         -- ^ UTxO to deplete
     -> [CoinSelection i o]
 depleteUTxO feeOpts batchSize utxo =
-    evalState migrate (Map.toList (getUTxO utxo))
+    evalState migrate (uncurry Input <$> Map.toList (getUTxO utxo))
   where
-    migrate :: State [(u, Coin)] [CoinSelection i o]
+    migrate :: State [Input i] [CoinSelection i o]
     migrate = do
         batch <- getNextBatch
         if null batch then
@@ -97,12 +98,12 @@ depleteUTxO feeOpts batchSize utxo =
     -- Construct a provisional 'CoinSelection' from the given selected inputs.
     -- Note that the selection may look a bit weird at first sight as it has
     -- no outputs (we are paying everything to ourselves!).
-    mkCoinSelection :: [(u, Coin)] -> CoinSelection i o
+    mkCoinSelection :: [Input i] -> CoinSelection i o
     mkCoinSelection inps = CoinSelection
         { inputs = inps
         , outputs = []
         , change =
-            let chgs = mapMaybe (noDust . snd) inps
+            let chgs = mapMaybe (noDust . inputValue) inps
             in if null chgs then [threshold] else chgs
         }
       where

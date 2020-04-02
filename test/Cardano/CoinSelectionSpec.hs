@@ -32,6 +32,8 @@ import Cardano.CoinSelection
     , CoinSelectionAlgorithm (..)
     , CoinSelectionOptions (..)
     , ErrCoinSelection (..)
+    , Input (..)
+    , Output (..)
     )
 import Cardano.Types
     ( Address (..)
@@ -39,7 +41,6 @@ import Cardano.Types
     , Hash (..)
     , ShowFmt (..)
     , TxIn (..)
-    , TxOut (..)
     , UTxO (..)
     )
 import Control.Monad.Trans.Except
@@ -109,7 +110,7 @@ prop_utxoToListOrderDeterministic u = monadicIO $ QC.run $ do
 data CoinSelProp o u = CoinSelProp
     { csUtxO :: UTxO u
         -- ^ Available UTxO for the selection
-    , csOuts :: NonEmpty (o, Coin)
+    , csOuts :: NonEmpty (Output o)
         -- ^ Requested outputs for the payment
     } deriving Show
 
@@ -163,9 +164,9 @@ coinSelectionUnitTest alg lbl expected (CoinSelectionFixture n fn utxoF outsF) =
             (CoinSelection inps outs chngs, _) <-
                 selectCoins alg (CoinSelectionOptions (const n) fn) txOuts utxo
             return $ CoinSelectionResult
-                { rsInputs = map (getCoin . snd) inps
+                { rsInputs = map (getCoin . inputValue) inps
                 , rsChange = map getCoin chngs
-                , rsOutputs = map (getCoin . snd) outs
+                , rsOutputs = map (getCoin . outputValue) outs
                 }
         result `shouldBe` expected
   where
@@ -177,10 +178,10 @@ coinSelectionUnitTest alg lbl expected (CoinSelectionFixture n fn utxoF outsF) =
         <> ", Output=" <> show (NE.toList outsF)
         <> " --> " <> show (rsInputs <$> expected)
 
-    setup :: IO (UTxO TxIn, NonEmpty (Address, Coin))
+    setup :: IO (UTxO TxIn, NonEmpty (Output Address))
     setup = do
         utxo <- generate (genUTxO utxoF)
-        outs <- generate (genTxOut $ NE.toList outsF)
+        outs <- generate (genOutputs $ NE.toList outsF)
         pure (utxo, NE.fromList outs)
 
 {-------------------------------------------------------------------------------
@@ -243,9 +244,9 @@ instance Arbitrary (Hash "Tx") where
         let bs = BS.pack wds
         pure $ Hash bs
 
-instance Arbitrary TxOut where
+instance Arbitrary o => Arbitrary (Output o) where
     -- No Shrinking
-    arbitrary = TxOut
+    arbitrary = Output
         <$> arbitrary
         <*> arbitrary
 
@@ -264,8 +265,8 @@ genUTxO coins = do
     inps <- vectorOf n arbitrary
     return $ UTxO $ Map.fromList $ zip inps (Coin <$> coins)
 
-genTxOut :: [Word64] -> Gen [(Address, Coin)]
-genTxOut coins = do
+genOutputs :: [Word64] -> Gen [Output Address]
+genOutputs coins = do
     let n = length coins
     outs <- vectorOf n arbitrary
-    return $ zip outs (map Coin coins)
+    return $ zipWith Output outs (map Coin coins)

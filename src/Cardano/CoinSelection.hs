@@ -16,6 +16,8 @@ module Cardano.CoinSelection
     , CoinSelection (..)
     , CoinSelectionOptions (..)
     , ErrCoinSelection (..)
+    , Input (..)
+    , Output (..)
 
       -- * Calculating Balances
     , inputBalance
@@ -56,7 +58,7 @@ import GHC.Generics
 newtype CoinSelectionAlgorithm i o u m e = CoinSelectionAlgorithm
     { selectCoins
         :: CoinSelectionOptions i o e
-        -> NonEmpty (o, Coin)
+        -> NonEmpty (Output o)
         -> UTxO u
         -> ExceptT (ErrCoinSelection e) m (CoinSelection i o, UTxO u)
     }
@@ -66,11 +68,11 @@ newtype CoinSelectionAlgorithm i o u m e = CoinSelectionAlgorithm
 -- See 'CoinSelectionAlgorithm'.
 --
 data CoinSelection i o = CoinSelection
-    { inputs :: [(i, Coin)]
+    { inputs :: [Input i]
       -- ^ A /subset/ of the original 'UTxO' that was passed to the coin
       -- selection algorithm, containing only the entries that were /selected/
       -- by the coin selection algorithm.
-    , outputs :: [(o, Coin)]
+    , outputs :: [Output o]
       -- ^ The original set of output payments passed to the coin selection
       -- algorithm, whose total value is covered by the 'inputs'.
     , change :: [Coin]
@@ -105,6 +107,42 @@ instance (Buildable i, Buildable o) => Buildable (CoinSelection i o) where
         <> nameF "change"
             (listF $ change s)
 
+-- | An input for a coin selection.
+--
+-- See 'CoinSelection'.
+--
+data Input i = Input
+    { inputId
+        :: !i
+        -- ^ A unique identifier for this input.
+    , inputValue
+        :: !Coin
+    } deriving (Eq, Generic, Ord, Show)
+
+instance Buildable i => Buildable (Input i) where
+    build i = mempty
+        <> build (inputValue i)
+        <> " @ "
+        <> build (inputId i)
+
+-- | An output for a coin selection.
+--
+-- See 'CoinSelection'.
+--
+data Output o = Output
+    { outputId
+        :: !o
+        -- ^ A unique identifier for this output.
+    , outputValue
+        :: !Coin
+    } deriving (Eq, Generic, Ord, Show)
+
+instance Buildable o => Buildable (Output o) where
+    build o = mempty
+        <> build (outputValue o)
+        <> " @ "
+        <> build (outputId o)
+
 -- | Represents a set of options to be passed to a coin selection algorithm.
 --
 data CoinSelectionOptions i o e = CoinSelectionOptions
@@ -120,11 +158,11 @@ data CoinSelectionOptions i o e = CoinSelectionOptions
 
 -- | Calculate the total sum of all 'inputs' for the given 'CoinSelection'.
 inputBalance :: CoinSelection i o -> Word64
-inputBalance =  foldl' (\total -> addCoin total . snd) 0 . inputs
+inputBalance =  foldl' (\total -> addCoin total . inputValue) 0 . inputs
 
 -- | Calculate the total sum of all 'outputs' for the given 'CoinSelection'.
 outputBalance :: CoinSelection i o -> Word64
-outputBalance =  foldl' (\total -> addCoin total . snd) 0 . outputs
+outputBalance =  foldl' (\total -> addCoin total . outputValue) 0 . outputs
 
 -- | Calculate the total sum of all 'change' for the given 'CoinSelection'.
 changeBalance :: CoinSelection i o -> Word64

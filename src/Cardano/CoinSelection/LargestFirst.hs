@@ -19,6 +19,8 @@ import Cardano.CoinSelection
     , CoinSelectionAlgorithm (..)
     , CoinSelectionOptions (..)
     , ErrCoinSelection (..)
+    , Input (..)
+    , Output (..)
     )
 import Cardano.Types
     ( Coin (..), UTxO (..), balance )
@@ -180,7 +182,7 @@ largestFirst = CoinSelectionAlgorithm payForOutputs
 payForOutputs
     :: (i ~ u, Ord u, Monad m)
     => CoinSelectionOptions i o e
-    -> NonEmpty (o, Coin)
+    -> NonEmpty (Output o)
     -> UTxO u
     -> ExceptT (ErrCoinSelection e) m (CoinSelection i o, UTxO u)
 payForOutputs options outputsRequested utxo =
@@ -203,13 +205,13 @@ payForOutputs options outputsRequested utxo =
     amountAvailable =
         fromIntegral $ balance utxo
     amountRequested =
-        sum $ (getCoin . snd) <$> outputsRequested
+        sum $ (getCoin . outputValue) <$> outputsRequested
     inputCountMax =
         fromIntegral $ maximumInputCount options $ fromIntegral outputCount
     outputCount =
         fromIntegral $ NE.length outputsRequested
     outputsDescending =
-        L.sortOn (Down . snd) $ NE.toList outputsRequested
+        L.sortOn (Down . outputValue) $ NE.toList outputsRequested
     utxoCount =
         fromIntegral $ L.length $ (Map.toList . getUTxO) utxo
     utxoDescending =
@@ -233,10 +235,10 @@ payForOutputs options outputsRequested utxo =
 payForOutput
     :: forall i o u . i ~ u
     => ([(u, Coin)], CoinSelection i o)
-    -> (o, Coin)
+    -> Output o
     -> Maybe ([(u, Coin)], CoinSelection i o)
-payForOutput (utxoAvailable, currentSelection) txout =
-    let target = fromIntegral $ getCoin $ snd txout in
+payForOutput (utxoAvailable, currentSelection) out =
+    let target = fromIntegral $ getCoin $ outputValue out in
     coverTarget target utxoAvailable mempty
   where
     coverTarget
@@ -249,8 +251,8 @@ payForOutput (utxoAvailable, currentSelection) txout =
             -- We've selected enough to cover the target, so stop here.
             ( utxoRemaining
             , currentSelection <> CoinSelection
-                { inputs  = utxoSelected
-                , outputs = [txout]
+                { inputs  = uncurry Input <$> utxoSelected
+                , outputs = [out]
                 , change  = [Coin $ fromIntegral $ abs target | target < 0]
                 }
             )
