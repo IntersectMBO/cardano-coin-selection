@@ -27,12 +27,7 @@ import Cardano.CoinSelection
 import Cardano.CoinSelection.LargestFirst
     ( largestFirst )
 import Cardano.Types
-    ( Coin (..)
-    , UTxO (..)
-    , distance
-    , invariant
-    , pickRandom
-    )
+    ( Coin (..), UTxO (..), distance, invariant, pickRandom )
 import Control.Arrow
     ( left )
 import Control.Monad

@@ -28,7 +28,7 @@ import Cardano.CoinSelectionSpec
     , noValidation
     )
 import Cardano.Types
-    ( Address, Coin (..), TxIn, UTxO (..), excluding )
+    ( Coin (..), UTxO (..), excluding )
 import Control.Monad
     ( unless )
 import Control.Monad.Trans.Except
@@ -39,6 +39,8 @@ import Data.Functor.Identity
     ( Identity (runIdentity) )
 import Data.List.NonEmpty
     ( NonEmpty (..) )
+import Test.Cardano.Types
+    ( Address, TxIn )
 import Test.Hspec
     ( Spec, describe, it, shouldSatisfy )
 import Test.QuickCheck

@@ -36,13 +36,7 @@ import Cardano.Fee
     , rebalanceChangeOutputs
     )
 import Cardano.Types
-    ( Address (..)
-    , Coin (..)
-    , Hash (..)
-    , ShowFmt (..)
-    , TxIn (..)
-    , UTxO (..)
-    )
+    ( Coin (..), ShowFmt (..), UTxO (..) )
 import Control.Arrow
     ( left )
 import Control.Monad
@@ -73,6 +67,8 @@ import GHC.Generics
     ( Generic )
 import Numeric.Rounding
     ( RoundingDirection (..), round )
+import Test.Cardano.Types
+    ( Address (..), Hash (..), TxIn (..) )
 import Test.Hspec
     ( Spec, SpecWith, before, describe, it, shouldBe, shouldSatisfy )
 import Test.QuickCheck

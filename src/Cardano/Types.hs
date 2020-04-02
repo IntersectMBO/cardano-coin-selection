@@ -14,15 +14,8 @@
 --
 module Cardano.Types
     (
-    -- * Tx
-      TxIn(..)
-    , TxOut(..)
-
-    -- * Address
-    , Address (..)
-
     -- * Coin
-    , Coin (..)
+      Coin (..)
     , isValidCoin
 
     -- * UTxO
@@ -33,13 +26,12 @@ module Cardano.Types
     , isSubsetOf
     , restrictedBy
     , restrictedTo
-    , Dom(..)
+    , Dom (..)
 
     -- * BlockchainParameters
     , FeePolicy (..)
 
     -- * Polymorphic
-    , Hash (..)
     , ShowFmt (..)
     , invariant
     , distance
@@ -53,12 +45,6 @@ import Crypto.Number.Generate
     ( generateBetween )
 import Crypto.Random.Types
     ( MonadRandom )
-import Data.ByteArray
-    ( ByteArrayAccess )
-import Data.ByteArray.Encoding
-    ( Base (Base16), convertToBase )
-import Data.ByteString
-    ( ByteString )
 import Data.Kind
     ( Type )
 import Data.Map.Strict
@@ -68,13 +54,11 @@ import Data.Quantity
 import Data.Set
     ( Set )
 import Data.Word
-    ( Word32, Word64 )
+    ( Word64 )
 import Fmt
-    ( Buildable (..), blockListF', fmt, ordinalF, prefixF, suffixF )
+    ( Buildable (..), blockListF', fmt )
 import GHC.Generics
     ( Generic )
-import GHC.TypeLits
-    ( Symbol )
 import Numeric.Natural
     ( Natural )
 import Quiet
@@ -82,48 +66,10 @@ import Quiet
 
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
-import qualified Data.Text.Encoding as T
 
 {-------------------------------------------------------------------------------
-                                      Tx
+                             Blockchain Parameters
 -------------------------------------------------------------------------------}
-
-data TxIn = TxIn
-    { txinId
-        :: !(Hash "Tx")
-    , txinIx
-        :: !Word32
-    } deriving (Show, Generic, Eq, Ord)
-
-instance NFData TxIn
-
-instance Buildable TxIn where
-    build txin = mempty
-        <> ordinalF (txinIx txin + 1)
-        <> " "
-        <> build (txinId txin)
-
-data TxOut = TxOut
-    { address
-        :: !Address
-    , coin
-        :: !Coin
-    } deriving (Show, Generic, Eq, Ord)
-
-instance NFData TxOut
-
-instance Buildable TxOut where
-    build txout = mempty
-        <> build (coin txout)
-        <> " @ "
-        <> prefixF 8 addrF
-        <> "..."
-        <> suffixF 8 addrF
-      where
-        addrF = build $ address txout
-
-instance Buildable u => Buildable (u, Coin) where
-    build (txin, txout) = build txin <> " ==> " <> build txout
 
 -- | A linear equation of a free variable `x`. Represents the @\x -> a + b*x@
 -- function where @x@ can be the transaction size in bytes or, a number of
@@ -137,28 +83,6 @@ data FeePolicy = LinearFee
     deriving (Eq, Show, Generic)
 
 instance NFData FeePolicy
-
-{-------------------------------------------------------------------------------
-                                    Address
--------------------------------------------------------------------------------}
-
-newtype Address = Address
-    { unAddress :: ByteString }
-    deriving stock (Eq, Generic, Ord)
-    deriving Show via (Quiet Address)
-
-instance NFData Address
-
-instance Buildable Address where
-    build addr = mempty
-        <> prefixF 8 addrF
-        <> "..."
-        <> suffixF 8 addrF
-      where
-        addrF = build (toText addr)
-        toText = T.decodeUtf8
-            . convertToBase Base16
-            . unAddress
 
 {-------------------------------------------------------------------------------
                                      Coin
@@ -257,20 +181,6 @@ restrictedTo (UTxO utxo) outs =
 class Dom a where
     type DomElem a :: Type
     dom :: a -> Set (DomElem a)
-
-newtype Hash (tag :: Symbol) = Hash { getHash :: ByteString }
-    deriving stock (Eq, Generic, Ord)
-    deriving newtype (ByteArrayAccess)
-    deriving Show via (Quiet (Hash tag))
-
-instance NFData (Hash tag)
-
-instance Buildable (Hash tag) where
-    build h = mempty
-        <> prefixF 8 builder
-      where
-        builder = build . toText $ h
-        toText = T.decodeUtf8 . convertToBase Base16 . getHash
 
 -- | A polymorphic wrapper type with a custom show instance to display data
 -- through 'Buildable' instances.

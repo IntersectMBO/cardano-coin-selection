@@ -44,7 +44,12 @@ import Prelude hiding
     ( round )
 
 import Cardano.CoinSelection
-    ( CoinSelection (..), Input (..), changeBalance, inputBalance, outputBalance )
+    ( CoinSelection (..)
+    , Input (..)
+    , changeBalance
+    , inputBalance
+    , outputBalance
+    )
 import Cardano.Types
     ( Coin (..)
     , FeePolicy (..)

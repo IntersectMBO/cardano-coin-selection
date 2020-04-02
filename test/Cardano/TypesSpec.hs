@@ -13,13 +13,9 @@ module Cardano.TypesSpec
 import Prelude
 
 import Cardano.Types
-    ( Address (..)
-    , Coin (..)
+    ( Coin (..)
     , Dom (..)
-    , Hash (..)
     , ShowFmt (..)
-    , TxIn (..)
-    , TxOut (..)
     , UTxO (..)
     , balance
     , excluding
@@ -30,6 +26,8 @@ import Cardano.Types
     )
 import Data.Set
     ( Set, (\\) )
+import Test.Cardano.Types
+    ( Address (..), Hash (..), TxIn (..), TxOut (..) )
 import Test.Hspec
     ( Spec, describe, it )
 import Test.QuickCheck

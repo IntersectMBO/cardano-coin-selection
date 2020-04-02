@@ -23,7 +23,7 @@ import Cardano.Fee
 import Cardano.FeeSpec
     ()
 import Cardano.Types
-    ( Address, Coin (..), Hash (..), TxIn (..), UTxO (..), balance )
+    ( Coin (..), UTxO (..), balance )
 import Data.ByteString
     ( ByteString )
 import Data.Function
@@ -32,6 +32,8 @@ import Data.Word
     ( Word8 )
 import Numeric.Natural
     ( Natural )
+import Test.Cardano.Types
+    ( Address, Hash (..), TxIn (..) )
 import Test.Hspec
     ( Spec, SpecWith, describe, it, shouldSatisfy )
 import Test.QuickCheck
