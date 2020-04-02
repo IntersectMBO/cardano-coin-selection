@@ -123,7 +123,7 @@ instance Buildable TxOut where
       where
         addrF = build $ address txout
 
-instance Buildable u => Buildable (u, TxOut) where
+instance Buildable u => Buildable (u, Coin) where
     build (txin, txout) = build txin <> " ==> " <> build txout
 
 -- | A linear equation of a free variable `x`. Represents the @\x -> a + b*x@
@@ -188,7 +188,7 @@ isValidCoin c = c >= minBound && c <= maxBound
 -------------------------------------------------------------------------------}
 
 newtype UTxO u = UTxO
-    { getUTxO :: Map u TxOut }
+    { getUTxO :: Map u Coin }
     deriving stock (Eq, Generic, Ord)
     deriving newtype (Semigroup, Monoid)
     deriving Show via (Quiet (UTxO u))
@@ -210,7 +210,7 @@ instance Buildable u => Buildable (UTxO u) where
 pickRandom
     :: MonadRandom m
     => UTxO u
-    -> m (Maybe (u, TxOut), UTxO u)
+    -> m (Maybe (u, Coin), UTxO u)
 pickRandom (UTxO utxo)
     | Map.null utxo =
         return (Nothing, UTxO utxo)
@@ -223,11 +223,11 @@ balance :: UTxO u -> Natural
 balance =
     Map.foldl' fn 0 . getUTxO
   where
-    fn :: Natural -> TxOut -> Natural
-    fn tot out = tot + fromIntegral (getCoin (coin out))
+    fn :: Natural -> Coin -> Natural
+    fn tot out = tot + fromIntegral (getCoin out)
 
 -- | Compute the balance of a unwrapped UTxO.
-balance' :: Ord u => [(u, TxOut)] -> Word64
+balance' :: Ord u => [(u, Coin)] -> Word64
 balance' =
     fromIntegral . balance . UTxO . Map.fromList
 
@@ -247,7 +247,7 @@ restrictedBy (UTxO utxo) =
     UTxO . Map.restrictKeys utxo
 
 -- | u ⊳ outs
-restrictedTo :: UTxO u -> Set TxOut -> UTxO u
+restrictedTo :: UTxO u -> Set Coin -> UTxO u
 restrictedTo (UTxO utxo) outs =
     UTxO $ Map.filter (`Set.member` outs) utxo
 

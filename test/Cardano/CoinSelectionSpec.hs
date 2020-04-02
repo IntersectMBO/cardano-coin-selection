@@ -163,7 +163,7 @@ coinSelectionUnitTest alg lbl expected (CoinSelectionFixture n fn utxoF outsF) =
             (CoinSelection inps outs chngs, _) <-
                 selectCoins alg (CoinSelectionOptions (const n) fn) txOuts utxo
             return $ CoinSelectionResult
-                { rsInputs = map (getCoin . coin . snd) inps
+                { rsInputs = map (getCoin . snd) inps
                 , rsChange = map getCoin chngs
                 , rsOutputs = map (getCoin . coin) outs
                 }
@@ -262,8 +262,7 @@ genUTxO :: (Arbitrary u, Ord u) => [Word64] -> Gen (UTxO u)
 genUTxO coins = do
     let n = length coins
     inps <- vectorOf n arbitrary
-    outs <- genTxOut coins
-    return $ UTxO $ Map.fromList $ zip inps outs
+    return $ UTxO $ Map.fromList $ zip inps (Coin <$> coins)
 
 genTxOut :: [Word64] -> Gen [TxOut]
 genTxOut coins = do

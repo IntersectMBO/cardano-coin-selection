@@ -66,7 +66,7 @@ newtype CoinSelectionAlgorithm i u m e = CoinSelectionAlgorithm
 -- See 'CoinSelectionAlgorithm'.
 --
 data CoinSelection i = CoinSelection
-    { inputs :: [(i, TxOut)]
+    { inputs :: [(i, Coin)]
       -- ^ A /subset/ of the original 'UTxO' that was passed to the coin
       -- selection algorithm, containing only the entries that were /selected/
       -- by the coin selection algorithm.
@@ -120,7 +120,7 @@ data CoinSelectionOptions i e = CoinSelectionOptions
 
 -- | Calculate the total sum of all 'inputs' for the given 'CoinSelection'.
 inputBalance :: CoinSelection i -> Word64
-inputBalance =  foldl' (\total -> addTxOut total . snd) 0 . inputs
+inputBalance =  foldl' (\total -> addCoin total . snd) 0 . inputs
 
 -- | Calculate the total sum of all 'outputs' for the given 'CoinSelection'.
 outputBalance :: CoinSelection i -> Word64

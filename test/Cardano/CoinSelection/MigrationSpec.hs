@@ -22,14 +22,7 @@ import Cardano.Fee
 import Cardano.FeeSpec
     ()
 import Cardano.Types
-    ( Address (..)
-    , Coin (..)
-    , Hash (..)
-    , TxIn (..)
-    , TxOut (..)
-    , UTxO (..)
-    , balance
-    )
+    ( Coin (..), Hash (..), TxIn (..), UTxO (..), balance )
 import Data.ByteString
     ( ByteString )
 import Data.Function
@@ -139,10 +132,7 @@ spec = do
                         { inputId = Hash "|\243^\SUBg\242\231\&1\213\203"
                         , inputIx = 2
                         }
-                      , TxOut
-                        { address = Address "ADDR03"
-                        , coin = Coin 2
-                        }
+                      , Coin 2
                       )
                     ]
             property (prop_inputsGreaterThanOutputs feeOpts batchSize utxo)
@@ -285,20 +275,14 @@ genUTxO :: Double -> Coin -> Gen (UTxO TxIn)
 genUTxO r (Coin dust) = do
     n <- choose (10, 1000)
     inps <- genTxIn n
-    outs <- genTxOut n
-    pure $ UTxO $ Map.fromList $ zip inps outs
+    coins <- vectorOf n genCoin
+    pure $ UTxO $ Map.fromList $ zip inps coins
   where
     genTxIn :: Int -> Gen [TxIn]
     genTxIn n = do
         ids <- vectorOf n (Hash <$> genBytes 8)
         ixs <- vectorOf n arbitrary
         pure $ zipWith TxIn ids ixs
-
-    genTxOut :: Int -> Gen [TxOut]
-    genTxOut n = do
-        coins <- vectorOf n genCoin
-        addrs <- vectorOf n (Address <$> genBytes 8)
-        pure $ zipWith TxOut addrs coins
 
     genBytes :: Int -> Gen ByteString
     genBytes n = B8.pack <$> vectorOf n arbitrary

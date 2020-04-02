@@ -338,7 +338,7 @@ improveSelection (maxN0, selection, utxo0) (inps0, txout) = do
 
 -- | Represents an entry from a 'UTxO' set that has been selected for inclusion
 --   in the set of 'inputs' of a 'CoinSelection'.
-type CoinSelectionInput i = (i, TxOut)
+type CoinSelectionInput i = (i, Coin)
 
 -- | Represents a target range of /total input values/ for a given output.
 --

@@ -212,7 +212,7 @@ payForOutputs options outputsRequested utxo =
         fromIntegral $ L.length $ (Map.toList . getUTxO) utxo
     utxoDescending =
         take (fromIntegral inputCountMax)
-            $ L.sortOn (Down . coin . snd)
+            $ L.sortOn (Down . snd)
             $ Map.toList
             $ getUTxO utxo
     validateSelection =
@@ -230,18 +230,18 @@ payForOutputs options outputsRequested utxo =
 --
 payForOutput
     :: forall i u . i ~ u
-    => ([(u, TxOut)], CoinSelection i)
+    => ([(u, Coin)], CoinSelection i)
     -> TxOut
-    -> Maybe ([(u, TxOut)], CoinSelection i)
+    -> Maybe ([(u, Coin)], CoinSelection i)
 payForOutput (utxoAvailable, currentSelection) txout =
     let target = fromIntegral $ getCoin $ coin txout in
     coverTarget target utxoAvailable mempty
   where
     coverTarget
         :: Integer
-        -> [(u, TxOut)]
-        -> [(u, TxOut)]
-        -> Maybe ([(u, TxOut)], CoinSelection i)
+        -> [(u, Coin)]
+        -> [(u, Coin)]
+        -> Maybe ([(u, Coin)], CoinSelection i)
     coverTarget target utxoRemaining utxoSelected
         | target <= 0 = Just
             -- We've selected enough to cover the target, so stop here.
@@ -258,7 +258,7 @@ payForOutput (utxoAvailable, currentSelection) txout =
             case utxoRemaining of
                 (i, o):utxoRemaining' ->
                     let utxoSelected' = (i, o):utxoSelected
-                        target' = target - fromIntegral (getCoin (coin o))
+                        target' = target - fromIntegral (getCoin o)
                     in
                     coverTarget target' utxoRemaining' utxoSelected'
                 [] ->

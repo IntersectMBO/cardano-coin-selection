@@ -27,7 +27,7 @@ import Cardano.CoinSelectionSpec
     , noValidation
     )
 import Cardano.Types
-    ( Coin (..), TxIn, TxOut (..), UTxO (..), excluding )
+    ( Coin (..), TxIn, UTxO (..), excluding )
 import Control.Monad
     ( unless )
 import Control.Monad.Trans.Except
@@ -277,6 +277,6 @@ propInputDecreasingOrder (CoinSelProp utxo txOuts) =
             (getExtremumValue L.minimum inps)
             `shouldSatisfy`
             (>= (getExtremumValue L.maximum utxo'))
-    getExtremumValue f = f . map (getCoin . coin . snd)
+    getExtremumValue f = f . map (getCoin . snd)
     selection = runIdentity $ runExceptT $ selectCoins largestFirst
         (CoinSelectionOptions (const 100) noValidation) txOuts utxo

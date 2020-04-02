@@ -49,7 +49,7 @@ import Cardano.CoinSelection
 import Cardano.Fee
     ( DustThreshold (..), Fee (..), FeeOptions (..) )
 import Cardano.Types
-    ( Coin (..), TxOut (..), UTxO (..) )
+    ( Coin (..), UTxO (..) )
 import Control.Monad.Trans.State
     ( State, evalState, get, put )
 import Data.List.NonEmpty
@@ -83,7 +83,7 @@ depleteUTxO
 depleteUTxO feeOpts batchSize utxo =
     evalState migrate (Map.toList (getUTxO utxo))
   where
-    migrate :: State [(u, TxOut)] [CoinSelection i]
+    migrate :: State [(u, Coin)] [CoinSelection i]
     migrate = do
         batch <- getNextBatch
         if null batch then
@@ -97,7 +97,7 @@ depleteUTxO feeOpts batchSize utxo =
     -- Construct a provisional 'CoinSelection' from the given selected inputs.
     -- Note that the selection may look a bit weird at first sight as it has
     -- no outputs (we are paying everything to ourselves!).
-    mkCoinSelection :: [(u, TxOut)] -> CoinSelection i
+    mkCoinSelection :: [(u, Coin)] -> CoinSelection i
     mkCoinSelection inps = CoinSelection
         { inputs = inps
         , outputs = []
@@ -107,8 +107,8 @@ depleteUTxO feeOpts batchSize utxo =
         }
       where
         threshold = Coin $ getDustThreshold $ dustThreshold feeOpts
-        noDust :: TxOut -> Maybe Coin
-        noDust (TxOut _ c)
+        noDust :: Coin -> Maybe Coin
+        noDust c
             | c < threshold = Nothing
             | otherwise = Just c
 

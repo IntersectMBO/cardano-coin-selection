@@ -48,7 +48,6 @@ import Cardano.CoinSelection
 import Cardano.Types
     ( Coin (..)
     , FeePolicy (..)
-    , TxOut (..)
     , UTxO (..)
     , balance'
     , invariant
@@ -254,7 +253,7 @@ senderPaysFee opt utxo sel = evalStateT (go sel) utxo where
 coverRemainingFee
     :: (Ord u, MonadRandom m)
     => Fee
-    -> StateT (UTxO u) (ExceptT ErrAdjustForFee m) [(u, TxOut)]
+    -> StateT (UTxO u) (ExceptT ErrAdjustForFee m) [(u, Coin)]
 coverRemainingFee (Fee fee) = go [] where
     go acc
         | balance' acc >= fee =

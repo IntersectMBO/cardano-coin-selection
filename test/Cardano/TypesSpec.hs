@@ -99,7 +99,7 @@ prop_2_1_2 (ins, u) =
     cond = not $ Set.null $ dom u `Set.intersection` ins
     prop = (u `excluding` ins) `isSubsetOf` u
 
-prop_2_1_3 :: Ord u => (Set TxOut, UTxO u) -> Property
+prop_2_1_3 :: Ord u => (Set Coin, UTxO u) -> Property
 prop_2_1_3 (outs, u) =
     cover 50 cond "u ⋂ outs ≠ ∅" (property prop)
   where

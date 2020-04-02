@@ -399,7 +399,7 @@ isValidSelection (CoinSelection i o c) =
     let
         oAmt = sum $ map (fromIntegral . getCoin . coin) o
         cAmt = sum $ map (fromIntegral . getCoin) c
-        iAmt = sum $ map (fromIntegral . getCoin . coin . snd) i
+        iAmt = sum $ map (fromIntegral . getCoin . snd) i
     in
         (iAmt :: Integer) >= (oAmt + cAmt)
 
@@ -729,7 +729,7 @@ feeUnitTest (FeeFixture inpsF outsF chngsF utxoF feeF dustF) expected =
             (CoinSelection inps outs chngs) <-
                 adjustForFee (feeOptions feeF dustF) utxo sel
             return $ FeeOutput
-                { csInps = map (getCoin . coin . snd) inps
+                { csInps = map (getCoin . snd) inps
                 , csOuts = map (getCoin . coin) outs
                 , csChngs = map getCoin chngs
                 }
@@ -791,8 +791,7 @@ genUTxO
 genUTxO coins = do
     let n = length coins
     inps <- vectorOf n arbitrary
-    outs <- genTxOut coins
-    return $ UTxO $ Map.fromList $ zip inps outs
+    return $ UTxO $ Map.fromList $ zip inps coins
 
 genTxOut :: [Coin] -> Gen [TxOut]
 genTxOut coins = do
