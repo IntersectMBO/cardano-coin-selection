@@ -414,16 +414,48 @@ remainingFee opts s = do
     Fee fee = estimateFee opts s
     diff = inputBalance s - (outputBalance s + changeBalance s)
 
--- Equally split the extra change obtained when picking new inputs across all
--- other change. Note that, it may create an extra change output if:
+-- | Splits up the given coin of value __@v@__, distributing its value over the
+--   given coin list of length __@n@__, so that each coin value is increased by
+--   the same absolute rational amount __@v/n@__ and then rounded to the nearest
+--   integer, producing a new list of coin values where the overall total is
+--   preserved.
 --
---   (a) There's no change at all initially
---   (b) Adding change to an exiting one would cause an overflow
+-- == Examples
 --
--- It makes no attempt to divvy the new output proportionally over the change
--- outputs. This means that if we happen to pick a very large UTxO entry,
--- adding this evenly rather than proportionally might skew the payment:change
--- ratio a lot. Could consider defining this in terms of divvy instead.
+-- >>> splitChange (Coin 4) (Coin <$> [1, 1, 1, 1])
+-- [Coin 2, Coin 2, Coin 2, Coin 2]
+-- >>> splitChange (Coin 4) (Coin <$> [1, 2, 3, 4])
+-- [Coin 2, Coin 3, Coin 4, Coin 5]
+--
+-- == Special Cases
+--
+-- If given list is /empty/, this function will return a singleton list that
+-- contains /just/ the given coin:
+--
+-- >>> splitChange (Coin 1) []
+-- [Coin 1]
+-- >>> splitChange (Coin 10) []
+-- [Coin 10]
+--
+-- While processing the list, if increasing the value of any given coin 'c'
+-- would cause its value to exceed 'maxBound' (thus causing overflow), this
+-- function will leave the coin 'c' unchanged in the resulting list,
+-- distributing the excess value to coins not yet processed:
+--
+-- >>> splitChange (Coin 1) (Coin <$> [45000000000000000, 1])
+-- [Coin 45000000000000000, Coin 2]
+-- >>> splitChange (Coin 10) (Coin <$> [45000000000000000 - 1, 1])
+-- [Coin 44999999999999999, Coin 11]
+--
+-- After processing the list, if there is any remaining value left over due to
+-- overflow, a new coin is appended to the end of the list to hold the excess
+-- value:
+--
+-- >>> splitChange (Coin 1) (Coin <$> [45000000000000000])
+-- [Coin 45000000000000000, Coin 1]
+-- >>> splitChange (Coin 10) (Coin <$> [45000000000000000 - 1])
+-- [Coin 44999999999999999, Coin 10]
+--
 splitChange :: Coin -> [Coin] -> [Coin]
 splitChange = go
   where
