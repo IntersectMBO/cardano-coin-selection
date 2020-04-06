@@ -389,6 +389,10 @@ spec = do
         it "preserves sum"
             (checkCoverage propRebalanceChangeOutputsPreservesSum)
 
+    describe "splitCoin" $ do
+        it "data coverage is adequate"
+            (checkCoverage propSplitCoinDataCoverage)
+
 {-------------------------------------------------------------------------------
                          Fee Adjustment - Properties
 -------------------------------------------------------------------------------}
@@ -711,6 +715,68 @@ propRebalanceChangeOutputsPreservesSum
             sum (getCoin <$> coinsRemaining) + fee
         | otherwise =
             null coinsRemaining
+
+{-------------------------------------------------------------------------------
+                           splitCoin - Properties
+-------------------------------------------------------------------------------}
+
+data SplitCoinData = SplitCoinData
+    { scdCoinToSplit :: Coin
+    , scdCoinsToIncrease :: [Coin]
+    } deriving (Eq, Generic, Show)
+
+instance Arbitrary SplitCoinData where
+    arbitrary = do
+        coinToSplit <- genCoin
+        n <- oneof
+            [ pure 0
+            , pure 1
+            , choose (2, 10)
+            ]
+        coinsToIncrease <- replicateM n genCoin
+        pure $ SplitCoinData coinToSplit coinsToIncrease
+      where
+        genCoin :: Gen Coin
+        genCoin = oneof
+            [ pure minBound
+            , pure maxBound
+            , Coin <$> choose
+                ( succ . getCoin $ minBound
+                , pred . getCoin $ maxBound
+                )
+            ]
+
+propSplitCoinDataCoverage :: SplitCoinData -> Property
+propSplitCoinDataCoverage (SplitCoinData coinToSplit coinsToIncrease) =
+    property
+        $ cover 8 (null coinsToIncrease)
+            "list of coins is empty"
+        $ cover 8 (length coinsToIncrease == 1)
+            "list of coins is singleton"
+        $ cover 8 (length coinsToIncrease > 1)
+            "list of coins has multiple entries"
+        $ cover 8 (coinToSplit == minBound)
+            "coin to split is minimal"
+        $ cover 8 (coinToSplit == maxBound)
+            "coin to split is maximal"
+        $ cover 8 (coinToSplit > minBound && coinToSplit < maxBound)
+            "coin to split is neither minimal nor maximal"
+        $ cover 8 (maxBound `notElem` coinsToIncrease)
+            "all coins within list are not maximal"
+        $ cover 8 (maxBound `elem` coinsToIncrease)
+            "at least one coin within list is maximal"
+        $ cover 8 (any notMaximalButWouldOverflowIfIncreased coinsToIncrease)
+            "at least one coin is not maximal but would overflow if increased"
+        True
+  where
+    count = length coinsToIncrease
+    notMaximalButWouldOverflowIfIncreased (Coin v) =
+        Coin v < maxBound &&
+        Coin (v + amountToIncrease) > maxBound
+    amountToIncrease =
+        if count == 0
+        then getCoin coinToSplit
+        else getCoin coinToSplit `div` fromIntegral count
 
 {-------------------------------------------------------------------------------
                          Fee Adjustment - Unit Tests
