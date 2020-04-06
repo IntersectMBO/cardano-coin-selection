@@ -76,7 +76,7 @@ This draft has several **limitations**, to be addressed in future versions:
       * [Phase 2: Improvement](#phase-2-improvement)
     * [Termination](#termination-1)
 * [External Resources](#external-resources)
-  * [Self Organization in Coin Selection](#self-organization-in-coin-selection)
+  * [Self Organisation in Coin Selection](#self-organisation-in-coin-selection)
 
 # Purpose
 
@@ -192,7 +192,7 @@ In particular, a coin selection algorithm should:
     [inputs](#transaction-input).
 
 For more information on dust avoidance, see [Self Organisation in Coin
-Selection](#self-organization-in-coin-selection).
+Selection](#self-organisation-in-coin-selection).
 
 # Definitions
 
@@ -529,8 +529,8 @@ There are two main algorithms used by Cardano Wallet:
 In general, Cardano Wallet gives _priority_ to the
 [Random-Improve](#random-improve) algorithm, as experimental evidence shows
 that it performs better at [minimising dust](#goals) and maintaining a UTxO set
-with [useful outputs](#goals). (See [Self Organization in Coin
-Selection](#self-organization-in-coin-selection) for more details.)
+with [useful outputs](#goals). (See [Self Organisation in Coin
+Selection](#self-organisation-in-coin-selection) for more details.)
 
 However, in rare cases, the [Random-Improve](#random-improve) may fail to
 produce a result. In such cases, Cardano Wallet will fall back to the
@@ -655,7 +655,7 @@ In the _first_ phase, the algorithm iterates through each of the [requested
 outputs](#requested-output-list) in _descending order of coin value_, from
 _largest_ to _smallest_. For each output, the algorithm repeatedly selects
 entries at **random** from the [initial UTxO set](#initial-utxo-set), until the
-_total value_ of selected entries is enough to pay for that ouput.
+_total value_ of selected entries is enough to pay for that output.
 
 In the _second_ phase, the algorithm attempts to **improve** upon each of the
 UTxO selections made in the previous phase, by conservatively expanding the
@@ -819,12 +819,12 @@ The [available UTxO set](#available-utxo-set) is returned to the caller as the
 
 # External Resources
 
-## Self Organization in Coin Selection
+## Self Organisation in Coin Selection
 
-This article analyzes the performance of various coin selection algorithms in
-relation to dust minimization and the maintenance of healthy UTxO sets over
+This article analyses the performance of various coin selection algorithms in
+relation to dust minimisation and the maintenance of healthy UTxO sets over
 time, giving an experimental basis to this analysis. It highlights several
-principles of self-organization that inform the design of effective coin
+principles of self-organisation that inform the design of effective coin
 selection algorithms.
 
 https://cardanofoundation.org/en/news/self-organisation-in-coin-selection/
