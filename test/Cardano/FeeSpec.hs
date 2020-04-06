@@ -33,7 +33,7 @@ import Cardano.Fee
     , adjustForFee
     , coalesceDust
     , distributeFee
-    , rebalanceChangeOutputs
+    , reduceChangeOutputs
     , splitCoin
     )
 import Cardano.Types
@@ -384,11 +384,11 @@ spec = do
         it "length coins >= (coalesceDust threshold coins)"
             (checkCoverage propCoalesceDustNeverLengthensList)
 
-    describe "rebalanceChangeOutputs" $ do
+    describe "reduceChangeOutputs" $ do
         it "data coverage is adequate"
-            (checkCoverage propRebalanceChangeOutputsDataCoverage)
+            (checkCoverage propReduceChangeOutputsDataCoverage)
         it "preserves sum"
-            (checkCoverage propRebalanceChangeOutputsPreservesSum)
+            (checkCoverage propReduceChangeOutputsPreservesSum)
 
     describe "splitCoin" $ do
         it "data coverage is adequate"
@@ -673,16 +673,16 @@ propCoalesceDustNeverLengthensList (CoalesceDustData threshold coins) =
     property $ length coins >= length (coalesceDust threshold coins)
 
 {-------------------------------------------------------------------------------
-                     rebalanceChangeOutputs - Properties
+                     reduceChangeOutputs - Properties
 -------------------------------------------------------------------------------}
 
-data RebalanceChangeOutputsData = RebalanceChangeOutputsData
+data ReduceChangeOutputsData = ReduceChangeOutputsData
     { rcodFee :: Fee
     , rcodThreshold :: DustThreshold
     , rcodCoins :: [Coin]
     } deriving (Eq, Generic, Show)
 
-instance Arbitrary RebalanceChangeOutputsData where
+instance Arbitrary ReduceChangeOutputsData where
     arbitrary = do
         coalesceDustData <- arbitrary
         let threshold = cddThreshold coalesceDustData
@@ -694,12 +694,12 @@ instance Arbitrary RebalanceChangeOutputsData where
             , pure coinSum
             , choose (coinSum + 1, coinSum * 2)
             ]
-        pure $ RebalanceChangeOutputsData fee threshold coins
+        pure $ ReduceChangeOutputsData fee threshold coins
     shrink = genericShrink
 
-propRebalanceChangeOutputsDataCoverage :: RebalanceChangeOutputsData -> Property
-propRebalanceChangeOutputsDataCoverage
-    (RebalanceChangeOutputsData (Fee fee) _ coins) =
+propReduceChangeOutputsDataCoverage :: ReduceChangeOutputsData -> Property
+propReduceChangeOutputsDataCoverage
+    (ReduceChangeOutputsData (Fee fee) _ coins) =
         let coinSum = sum $ getCoin <$> coins in
         property
             -- Test coverage of fee amount, relative to sum of coins:
@@ -713,11 +713,11 @@ propRebalanceChangeOutputsDataCoverage
                 "fee > sum coins"
             True
 
-propRebalanceChangeOutputsPreservesSum :: RebalanceChangeOutputsData -> Property
-propRebalanceChangeOutputsPreservesSum
-    (RebalanceChangeOutputsData (Fee fee) threshold coins) = property check
+propReduceChangeOutputsPreservesSum :: ReduceChangeOutputsData -> Property
+propReduceChangeOutputsPreservesSum
+    (ReduceChangeOutputsData (Fee fee) threshold coins) = property check
   where
-    coinsRemaining = rebalanceChangeOutputs threshold (Fee fee) coins
+    coinsRemaining = reduceChangeOutputs threshold (Fee fee) coins
     -- We can only expect the total sum to be preserved if the supplied coins
     -- are enough to pay for the fee:
     check

@@ -30,7 +30,7 @@ module Cardano.Fee
     , FeeOptions (..)
     , ErrAdjustForFee(..)
     , adjustForFee
-    , rebalanceChangeOutputs
+    , reduceChangeOutputs
 
       -- * Dust Processing
     , DustThreshold (..)
@@ -196,7 +196,7 @@ senderPaysFee opt utxo sel = evalStateT (go sel) utxo where
                 { inputs = inps
                 , outputs = outs
                 , change =
-                    rebalanceChangeOutputs (dustThreshold opt) upperBound chgs
+                    reduceChangeOutputs (dustThreshold opt) upperBound chgs
                 }
         let remFee = remainingFee opt coinSel'
         -- 3.1/
@@ -247,20 +247,20 @@ coverRemainingFee (Fee fee) = go [] where
 --
 -- We divvy up the fee over all change outputs proportionally, to try and keep
 -- any output:change ratio as unchanged as possible
-rebalanceChangeOutputs :: DustThreshold -> Fee -> [Coin] -> [Coin]
-rebalanceChangeOutputs threshold totalFee chgs =
+reduceChangeOutputs :: DustThreshold -> Fee -> [Coin] -> [Coin]
+reduceChangeOutputs threshold totalFee chgs =
     case filter (> Coin 0) chgs of
         [] -> []
         x : xs ->
             coalesceDust threshold
-            $ fmap reduceSingleChange
+            $ fmap reduceChangeOutput
             $ distributeFee totalFee
             $ x :| xs
 
 -- | Reduce single change output by a given fee amount. If fees are too big for
 -- a single coin, returns a `Coin 0`.
-reduceSingleChange :: (Fee, Coin) -> Coin
-reduceSingleChange (Fee fee, Coin chng)
+reduceChangeOutput :: (Fee, Coin) -> Coin
+reduceChangeOutput (Fee fee, Coin chng)
     | chng >= fee =
           Coin (chng - fee)
     | otherwise =
