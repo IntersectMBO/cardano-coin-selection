@@ -218,7 +218,7 @@ senderPaysFee opt utxo sel = evalStateT (go sel) utxo where
             -- change plus the extra change brought up by this entry and see if
             -- we can now correctly cover fee.
             inps' <- coverRemainingFee remFee
-            let extraChange = splitChange (Coin $ sumInputs inps') chgs
+            let extraChange = splitCoin (Coin $ sumInputs inps') chgs
             go $ CoinSelection (inps <> inps') outs extraChange
 
 -- | A short / simple version of the 'random' fee policy to cover for fee in
@@ -377,7 +377,7 @@ distributeFee (Fee feeTotal) coinsUnsafe =
 --
 coalesceDust :: DustThreshold -> NonEmpty Coin -> [Coin]
 coalesceDust (DustThreshold threshold) coins =
-    splitChange valueToDistribute coinsToKeep
+    splitCoin valueToDistribute coinsToKeep
   where
     (coinsToKeep, coinsToRemove) = NE.partition (> Coin threshold) coins
     valueToDistribute = Coin $ sum $ getCoin <$> coinsToRemove
@@ -422,9 +422,9 @@ remainingFee opts s = do
 --
 -- == Examples
 --
--- >>> splitChange (Coin 4) (Coin <$> [1, 1, 1, 1])
+-- >>> splitCoin (Coin 4) (Coin <$> [1, 1, 1, 1])
 -- [Coin 2, Coin 2, Coin 2, Coin 2]
--- >>> splitChange (Coin 4) (Coin <$> [1, 2, 3, 4])
+-- >>> splitCoin (Coin 4) (Coin <$> [1, 2, 3, 4])
 -- [Coin 2, Coin 3, Coin 4, Coin 5]
 --
 -- == Special Cases
@@ -432,9 +432,9 @@ remainingFee opts s = do
 -- If given list is /empty/, this function will return a singleton list that
 -- contains /just/ the given coin:
 --
--- >>> splitChange (Coin 1) []
+-- >>> splitCoin (Coin 1) []
 -- [Coin 1]
--- >>> splitChange (Coin 10) []
+-- >>> splitCoin (Coin 10) []
 -- [Coin 10]
 --
 -- While processing the list, if increasing the value of any given coin 'c'
@@ -442,22 +442,22 @@ remainingFee opts s = do
 -- function will leave the coin 'c' unchanged in the resulting list,
 -- distributing the excess value to coins not yet processed:
 --
--- >>> splitChange (Coin 1) (Coin <$> [45000000000000000, 1])
+-- >>> splitCoin (Coin 1) (Coin <$> [45000000000000000, 1])
 -- [Coin 45000000000000000, Coin 2]
--- >>> splitChange (Coin 10) (Coin <$> [45000000000000000 - 1, 1])
+-- >>> splitCoin (Coin 10) (Coin <$> [45000000000000000 - 1, 1])
 -- [Coin 44999999999999999, Coin 11]
 --
 -- After processing the list, if there is any remaining value left over due to
 -- overflow, a new coin is appended to the end of the list to hold the excess
 -- value:
 --
--- >>> splitChange (Coin 1) (Coin <$> [45000000000000000])
+-- >>> splitCoin (Coin 1) (Coin <$> [45000000000000000])
 -- [Coin 45000000000000000, Coin 1]
--- >>> splitChange (Coin 10) (Coin <$> [45000000000000000 - 1])
+-- >>> splitCoin (Coin 10) (Coin <$> [45000000000000000 - 1])
 -- [Coin 44999999999999999, Coin 10]
 --
-splitChange :: Coin -> [Coin] -> [Coin]
-splitChange = go
+splitCoin :: Coin -> [Coin] -> [Coin]
+splitCoin = go
   where
     go remaining as | remaining == Coin 0 = as
     go remaining [] = [remaining]
