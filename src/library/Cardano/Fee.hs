@@ -421,9 +421,7 @@ coalesceDust (DustThreshold threshold) coins =
 
 -- | Computes how much is left to pay given a particular selection
 remainingFee
-    :: HasCallStack
-    => Buildable i
-    => Buildable o
+    :: (HasCallStack, Buildable i, Buildable o)
     => FeeEstimator i o
     -> CoinSelection i o
     -> Fee
