@@ -423,47 +423,52 @@ remainingFee opts s = do
 --   integer, producing a new list of coin values where the overall total is
 --   preserved.
 --
--- == Examples
+-- == Basic Examples
 --
--- >>> splitCoin (Coin 4) (Coin <$> [1, 1, 1, 1])
--- [Coin 2, Coin 2, Coin 2, Coin 2]
--- >>> splitCoin (Coin 4) (Coin <$> [1, 2, 3, 4])
--- [Coin 2, Coin 3, Coin 4, Coin 5]
+-- In normal circumstances, each coin value is increased by the same rational
+-- amount (modulo rounding):
 --
--- == Special Cases
+-- >>> splitCoin (Coin 40) (Coin <$> [1, 1, 1, 1])
+-- [Coin 11, Coin 11, Coin 11, Coin 11]
 --
--- If given list is /empty/, this function will return a singleton list that
--- contains /just/ the given coin:
+-- >>> splitCoin (Coin 40) (Coin <$> [1, 2, 3, 4])
+-- [Coin 11, Coin 12, Coin 13, Coin 14]
 --
--- >>> splitCoin (Coin 1) []
--- [Coin 1]
+-- == Handling Overflow
+--
+-- While processing the given list, if increasing the value of any given coin
+-- __'c'__ would cause its value to exceed 'maxBound', this function will leave
+-- coin __'c'__ /unchanged/ in the resulting list, distributing the excess
+-- value to coins that occur /later/ in the list:
+--
+-- >>> splitCoin (Coin 10) (Coin <$> [getCoin maxBound, 1])
+-- [Coin 45000000000000000, Coin 11]
+--
+-- >>> splitCoin (Coin 10) (Coin <$> [getCoin maxBound - 1, 1])
+-- [Coin 44999999999999999, Coin 11]
+--
+-- >>> splitCoin (Coin 10) (Coin <$> [getCoin maxBound - 1, 1, 1])
+-- [Coin 44999999999999999, Coin 6, 6]
+--
+-- == Handling Leftover Remaining Value
+--
+-- If there is any remaining value left over after processing the list, a /new/
+-- coin is appended to the /end/ of the list to hold the excess value:
+--
 -- >>> splitCoin (Coin 10) []
 -- [Coin 10]
 --
--- While processing the list, if increasing the value of any given coin 'c'
--- would cause its value to exceed 'maxBound' (thus causing overflow), this
--- function will leave the coin 'c' unchanged in the resulting list,
--- distributing the excess value to coins not yet processed:
+-- >>> splitCoin (Coin 10) (Coin <$> [getCoin maxBound])
+-- [Coin 45000000000000000, Coin 10]
 --
--- >>> splitCoin (Coin 1) (Coin <$> [45000000000000000, 1])
--- [Coin 45000000000000000, Coin 2]
--- >>> splitCoin (Coin 10) (Coin <$> [45000000000000000 - 1, 1])
--- [Coin 44999999999999999, Coin 11]
---
--- After processing the list, if there is any remaining value left over due to
--- overflow, a new coin is appended to the end of the list to hold the excess
--- value:
---
--- >>> splitCoin (Coin 1) (Coin <$> [45000000000000000])
--- [Coin 45000000000000000, Coin 1]
--- >>> splitCoin (Coin 10) (Coin <$> [45000000000000000 - 1])
+-- >>> splitCoin (Coin 10) (Coin <$> [getCoin maxBound - 1])
 -- [Coin 44999999999999999, Coin 10]
 --
 -- == Properties
 --
--- The total value is preserved:
+-- The total value is always preserved:
 --
--- >>> sum (splitCoin x ys) = x + sum ys
+-- >>> sum (splitCoin x ys) == x + sum ys
 --
 splitCoin :: Coin -> [Coin] -> [Coin]
 splitCoin = go
