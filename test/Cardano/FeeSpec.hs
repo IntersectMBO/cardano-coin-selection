@@ -387,6 +387,8 @@ spec = do
     describe "reduceChangeOutputs" $ do
         it "data coverage is adequate"
             (checkCoverage propReduceChangeOutputsDataCoverage)
+        it "produces only valid coins"
+            (checkCoverage propReduceChangeOutputsProducesValidCoins)
         it "preserves sum"
             (checkCoverage propReduceChangeOutputsPreservesSum)
 
@@ -712,6 +714,11 @@ propReduceChangeOutputsDataCoverage
             $ cover 8 (fee > coinSum)
                 "fee > sum coins"
             True
+
+propReduceChangeOutputsProducesValidCoins :: ReduceChangeOutputsData -> Property
+propReduceChangeOutputsProducesValidCoins
+    (ReduceChangeOutputsData fee threshold coins) = property $
+        all isValidCoin (reduceChangeOutputs threshold fee coins)
 
 propReduceChangeOutputsPreservesSum :: ReduceChangeOutputsData -> Property
 propReduceChangeOutputsPreservesSum
