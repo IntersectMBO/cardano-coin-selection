@@ -37,7 +37,7 @@ import Cardano.Fee
     , splitCoin
     )
 import Cardano.Types
-    ( Coin (..), ShowFmt (..), UTxO (..) )
+    ( Coin (..), ShowFmt (..), UTxO (..), isValidCoin )
 import Control.Arrow
     ( left )
 import Control.Monad
@@ -395,6 +395,8 @@ spec = do
             (checkCoverage propSplitCoinDataCoverage)
         it "preserves the total sum"
             (checkCoverage propSplitCoinPreservesSum)
+        it "produces only valid coins"
+            (checkCoverage propSplitCoinProducesValidCoins)
 
 {-------------------------------------------------------------------------------
                          Fee Adjustment - Properties
@@ -787,6 +789,10 @@ propSplitCoinPreservesSum (SplitCoinData coinToSplit coinsToIncrease) =
   where
     totalAfter = sum (getCoin <$> splitCoin coinToSplit coinsToIncrease)
     totalBefore = getCoin coinToSplit + sum (getCoin <$> coinsToIncrease)
+
+propSplitCoinProducesValidCoins :: SplitCoinData -> Property
+propSplitCoinProducesValidCoins (SplitCoinData coinToSplit coinsToIncrease) =
+    property $ all isValidCoin $ splitCoin coinToSplit coinsToIncrease
 
 {-------------------------------------------------------------------------------
                          Fee Adjustment - Unit Tests
