@@ -248,23 +248,25 @@ coverRemainingFee (Fee fee) = go [] where
 -- We divvy up the fee over all change outputs proportionally, to try and keep
 -- any output:change ratio as unchanged as possible
 reduceChangeOutputs :: DustThreshold -> Fee -> [Coin] -> [Coin]
-reduceChangeOutputs threshold totalFee chgs =
-    case filter (> Coin 0) chgs of
-        [] -> []
-        x : xs ->
-            coalesceDust threshold
-            $ fmap reduceChangeOutput
-            $ distributeFee totalFee
-            $ x :| xs
-
--- | Reduce single change output by a given fee amount. If fees are too big for
--- a single coin, returns a `Coin 0`.
-reduceChangeOutput :: (Fee, Coin) -> Coin
-reduceChangeOutput (Fee fee, Coin chng)
-    | chng >= fee =
-          Coin (chng - fee)
+reduceChangeOutputs threshold (Fee totalFee) changeOutputs
+    | totalFee >= totalChange =
+        []
     | otherwise =
-          Coin 0
+        case positiveChangeOutputs of
+            x : xs -> x :| xs
+                & distributeFee (Fee totalFee)
+                & fmap payFee
+                & coalesceDust threshold
+            [] -> []
+  where
+    payFee :: (Fee, Coin) -> Coin
+    payFee (Fee f, Coin c) = Coin (c - f)
+
+    positiveChangeOutputs :: [Coin]
+    positiveChangeOutputs = filter (> Coin 0) changeOutputs
+
+    totalChange :: Word64
+    totalChange = sum (getCoin <$> changeOutputs)
 
 -- | Distribute the given fee over the given list of coins, so that each coin
 --   is allocated a __fraction__ of the fee in proportion to its relative size.
