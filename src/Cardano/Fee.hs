@@ -242,11 +242,31 @@ coverRemainingFee (Fee fee) = go [] where
                 Nothing -> do
                     lift $ throwE $ ErrCannotCoverFee (fee - sumInputs acc)
 
--- | Reduce the given change outputs by the total fee, returning the remainig
--- change outputs if any are left, or the remaining fee otherwise
+-- | Pay for the given fee by subtracting it from the given list of change
+--   outputs, so that each change output is reduced by a portion of the fee
+--   that's in proportion to its relative size.
 --
--- We divvy up the fee over all change outputs proportionally, to try and keep
--- any output:change ratio as unchanged as possible
+-- Any dust outputs in the resulting list are coalesced according to the given
+-- dust threshold. (See 'coalesceDust'.)
+--
+-- If there's not enough change to pay for the fee, or if there's only just
+-- enough to cover it, this function returns the /empty list/.
+--
+-- == Examples
+--
+-- ==== Proportionality
+--
+-- >>> reduceChangeOutputs (DustThreshold 0) (Fee 4) (Coin <$> [2, 2, 2, 2])
+-- [Coin 1, Coin 1, Coin 1, Coin 1]
+--
+-- >>> reduceChangeOutputs (DustThreshold 0) (Fee 15) (Coin <$> [2, 4, 8, 16])
+-- [Coin 1, Coin 2, Coin 4, Coin 8]
+--
+-- ==== Dust Coalescing
+--
+-- >>> reduceChangeOutputs (DustThreshold 1) (Fee 4) (Coin <$> [2, 2, 2, 2])
+-- [Coin 4]
+--
 reduceChangeOutputs :: DustThreshold -> Fee -> [Coin] -> [Coin]
 reduceChangeOutputs threshold (Fee totalFee) changeOutputs
     | totalFee >= totalChange =
