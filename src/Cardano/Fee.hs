@@ -22,10 +22,8 @@ module Cardano.Fee
     (
       -- * Types
       Fee (..)
-    , FeePolicy (..)
 
       -- * Fee Calculation
-    , computeFee
     , distributeFee
 
       -- * Fee Adjustment
@@ -51,13 +49,7 @@ import Cardano.CoinSelection
     , outputBalance
     )
 import Cardano.Types
-    ( Coin (..)
-    , FeePolicy (..)
-    , UTxO (..)
-    , invariant
-    , isValidCoin
-    , pickRandom
-    )
+    ( Coin (..), UTxO (..), invariant, isValidCoin, pickRandom )
 import Control.Monad.Trans.Class
     ( lift )
 import Control.Monad.Trans.Except
@@ -72,8 +64,6 @@ import Data.List.NonEmpty
     ( NonEmpty ((:|)) )
 import Data.Ord
     ( Down (..), comparing )
-import Data.Quantity
-    ( Quantity (..) )
 import Data.Ratio
     ( (%) )
 import Data.Word
@@ -115,27 +105,6 @@ newtype DustThreshold = DustThreshold
     { getDustThreshold :: Word64 }
     deriving stock (Eq, Generic, Ord)
     deriving Show via (Quiet DustThreshold)
-
-{-------------------------------------------------------------------------------
-                                Fee Calculation
--------------------------------------------------------------------------------}
-
--- | Compute fee for a given payload. Fee follows a simple linear
--- equation:
---
--- @
---     f = a + size * b
--- @
---
--- where @a@ & @b@ are values fixed by the protocol.
-computeFee
-    :: FeePolicy
-    -> Quantity "byte" Int
-    -> Fee
-computeFee policy (Quantity sz) =
-    Fee $ ceiling (a + b*fromIntegral sz)
-  where
-    LinearFee (Quantity a) (Quantity b) (Quantity _c) = policy
 
 {-------------------------------------------------------------------------------
                                 Fee Adjustment

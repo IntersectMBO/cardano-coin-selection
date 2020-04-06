@@ -28,9 +28,6 @@ module Cardano.Types
     , restrictedTo
     , Dom (..)
 
-    -- * BlockchainParameters
-    , FeePolicy (..)
-
     -- * Polymorphic
     , ShowFmt (..)
     , invariant
@@ -49,8 +46,6 @@ import Data.Kind
     ( Type )
 import Data.Map.Strict
     ( Map )
-import Data.Quantity
-    ( Quantity (..) )
 import Data.Set
     ( Set )
 import Data.Word
@@ -66,23 +61,6 @@ import Quiet
 
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
-
-{-------------------------------------------------------------------------------
-                             Blockchain Parameters
--------------------------------------------------------------------------------}
-
--- | A linear equation of a free variable `x`. Represents the @\x -> a + b*x@
--- function where @x@ can be the transaction size in bytes or, a number of
--- inputs + outputs.
---
--- @a@, @b@ and @c@ are constant coefficients.
-data FeePolicy = LinearFee
-    (Quantity "lovelace" Double)
-    (Quantity "lovelace/byte" Double)
-    (Quantity "lovelace/certificate" Double)
-    deriving (Eq, Show, Generic)
-
-instance NFData FeePolicy
 
 {-------------------------------------------------------------------------------
                                      Coin

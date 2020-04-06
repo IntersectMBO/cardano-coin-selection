@@ -56,7 +56,6 @@ library
       Cardano.CoinSelection.RandomImprove
       Cardano.Fee
       Cardano.Types
-      Data.Quantity
       Numeric.Rounding
 
 test-suite unit
