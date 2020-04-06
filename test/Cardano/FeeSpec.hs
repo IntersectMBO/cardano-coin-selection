@@ -34,6 +34,7 @@ import Cardano.Fee
     , coalesceDust
     , distributeFee
     , rebalanceChangeOutputs
+    , splitCoin
     )
 import Cardano.Types
     ( Coin (..), ShowFmt (..), UTxO (..) )
@@ -392,6 +393,8 @@ spec = do
     describe "splitCoin" $ do
         it "data coverage is adequate"
             (checkCoverage propSplitCoinDataCoverage)
+        it "preserves the total sum"
+            (checkCoverage propSplitCoinPreservesSum)
 
 {-------------------------------------------------------------------------------
                          Fee Adjustment - Properties
@@ -777,6 +780,13 @@ propSplitCoinDataCoverage (SplitCoinData coinToSplit coinsToIncrease) =
         if count == 0
         then getCoin coinToSplit
         else getCoin coinToSplit `div` fromIntegral count
+
+propSplitCoinPreservesSum :: SplitCoinData -> Property
+propSplitCoinPreservesSum (SplitCoinData coinToSplit coinsToIncrease) =
+    property $ totalBefore `shouldBe` totalAfter
+  where
+    totalAfter = sum (getCoin <$> splitCoin coinToSplit coinsToIncrease)
+    totalBefore = getCoin coinToSplit + sum (getCoin <$> coinsToIncrease)
 
 {-------------------------------------------------------------------------------
                          Fee Adjustment - Unit Tests

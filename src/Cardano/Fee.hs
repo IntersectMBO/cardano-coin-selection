@@ -36,6 +36,9 @@ module Cardano.Fee
     , DustThreshold (..)
     , coalesceDust
 
+      -- * Coin Splitting
+    , splitCoin
+
     ) where
 
 import Prelude hiding
@@ -455,6 +458,12 @@ remainingFee opts s = do
 -- [Coin 45000000000000000, Coin 1]
 -- >>> splitCoin (Coin 10) (Coin <$> [45000000000000000 - 1])
 -- [Coin 44999999999999999, Coin 10]
+--
+-- == Properties
+--
+-- The total value is preserved:
+--
+-- >>> sum (splitCoin x ys) = x + sum ys
 --
 splitCoin :: Coin -> [Coin] -> [Coin]
 splitCoin = go
