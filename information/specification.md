@@ -382,6 +382,10 @@ A coin selection function produces the following result values:
 
 ## Properties
 
+All coin selection algorithms satisfy a common set of _properties_: general
+rules that govern the relationship between the _parameters_ supplied to coin
+selection functions and the _results_ they are allowed to produce.
+
 ### Coverage of Payments
 
 This property states that the total value of the [coin
