@@ -22,7 +22,6 @@ module Cardano.Fee
     (
       -- * Types
       Fee (..)
-    , FeePolicy (..)
 
       -- * Fee Calculation
     , distributeFee
@@ -50,13 +49,7 @@ import Cardano.CoinSelection
     , outputBalance
     )
 import Cardano.Types
-    ( Coin (..)
-    , FeePolicy (..)
-    , UTxO (..)
-    , invariant
-    , isValidCoin
-    , pickRandom
-    )
+    ( Coin (..), UTxO (..), invariant, isValidCoin, pickRandom )
 import Control.Monad.Trans.Class
     ( lift )
 import Control.Monad.Trans.Except
