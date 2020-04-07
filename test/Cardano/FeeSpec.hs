@@ -393,6 +393,8 @@ spec = do
     describe "splitCoin" $ do
         it "data coverage is adequate"
             (checkCoverage propSplitCoinDataCoverage)
+        it "data generation is valid"
+            (checkCoverage propSplitCoinDataGenerationValid)
         it "preserves the total sum"
             (checkCoverage propSplitCoinPreservesSum)
         it "produces only valid coins"
@@ -782,6 +784,10 @@ propSplitCoinDataCoverage (SplitCoinData coinToSplit coinsToIncrease) =
         if count == 0
         then getCoin coinToSplit
         else getCoin coinToSplit `div` fromIntegral count
+
+propSplitCoinDataGenerationValid :: SplitCoinData -> Property
+propSplitCoinDataGenerationValid scd = property $
+    all isValidCoin (scdCoinToSplit scd : scdCoinsToIncrease scd)
 
 propSplitCoinPreservesSum :: SplitCoinData -> Property
 propSplitCoinPreservesSum (SplitCoinData coinToSplit coinsToIncrease) =
