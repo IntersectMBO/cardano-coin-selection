@@ -34,9 +34,10 @@ import Cardano.Fee
     , coalesceDust
     , distributeFee
     , rebalanceChangeOutputs
+    , splitCoin
     )
 import Cardano.Types
-    ( Coin (..), ShowFmt (..), UTxO (..) )
+    ( Coin (..), ShowFmt (..), UTxO (..), isValidCoin )
 import Control.Arrow
     ( left )
 import Control.Monad
@@ -389,6 +390,20 @@ spec = do
         it "preserves sum"
             (checkCoverage propRebalanceChangeOutputsPreservesSum)
 
+    describe "splitCoin" $ do
+        it "data coverage is adequate"
+            (checkCoverage propSplitCoinDataCoverage)
+        it "data generation is valid"
+            (checkCoverage propSplitCoinDataGenerationValid)
+        it "data shrinking is valid"
+            (checkCoverage propSplitCoinDataShrinkingValid)
+        it "preserves the total sum"
+            (checkCoverage propSplitCoinPreservesSum)
+        it "produces only valid coins"
+            (checkCoverage propSplitCoinProducesValidCoins)
+        it "results are all within unity of ideal unrounded results"
+            (checkCoverage propSplitCoinFair)
+
 {-------------------------------------------------------------------------------
                          Fee Adjustment - Properties
 -------------------------------------------------------------------------------}
@@ -711,6 +726,108 @@ propRebalanceChangeOutputsPreservesSum
             sum (getCoin <$> coinsRemaining) + fee
         | otherwise =
             null coinsRemaining
+
+{-------------------------------------------------------------------------------
+                           splitCoin - Properties
+-------------------------------------------------------------------------------}
+
+data SplitCoinData = SplitCoinData
+    { scdCoinToSplit :: Coin
+    , scdCoinsToIncrease :: [Coin]
+    } deriving (Eq, Generic, Show)
+
+instance Arbitrary SplitCoinData where
+    arbitrary = do
+        coinToSplit <- genCoin
+        n <- oneof
+            [ pure 0
+            , pure 1
+            , choose (2, 10)
+            ]
+        coinsToIncrease <- replicateM n genCoin
+        pure $ SplitCoinData coinToSplit coinsToIncrease
+      where
+        genCoin :: Gen Coin
+        genCoin = oneof
+            [ pure minBound
+            , pure maxBound
+            , Coin <$> choose
+                ( succ . getCoin $ minBound
+                , pred . getCoin $ maxBound
+                )
+            ]
+    shrink = genericShrink
+
+propSplitCoinDataCoverage :: SplitCoinData -> Property
+propSplitCoinDataCoverage (SplitCoinData coinToSplit coinsToIncrease) =
+    property
+        $ cover 8 (null coinsToIncrease)
+            "list of coins is empty"
+        $ cover 8 (length coinsToIncrease == 1)
+            "list of coins is singleton"
+        $ cover 8 (length coinsToIncrease > 1)
+            "list of coins has multiple entries"
+        $ cover 8 (coinToSplit == minBound)
+            "coin to split is minimal"
+        $ cover 8 (coinToSplit == maxBound)
+            "coin to split is maximal"
+        $ cover 8 (coinToSplit > minBound && coinToSplit < maxBound)
+            "coin to split is neither minimal nor maximal"
+        $ cover 8 (maxBound `notElem` coinsToIncrease)
+            "all coins within list are not maximal"
+        $ cover 8 (maxBound `elem` coinsToIncrease)
+            "at least one coin within list is maximal"
+        $ cover 8 (any notMaximalButWouldOverflowIfIncreased coinsToIncrease)
+            "at least one coin is not maximal but would overflow if increased"
+        $ cover 8 (length coinsToIncrease > fromIntegral (getCoin coinToSplit))
+            "coin to split is smaller than number of coins to increase"
+        True
+  where
+    count = length coinsToIncrease
+    notMaximalButWouldOverflowIfIncreased (Coin v) =
+        Coin v < maxBound &&
+        Coin (v + amountToIncrease) > maxBound
+    amountToIncrease =
+        if count == 0
+        then getCoin coinToSplit
+        else getCoin coinToSplit `div` fromIntegral count
+
+propSplitCoinDataGenerationValid :: SplitCoinData -> Property
+propSplitCoinDataGenerationValid scd = property $
+    all isValidCoin (scdCoinToSplit scd : scdCoinsToIncrease scd)
+
+propSplitCoinDataShrinkingValid :: SplitCoinData -> Property
+propSplitCoinDataShrinkingValid scd = property $
+    all isValidData (shrink scd)
+  where
+    isValidData d = all isValidCoin (scdCoinToSplit d : scdCoinsToIncrease d)
+
+propSplitCoinPreservesSum :: SplitCoinData -> Property
+propSplitCoinPreservesSum (SplitCoinData coinToSplit coinsToIncrease) =
+    property $ totalBefore `shouldBe` totalAfter
+  where
+    totalAfter = sum (getCoin <$> splitCoin coinToSplit coinsToIncrease)
+    totalBefore = getCoin coinToSplit + sum (getCoin <$> coinsToIncrease)
+
+propSplitCoinProducesValidCoins :: SplitCoinData -> Property
+propSplitCoinProducesValidCoins (SplitCoinData coinToSplit coinsToIncrease) =
+    property $ all isValidCoin $ splitCoin coinToSplit coinsToIncrease
+
+propSplitCoinFair :: (Coin, NonEmpty Coin) -> Property
+propSplitCoinFair (coinToSplit, coinsToIncrease) = (.&&.)
+    (F.all (uncurry (<=)) (NE.zip results resultUpperBounds))
+    (F.all (uncurry (>=)) (NE.zip results resultLowerBounds))
+  where
+    results = NE.fromList $ splitCoin coinToSplit $ NE.toList coinsToIncrease
+
+    resultUpperBounds = Coin . ceiling . computeIdealResult <$> coinsToIncrease
+    resultLowerBounds = Coin . floor   . computeIdealResult <$> coinsToIncrease
+
+    computeIdealResult :: Coin -> Rational
+    computeIdealResult (Coin c)
+        = fromIntegral c
+        + fromIntegral (getCoin coinToSplit)
+        % fromIntegral (length coinsToIncrease)
 
 {-------------------------------------------------------------------------------
                          Fee Adjustment - Unit Tests

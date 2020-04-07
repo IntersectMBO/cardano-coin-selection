@@ -36,6 +36,9 @@ module Cardano.Fee
     , DustThreshold (..)
     , coalesceDust
 
+      -- * Coin Splitting
+    , splitCoin
+
     ) where
 
 import Prelude hiding
@@ -218,7 +221,7 @@ senderPaysFee opt utxo sel = evalStateT (go sel) utxo where
             -- change plus the extra change brought up by this entry and see if
             -- we can now correctly cover fee.
             inps' <- coverRemainingFee remFee
-            let extraChange = splitChange (Coin $ sumInputs inps') chgs
+            let extraChange = splitCoin (Coin $ sumInputs inps') chgs
             go $ CoinSelection (inps <> inps') outs extraChange
 
 -- | A short / simple version of the 'random' fee policy to cover for fee in
@@ -377,7 +380,7 @@ distributeFee (Fee feeTotal) coinsUnsafe =
 --
 coalesceDust :: DustThreshold -> NonEmpty Coin -> [Coin]
 coalesceDust (DustThreshold threshold) coins =
-    splitChange valueToDistribute coinsToKeep
+    splitCoin valueToDistribute coinsToKeep
   where
     (coinsToKeep, coinsToRemove) = NE.partition (> Coin threshold) coins
     valueToDistribute = Coin $ sum $ getCoin <$> coinsToRemove
@@ -414,18 +417,71 @@ remainingFee opts s = do
     Fee fee = estimateFee opts s
     diff = inputBalance s - (outputBalance s + changeBalance s)
 
--- Equally split the extra change obtained when picking new inputs across all
--- other change. Note that, it may create an extra change output if:
+-- | Splits up the given coin of value __@v@__, distributing its value over the
+--   given coin list of length __@n@__, so that each coin value is increased by
+--   an integral amount within unity of __@v/n@__, producing a new list of coin
+--   values where the overall total is preserved.
 --
---   (a) There's no change at all initially
---   (b) Adding change to an exiting one would cause an overflow
+-- == Basic Examples
 --
--- It makes no attempt to divvy the new output proportionally over the change
--- outputs. This means that if we happen to pick a very large UTxO entry,
--- adding this evenly rather than proportionally might skew the payment:change
--- ratio a lot. Could consider defining this in terms of divvy instead.
-splitChange :: Coin -> [Coin] -> [Coin]
-splitChange = go
+-- When it's possible to divide a coin evenly, each coin value is increased by
+-- the same integer amount:
+--
+-- >>> splitCoin (Coin 40) (Coin <$> [1, 1, 1, 1])
+-- [Coin 11, Coin 11, Coin 11, Coin 11]
+--
+-- >>> splitCoin (Coin 40) (Coin <$> [1, 2, 3, 4])
+-- [Coin 11, Coin 12, Coin 13, Coin 14]
+--
+-- == Handling Non-Uniform Increases
+--
+-- When it's not possible to divide a coin evenly, each integral coin value in
+-- the resulting list is always within unity of the ideal unrounded result:
+--
+-- >>> splitCoin (Coin 2) (Coin <$> [1, 1, 1, 1])
+-- [Coin 1, Coin 1, Coin 2, Coin 2]
+--
+-- >>> splitCoin (Coin 10) (Coin <$> [1, 1, 1, 1])
+-- [Coin 3, Coin 3, Coin 4, Coin 4]
+--
+-- == Handling Overflow
+--
+-- While processing the given list, if increasing the value of any given coin
+-- __'c'__ would cause its value to exceed 'maxBound', this function will leave
+-- coin __'c'__ /unchanged/ in the resulting list, distributing the excess
+-- value to coins that occur /later/ in the list:
+--
+-- >>> splitCoin (Coin 10) (Coin <$> [getCoin maxBound, 1])
+-- [Coin 45000000000000000, Coin 11]
+--
+-- >>> splitCoin (Coin 10) (Coin <$> [getCoin maxBound - 1, 1])
+-- [Coin 44999999999999999, Coin 11]
+--
+-- >>> splitCoin (Coin 10) (Coin <$> [getCoin maxBound - 1, 1, 1])
+-- [Coin 44999999999999999, Coin 6, 6]
+--
+-- == Handling Leftover Remaining Value
+--
+-- If there is any remaining value left over after processing the list, a /new/
+-- coin is appended to the /end/ of the list to hold the excess value:
+--
+-- >>> splitCoin (Coin 10) []
+-- [Coin 10]
+--
+-- >>> splitCoin (Coin 10) (Coin <$> [getCoin maxBound])
+-- [Coin 45000000000000000, Coin 10]
+--
+-- >>> splitCoin (Coin 10) (Coin <$> [getCoin maxBound - 1])
+-- [Coin 44999999999999999, Coin 10]
+--
+-- == Properties
+--
+-- The total value is always preserved:
+--
+-- >>> sum (splitCoin x ys) == x + sum ys
+--
+splitCoin :: Coin -> [Coin] -> [Coin]
+splitCoin = go
   where
     go remaining as | remaining == Coin 0 = as
     go remaining [] = [remaining]
