@@ -424,8 +424,8 @@ remainingFee opts s = do
 --
 -- == Basic Examples
 --
--- In normal circumstances, each coin value is increased by the same rational
--- amount (modulo rounding):
+-- When it's possible to divide a coin evenly, each coin value is increased by
+-- the same integer amount:
 --
 -- >>> splitCoin (Coin 40) (Coin <$> [1, 1, 1, 1])
 -- [Coin 11, Coin 11, Coin 11, Coin 11]
