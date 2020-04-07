@@ -419,9 +419,8 @@ remainingFee opts s = do
 
 -- | Splits up the given coin of value __@v@__, distributing its value over the
 --   given coin list of length __@n@__, so that each coin value is increased by
---   the same absolute rational amount __@v/n@__ and then rounded to the nearest
---   integer, producing a new list of coin values where the overall total is
---   preserved.
+--   an integral amount within unity of __@v/n@__, producing a new list of coin
+--   values where the overall total is preserved.
 --
 -- == Basic Examples
 --
@@ -433,6 +432,17 @@ remainingFee opts s = do
 --
 -- >>> splitCoin (Coin 40) (Coin <$> [1, 2, 3, 4])
 -- [Coin 11, Coin 12, Coin 13, Coin 14]
+--
+-- == Handling Non-Uniform Increases
+--
+-- When it's not possible to divide a coin evenly, each integral coin value in
+-- the resulting list is always within unity of the ideal unrounded result:
+--
+-- >>> splitCoin (Coin 2) (Coin <$> [1, 1, 1, 1])
+-- [Coin 1, Coin 1, Coin 2, Coin 2]
+--
+-- >>> splitCoin (Coin 10) (Coin <$> [1, 1, 1, 1])
+-- [Coin 3, Coin 3, Coin 4, Coin 4]
 --
 -- == Handling Overflow
 --

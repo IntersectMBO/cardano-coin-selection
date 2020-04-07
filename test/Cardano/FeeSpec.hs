@@ -401,6 +401,8 @@ spec = do
             (checkCoverage propSplitCoinPreservesSum)
         it "produces only valid coins"
             (checkCoverage propSplitCoinProducesValidCoins)
+        it "results are all within unity of ideal unrounded results"
+            (checkCoverage propSplitCoinFair)
 
 {-------------------------------------------------------------------------------
                          Fee Adjustment - Properties
@@ -808,6 +810,22 @@ propSplitCoinPreservesSum (SplitCoinData coinToSplit coinsToIncrease) =
 propSplitCoinProducesValidCoins :: SplitCoinData -> Property
 propSplitCoinProducesValidCoins (SplitCoinData coinToSplit coinsToIncrease) =
     property $ all isValidCoin $ splitCoin coinToSplit coinsToIncrease
+
+propSplitCoinFair :: (Coin, NonEmpty Coin) -> Property
+propSplitCoinFair (coinToSplit, coinsToIncrease) = (.&&.)
+    (F.all (uncurry (<=)) (NE.zip results resultUpperBounds))
+    (F.all (uncurry (>=)) (NE.zip results resultLowerBounds))
+  where
+    results = NE.fromList $ splitCoin coinToSplit $ NE.toList coinsToIncrease
+
+    resultUpperBounds = Coin . ceiling . computeIdealResult <$> coinsToIncrease
+    resultLowerBounds = Coin . floor   . computeIdealResult <$> coinsToIncrease
+
+    computeIdealResult :: Coin -> Rational
+    computeIdealResult (Coin c)
+        = fromIntegral c
+        + fromIntegral (getCoin coinToSplit)
+        % fromIntegral (length coinsToIncrease)
 
 {-------------------------------------------------------------------------------
                          Fee Adjustment - Unit Tests
