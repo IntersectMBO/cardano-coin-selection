@@ -30,7 +30,7 @@ module Cardano.Fee
     , FeeOptions (..)
     , ErrAdjustForFee(..)
     , adjustForFee
-    , rebalanceChangeOutputs
+    , reduceChangeOutputs
 
       -- * Dust Processing
     , DustThreshold (..)
@@ -196,7 +196,7 @@ senderPaysFee opt utxo sel = evalStateT (go sel) utxo where
                 { inputs = inps
                 , outputs = outs
                 , change =
-                    rebalanceChangeOutputs (dustThreshold opt) upperBound chgs
+                    reduceChangeOutputs (dustThreshold opt) upperBound chgs
                 }
         let remFee = remainingFee opt coinSel'
         -- 3.1/
@@ -242,29 +242,57 @@ coverRemainingFee (Fee fee) = go [] where
                 Nothing -> do
                     lift $ throwE $ ErrCannotCoverFee (fee - sumInputs acc)
 
--- | Reduce the given change outputs by the total fee, returning the remainig
--- change outputs if any are left, or the remaining fee otherwise
+-- | Pays for the given fee by subtracting it from the given list of change
+--   outputs, so that each change output is reduced by a portion of the fee
+--   that's in proportion to its relative size.
 --
--- We divvy up the fee over all change outputs proportionally, to try and keep
--- any output:change ratio as unchanged as possible
-rebalanceChangeOutputs :: DustThreshold -> Fee -> [Coin] -> [Coin]
-rebalanceChangeOutputs threshold totalFee chgs =
-    case filter (> Coin 0) chgs of
-        [] -> []
-        x : xs ->
-            coalesceDust threshold
-            $ fmap reduceSingleChange
-            $ distributeFee totalFee
-            $ x :| xs
-
--- | Reduce single change output by a given fee amount. If fees are too big for
--- a single coin, returns a `Coin 0`.
-reduceSingleChange :: (Fee, Coin) -> Coin
-reduceSingleChange (Fee fee, Coin chng)
-    | chng >= fee =
-          Coin (chng - fee)
+-- == Basic Examples
+--
+-- >>> reduceChangeOutputs (DustThreshold 0) (Fee 4) (Coin <$> [2, 2, 2, 2])
+-- [Coin 1, Coin 1, Coin 1, Coin 1]
+--
+-- >>> reduceChangeOutputs (DustThreshold 0) (Fee 15) (Coin <$> [2, 4, 8, 16])
+-- [Coin 1, Coin 2, Coin 4, Coin 8]
+--
+-- == Handling Dust
+--
+-- Any dust outputs in the resulting list are coalesced according to the given
+-- dust threshold: (See 'coalesceDust'.)
+--
+-- >>> reduceChangeOutputs (DustThreshold 1) (Fee 4) (Coin <$> [2, 2, 2, 2])
+-- [Coin 4]
+--
+-- == Handling Insufficient Change
+--
+-- If there's not enough change to pay for the fee, or if there's only just
+-- enough to pay for it exactly, this function returns the /empty list/:
+--
+-- >>> reduceChangeOutputs (DustThreshold 0) (Fee 15) (Coin <$> [10])
+-- []
+--
+-- >>> reduceChangeOutputs (DustThreshold 0) (Fee 15) (Coin <$> [1, 2, 4, 8])
+-- []
+--
+reduceChangeOutputs :: DustThreshold -> Fee -> [Coin] -> [Coin]
+reduceChangeOutputs threshold (Fee totalFee) changeOutputs
+    | totalFee >= totalChange =
+        []
     | otherwise =
-          Coin 0
+        case positiveChangeOutputs of
+            x : xs -> x :| xs
+                & distributeFee (Fee totalFee)
+                & fmap payFee
+                & coalesceDust threshold
+            [] -> []
+  where
+    payFee :: (Fee, Coin) -> Coin
+    payFee (Fee f, Coin c) = Coin (c - f)
+
+    positiveChangeOutputs :: [Coin]
+    positiveChangeOutputs = filter (> Coin 0) changeOutputs
+
+    totalChange :: Word64
+    totalChange = sum (getCoin <$> changeOutputs)
 
 -- | Distribute the given fee over the given list of coins, so that each coin
 --   is allocated a __fraction__ of the fee in proportion to its relative size.
