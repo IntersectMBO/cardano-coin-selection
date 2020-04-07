@@ -387,6 +387,10 @@ spec = do
     describe "reduceChangeOutputs" $ do
         it "data coverage is adequate"
             (checkCoverage propReduceChangeOutputsDataCoverage)
+        it "data generation is valid"
+            (checkCoverage propReduceChangeOutputsDataGenerationValid)
+        it "data shrinking is valid"
+            (checkCoverage propReduceChangeOutputsDataShrinkingValid)
         it "produces only valid coins"
             (checkCoverage propReduceChangeOutputsProducesValidCoins)
         it "preserves sum"
@@ -714,6 +718,18 @@ propReduceChangeOutputsDataCoverage
             $ cover 8 (fee > coinSum)
                 "fee > sum coins"
             True
+
+propReduceChangeOutputsDataGenerationValid
+    :: ReduceChangeOutputsData -> Property
+propReduceChangeOutputsDataGenerationValid rcod = property $
+    all isValidCoin (rcodCoins rcod)
+
+propReduceChangeOutputsDataShrinkingValid
+    :: ReduceChangeOutputsData -> Property
+propReduceChangeOutputsDataShrinkingValid rcod = property $
+    all isValidData (shrink rcod)
+  where
+    isValidData d = all isValidCoin (rcodCoins d)
 
 propReduceChangeOutputsProducesValidCoins :: ReduceChangeOutputsData -> Property
 propReduceChangeOutputsProducesValidCoins
