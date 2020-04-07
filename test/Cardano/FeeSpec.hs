@@ -395,6 +395,8 @@ spec = do
             (checkCoverage propSplitCoinDataCoverage)
         it "data generation is valid"
             (checkCoverage propSplitCoinDataGenerationValid)
+        it "data shrinking is valid"
+            (checkCoverage propSplitCoinDataShrinkingValid)
         it "preserves the total sum"
             (checkCoverage propSplitCoinPreservesSum)
         it "produces only valid coins"
@@ -752,6 +754,7 @@ instance Arbitrary SplitCoinData where
                 , pred . getCoin $ maxBound
                 )
             ]
+    shrink = genericShrink
 
 propSplitCoinDataCoverage :: SplitCoinData -> Property
 propSplitCoinDataCoverage (SplitCoinData coinToSplit coinsToIncrease) =
@@ -788,6 +791,12 @@ propSplitCoinDataCoverage (SplitCoinData coinToSplit coinsToIncrease) =
 propSplitCoinDataGenerationValid :: SplitCoinData -> Property
 propSplitCoinDataGenerationValid scd = property $
     all isValidCoin (scdCoinToSplit scd : scdCoinsToIncrease scd)
+
+propSplitCoinDataShrinkingValid :: SplitCoinData -> Property
+propSplitCoinDataShrinkingValid scd = property $
+    all isValidData (shrink scd)
+  where
+    isValidData d = all isValidCoin (scdCoinToSplit d : scdCoinsToIncrease d)
 
 propSplitCoinPreservesSum :: SplitCoinData -> Property
 propSplitCoinPreservesSum (SplitCoinData coinToSplit coinsToIncrease) =
