@@ -779,6 +779,8 @@ propSplitCoinDataCoverage (SplitCoinData coinToSplit coinsToIncrease) =
             "at least one coin within list is maximal"
         $ cover 8 (any notMaximalButWouldOverflowIfIncreased coinsToIncrease)
             "at least one coin is not maximal but would overflow if increased"
+        $ cover 8 (length coinsToIncrease > fromIntegral (getCoin coinToSplit))
+            "coin to split is smaller than number of coins to increase"
         True
   where
     count = length coinsToIncrease
