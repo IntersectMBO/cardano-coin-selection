@@ -47,12 +47,7 @@ import Prelude hiding
     ( round )
 
 import Cardano.CoinSelection
-    ( CoinSelection (..)
-    , Input (..)
-    , changeBalance
-    , inputBalance
-    , outputBalance
-    )
+    ( CoinSelection (..), Input (..), feeBalance )
 import Cardano.Types
     ( Coin (..), UTxO (..), coinIsValid, utxoPickRandom )
 import Control.Monad.Trans.Class
@@ -447,7 +442,7 @@ remainingFee FeeEstimator {estimateFee} s = do
                 ]
   where
     Fee fee = estimateFee s
-    diff = inputBalance s - (outputBalance s + changeBalance s)
+    diff = feeBalance s
 
 -- | Splits up the given coin of value __@v@__, distributing its value over the
 --   given coin list of length __@n@__, so that each coin value is increased by
