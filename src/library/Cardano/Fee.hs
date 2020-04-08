@@ -420,25 +420,24 @@ remainingFee
     => FeeEstimator i o
     -> CoinSelection i o
     -> Fee
-remainingFee FeeEstimator {estimateFee} s = do
-    if fee >= diff
-    then Fee (fee - diff)
-    else do
+remainingFee FeeEstimator {estimateFee} s
+    | fee >= diff =
+        Fee (fee - diff)
+    | feeDangling >= diff =
+        Fee (feeDangling - fee)
+    | otherwise =
         -- NOTE
         -- The only case where we may end up with an unbalanced transaction is
         -- when we have a dangling change output (i.e. adding it costs too much
         -- and we can't afford it, but not having it result in too many coins
         -- left for fees).
-
-        if (feeDangling >= diff)
-            then Fee (feeDangling - fee)
-            else error $ unwords
-                [ "Generated an unbalanced tx! Too much left for fees"
-                , ": fee (raw) =", show fee
-                , ": fee (dangling) =", show feeDangling
-                , ", diff =", show diff
-                , "\nselection =", pretty s
-                ]
+        error $ unwords
+            [ "Generated an unbalanced tx! Too much left for fees"
+            , ": fee (raw) =", show fee
+            , ": fee (dangling) =", show feeDangling
+            , ", diff =", show diff
+            , "\nselection =", pretty s
+            ]
   where
     Fee fee = estimateFee s
     diff = feeBalance s
