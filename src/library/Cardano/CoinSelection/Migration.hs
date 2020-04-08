@@ -48,7 +48,7 @@ import Cardano.CoinSelection
     , inputBalance
     )
 import Cardano.Fee
-    ( DustThreshold (..), Fee (..), FeeOptions (..) )
+    ( DustThreshold (..), Fee (..), FeeEstimator (..), FeeOptions (..) )
 import Cardano.Types
     ( Coin (..), UTxO (..) )
 import Control.Monad.Trans.State
@@ -142,7 +142,7 @@ depleteUTxO feeOpts batchSize utxo =
         diff = actualFee - integer requiredFee
           where
             (Fee requiredFee) =
-                estimateFee feeOpts coinSel
+                estimateFee (feeEstimator feeOpts) coinSel
             actualFee =
                 integer (inputBalance coinSel) - integer (changeBalance coinSel)
 

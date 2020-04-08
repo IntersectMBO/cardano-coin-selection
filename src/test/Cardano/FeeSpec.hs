@@ -29,6 +29,7 @@ import Cardano.Fee
     ( DustThreshold (..)
     , ErrAdjustForFee (..)
     , Fee (..)
+    , FeeEstimator (..)
     , FeeOptions (..)
     , adjustForFee
     , coalesceDust
@@ -861,7 +862,7 @@ feeOptions
     -> Word64
     -> FeeOptions i o
 feeOptions fee dust = FeeOptions
-    { estimateFee =
+    { feeEstimator = FeeEstimator $
         \_ -> Fee fee
     , dustThreshold =
         DustThreshold dust
@@ -1047,7 +1048,7 @@ instance Arbitrary (FeeOptions i o) where
         c <- choose (0, 10) -- price per transaction
         a <- choose (0, 10) -- price per input/output
         return $ FeeOptions
-            { estimateFee =
+            { feeEstimator = FeeEstimator $
                 \s -> Fee
                     $ fromIntegral
                     $ c + a * (length (inputs s) + length (outputs s))
