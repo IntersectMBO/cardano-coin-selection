@@ -1043,18 +1043,34 @@ instance (Arbitrary i, Arbitrary o, Ord i, Ord o) =>
             >>= genOutputs
         genSelection (NE.fromList outs)
 
-instance Arbitrary (FeeEstimator i o) where
+data FeeParameters i o = FeeParameters
+    { feePerTransaction
+        :: Fee
+        -- ^ Base fee for a transaction.
+    , feePerTransactionEntry
+        :: Fee
+        -- ^ Incremental fee for each input, output, and change output.
+    } deriving (Eq, Generic, Show)
+
+instance Arbitrary (FeeParameters i o) where
     arbitrary = do
-        c <- choose (0, 10) -- price per transaction
-        a <- choose (0, 10) -- price per input/output
-        return $ FeeEstimator $ \s -> Fee
-            $ fromIntegral
-            $ c + a * (length (inputs s) + length (outputs s))
+        feePerTransaction <- Fee <$> choose (0, 10)
+        feePerTransactionEntry <- Fee <$> choose (0, 10)
+        pure $ FeeParameters {feePerTransaction, feePerTransactionEntry}
+    shrink = genericShrink
+
+feeEstimatorFromParameters :: FeeParameters i o -> FeeEstimator i o
+feeEstimatorFromParameters
+    FeeParameters {feePerTransaction, feePerTransactionEntry} =
+        FeeEstimator $ \s -> Fee
+            $ getFee feePerTransaction
+            + getFee feePerTransactionEntry
+            * fromIntegral (length (inputs s) + length (outputs s))
 
 instance Arbitrary (FeeOptions i o) where
     arbitrary = do
         dustThreshold <- DustThreshold <$> choose (0, 10)
-        feeEstimator <- arbitrary
+        feeEstimator <- feeEstimatorFromParameters <$> arbitrary
         return $ FeeOptions {dustThreshold, feeEstimator}
 
 instance Arbitrary a => Arbitrary (NonEmpty a) where
