@@ -202,11 +202,8 @@ senderPaysFee FeeOptions {feeEstimator, dustThreshold} utxo sel =
         let upperBound = estimateFee feeEstimator coinSel
         -- 2/
         -- Substract fee from change outputs, proportionally to their value.
-        let coinSel' = CoinSelection
-                { inputs = inps
-                , outputs = outs
-                , change = reduceChangeOutputs dustThreshold upperBound chgs
-                }
+        let coinSel' = coinSel
+                { change = reduceChangeOutputs dustThreshold upperBound chgs }
         let remFee = remainingFee feeEstimator coinSel'
         -- 3.1/
         -- Should the change cover the fee, we're (almost) good. By removing
