@@ -189,7 +189,7 @@ senderPaysFee
     -> UTxO u
     -> CoinSelection i o
     -> ExceptT ErrAdjustForFee m (CoinSelection i o)
-senderPaysFee options@(FeeOptions feeEstimator dustThreshold) utxo sel =
+senderPaysFee FeeOptions {feeEstimator, dustThreshold} utxo sel =
     evalStateT (go sel) utxo
   where
     go
@@ -207,7 +207,7 @@ senderPaysFee options@(FeeOptions feeEstimator dustThreshold) utxo sel =
                 , outputs = outs
                 , change = reduceChangeOutputs dustThreshold upperBound chgs
                 }
-        let remFee = remainingFee options coinSel'
+        let remFee = remainingFee feeEstimator coinSel'
         -- 3.1/
         -- Should the change cover the fee, we're (almost) good. By removing
         -- change outputs, we make them smaller and may reduce the size of the
@@ -427,10 +427,10 @@ remainingFee
     :: HasCallStack
     => Buildable i
     => Buildable o
-    => FeeOptions i o
+    => FeeEstimator i o
     -> CoinSelection i o
     -> Fee
-remainingFee (FeeOptions (FeeEstimator {estimateFee}) _) s = do
+remainingFee FeeEstimator {estimateFee} s = do
     if fee >= diff
     then Fee (fee - diff)
     else do
