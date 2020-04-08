@@ -4,6 +4,7 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeApplications #-}
@@ -1042,18 +1043,19 @@ instance (Arbitrary i, Arbitrary o, Ord i, Ord o) =>
             >>= genOutputs
         genSelection (NE.fromList outs)
 
-instance Arbitrary (FeeOptions i o) where
+instance Arbitrary (FeeEstimator i o) where
     arbitrary = do
-        t <- choose (0, 10) -- dust threshold
         c <- choose (0, 10) -- price per transaction
         a <- choose (0, 10) -- price per input/output
-        return $ FeeOptions
-            { feeEstimator = FeeEstimator $
-                \s -> Fee
-                    $ fromIntegral
-                    $ c + a * (length (inputs s) + length (outputs s))
-            , dustThreshold = DustThreshold t
-            }
+        return $ FeeEstimator $ \s -> Fee
+            $ fromIntegral
+            $ c + a * (length (inputs s) + length (outputs s))
+
+instance Arbitrary (FeeOptions i o) where
+    arbitrary = do
+        dustThreshold <- DustThreshold <$> choose (0, 10)
+        feeEstimator <- arbitrary
+        return $ FeeOptions {dustThreshold, feeEstimator}
 
 instance Arbitrary a => Arbitrary (NonEmpty a) where
     arbitrary = do
