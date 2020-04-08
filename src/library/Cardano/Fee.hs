@@ -429,8 +429,7 @@ remainingFee FeeEstimator {estimateFee} s = do
         -- when we have a dangling change output (i.e. adding it costs too much
         -- and we can't afford it, but not having it result in too many coins
         -- left for fees).
-        let Fee feeDangling =
-                estimateFee s { change = [Coin (diff - fee)] }
+
         if (feeDangling >= diff)
             then Fee (feeDangling - fee)
             else error $ unwords
@@ -443,6 +442,7 @@ remainingFee FeeEstimator {estimateFee} s = do
   where
     Fee fee = estimateFee s
     diff = feeBalance s
+    Fee feeDangling = estimateFee s { change = [Coin (diff - fee)] }
 
 -- | Splits up the given coin of value __@v@__, distributing its value over the
 --   given coin list of length __@n@__, so that each coin value is increased by
