@@ -30,8 +30,8 @@ import Prelude
 import Cardano.CoinSelection
     ( CoinSelection (..)
     , CoinSelectionAlgorithm (..)
+    , CoinSelectionError (..)
     , CoinSelectionOptions (..)
-    , ErrCoinSelection (..)
     , Input (..)
     , Output (..)
     )
@@ -150,7 +150,7 @@ data CoinSelectionResult = CoinSelectionResult
 coinSelectionUnitTest
     :: CoinSelectionAlgorithm TxIn Address TxIn IO ErrValidation
     -> String
-    -> Either (ErrCoinSelection ErrValidation) CoinSelectionResult
+    -> Either (CoinSelectionError ErrValidation) CoinSelectionResult
     -> CoinSelectionFixture TxIn Address
     -> SpecWith ()
 coinSelectionUnitTest alg lbl expected (CoinSelectionFixture n fn utxoF outsF) =

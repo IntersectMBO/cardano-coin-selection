@@ -17,8 +17,8 @@ import Prelude
 import Cardano.CoinSelection
     ( CoinSelection (..)
     , CoinSelectionAlgorithm (..)
+    , CoinSelectionError (..)
     , CoinSelectionOptions (..)
-    , ErrCoinSelection (..)
     , Input (..)
     , Output (..)
     )
@@ -184,7 +184,7 @@ payForOutputs
     => CoinSelectionOptions i o e
     -> NonEmpty (Output o)
     -> UTxO u
-    -> ExceptT (ErrCoinSelection e) m (CoinSelection i o, UTxO u)
+    -> ExceptT (CoinSelectionError e) m (CoinSelection i o, UTxO u)
 payForOutputs options outputsRequested utxo =
     case foldM payForOutput (utxoDescending, mempty) outputsDescending of
         Just (utxoRemaining, selection) ->

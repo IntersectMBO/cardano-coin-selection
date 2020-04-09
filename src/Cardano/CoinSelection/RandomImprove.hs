@@ -19,8 +19,8 @@ import Prelude
 import Cardano.CoinSelection
     ( CoinSelection (..)
     , CoinSelectionAlgorithm (..)
+    , CoinSelectionError (..)
     , CoinSelectionOptions (..)
-    , ErrCoinSelection (..)
     , Input (..)
     , Output (..)
     )
@@ -219,7 +219,7 @@ payForOutputs
     => CoinSelectionOptions i o e
     -> NonEmpty (Output o)
     -> UTxO u
-    -> ExceptT (ErrCoinSelection e) m (CoinSelection i o, UTxO u)
+    -> ExceptT (CoinSelectionError e) m (CoinSelection i o, UTxO u)
 payForOutputs options outputsRequested utxo = do
     mRandomSelections <- lift $ runMaybeT $ foldM makeRandomSelection
         (inputCountMax, utxo, []) outputsDescending

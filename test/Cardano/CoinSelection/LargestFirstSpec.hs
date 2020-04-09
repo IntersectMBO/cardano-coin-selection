@@ -12,8 +12,8 @@ import Prelude
 import Cardano.CoinSelection
     ( CoinSelection (..)
     , CoinSelectionAlgorithm (..)
+    , CoinSelectionError (..)
     , CoinSelectionOptions (..)
-    , ErrCoinSelection (..)
     , Input (..)
     )
 import Cardano.CoinSelection.LargestFirst
