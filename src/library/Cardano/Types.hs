@@ -46,7 +46,10 @@ import qualified Data.Map.Strict as Map
                                      Coin
 -------------------------------------------------------------------------------}
 
--- | Coins are stored as Lovelace (reminder: 1 Lovelace = 1e-6 ADA)
+-- | A non-negative integer value that represents a number of Lovelace.
+--
+-- One Ada is equal to 1,000,000 Lovelace.
+--
 newtype Coin = Coin
     { getCoin :: Word64 }
     deriving stock (Eq, Generic, Ord)
