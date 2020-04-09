@@ -82,8 +82,11 @@ instance Buildable u => Buildable (UTxO u) where
       where
         utxoF (inp, out) = build inp <> " => " <> build out
 
--- | Pick a random element from a UTxO, returns 'Nothing' if the UTxO is empty.
--- Otherwise, returns the selected entry and, the UTxO minus the selected one.
+-- | Selects an element at random from a UTxO set, returning both the selected
+--   entry and the UTxO set with the element removed.
+--
+-- If the given UTxO set is empty, this function returns 'Nothing'.
+--
 utxoPickRandom
     :: MonadRandom m
     => UTxO u
