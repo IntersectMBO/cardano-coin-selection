@@ -4,6 +4,7 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeApplications #-}
@@ -29,6 +30,7 @@ import Cardano.Fee
     ( DustThreshold (..)
     , ErrAdjustForFee (..)
     , Fee (..)
+    , FeeEstimator (..)
     , FeeOptions (..)
     , adjustForFee
     , coalesceDust
@@ -76,6 +78,7 @@ import Test.QuickCheck
     ( Arbitrary (..)
     , Gen
     , Property
+    , arbitraryBoundedIntegral
     , checkCoverage
     , choose
     , cover
@@ -861,7 +864,7 @@ feeOptions
     -> Word64
     -> FeeOptions i o
 feeOptions fee dust = FeeOptions
-    { estimateFee =
+    { feeEstimator = FeeEstimator $
         \_ -> Fee fee
     , dustThreshold =
         DustThreshold dust
@@ -1005,7 +1008,7 @@ instance (i ~ u, Arbitrary o, Arbitrary u, Ord o, Ord u) =>
 instance Arbitrary (Hash "Tx") where
     shrink _ = []
     arbitrary = do
-        bytes <- BS.pack <$> vectorOf 32 arbitrary
+        bytes <- BS.pack <$> vectorOf 8 arbitraryBoundedIntegral
         pure $ Hash bytes
 
 instance Arbitrary Address where
@@ -1041,18 +1044,35 @@ instance (Arbitrary i, Arbitrary o, Ord i, Ord o) =>
             >>= genOutputs
         genSelection (NE.fromList outs)
 
+data FeeParameters i o = FeeParameters
+    { feePerTransaction
+        :: Fee
+        -- ^ Base fee for a transaction.
+    , feePerTransactionEntry
+        :: Fee
+        -- ^ Incremental fee for each input, output, and change output.
+    } deriving (Eq, Generic, Show)
+
+instance Arbitrary (FeeParameters i o) where
+    arbitrary = do
+        feePerTransaction <- Fee <$> choose (0, 10)
+        feePerTransactionEntry <- Fee <$> choose (0, 10)
+        pure $ FeeParameters {feePerTransaction, feePerTransactionEntry}
+    shrink = genericShrink
+
+feeEstimatorFromParameters :: FeeParameters i o -> FeeEstimator i o
+feeEstimatorFromParameters
+    FeeParameters {feePerTransaction, feePerTransactionEntry} =
+        FeeEstimator $ \s -> Fee
+            $ getFee feePerTransaction
+            + getFee feePerTransactionEntry
+            * fromIntegral (length (inputs s) + length (outputs s))
+
 instance Arbitrary (FeeOptions i o) where
     arbitrary = do
-        t <- choose (0, 10) -- dust threshold
-        c <- choose (0, 10) -- price per transaction
-        a <- choose (0, 10) -- price per input/output
-        return $ FeeOptions
-            { estimateFee =
-                \s -> Fee
-                    $ fromIntegral
-                    $ c + a * (length (inputs s) + length (outputs s))
-            , dustThreshold = DustThreshold t
-            }
+        dustThreshold <- DustThreshold <$> choose (0, 10)
+        feeEstimator <- feeEstimatorFromParameters <$> arbitrary
+        return $ FeeOptions {dustThreshold, feeEstimator}
 
 instance Arbitrary a => Arbitrary (NonEmpty a) where
     arbitrary = do

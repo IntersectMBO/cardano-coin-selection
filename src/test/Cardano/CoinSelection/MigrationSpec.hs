@@ -19,7 +19,7 @@ import Cardano.CoinSelection.Migration
 import Cardano.CoinSelectionSpec
     ()
 import Cardano.Fee
-    ( DustThreshold (..), Fee (..), FeeOptions (..) )
+    ( DustThreshold (..), Fee (..), FeeEstimator (..), FeeOptions (..) )
 import Cardano.FeeSpec
     ()
 import Cardano.Test.Utilities
@@ -125,7 +125,7 @@ spec = do
         it "regression #1" $ do
             let feeOpts = FeeOptions
                     { dustThreshold = DustThreshold 9
-                    , estimateFee = \s -> Fee
+                    , feeEstimator = FeeEstimator $ \s -> Fee
                         $ fromIntegral
                         $ 5 * (length (inputs s) + length (outputs s))
                     }
@@ -232,7 +232,7 @@ prop_wellBalanced feeOpts batchSize utxo = do
         [ counterexample example (actualFee === expectedFee)
         | s <- selections
         , let actualFee = inputBalance s - changeBalance s
-        , let (Fee expectedFee) = estimateFee feeOpts s
+        , let (Fee expectedFee) = estimateFee (feeEstimator feeOpts) s
         , let example = unlines
                 [ "Coin Selection: " <> show s
                 , "Actual fee: " <> show actualFee
@@ -268,7 +268,7 @@ genBatchSize = choose (50, 150)
 genFeeOptions :: Coin -> Gen (FeeOptions i o)
 genFeeOptions (Coin dust) = do
     pure $ FeeOptions
-        { estimateFee = \s ->
+        { feeEstimator = FeeEstimator $ \s ->
             let x = fromIntegral (length (inputs s) + length (outputs s))
             in Fee $ (dust `div` 100) * x + dust
         , dustThreshold = DustThreshold dust

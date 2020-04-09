@@ -3,6 +3,7 @@
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
@@ -27,6 +28,7 @@ module Cardano.Fee
     , distributeFee
 
       -- * Fee Adjustment
+    , FeeEstimator (..)
     , FeeOptions (..)
     , ErrAdjustForFee(..)
     , adjustForFee
@@ -45,12 +47,7 @@ import Prelude hiding
     ( round )
 
 import Cardano.CoinSelection
-    ( CoinSelection (..)
-    , Input (..)
-    , changeBalance
-    , inputBalance
-    , outputBalance
-    )
+    ( CoinSelection (..), Input (..), feeBalance )
 import Cardano.Types
     ( Coin (..), UTxO (..), coinIsValid, utxoPickRandom )
 import Control.Monad.Trans.Class
@@ -102,7 +99,8 @@ newtype Fee = Fee
 
 -- | Defines the maximum size of a dust coin.
 --
--- See function 'dustThreshold' within 'FeeOptions'.
+-- Change values that are less than or equal to this threshold will not be
+-- included in transactions.
 --
 -- This type is isomorphic to 'Coin'.
 --
@@ -115,21 +113,24 @@ newtype DustThreshold = DustThreshold
                                 Fee Adjustment
 -------------------------------------------------------------------------------}
 
+-- | Provides a function capable of estimating the fee for a given coin
+--   selection.
+--
+-- The fee estimate can depend on the numbers of inputs, outputs, and change
+-- outputs within the coin selection, as well as their magnitudes.
+--
+newtype FeeEstimator i o = FeeEstimator
+    { estimateFee :: CoinSelection i o -> Fee
+    } deriving Generic
+
+-- | Provides options for fee balancing.
+--
 data FeeOptions i o = FeeOptions
-    { estimateFee
-      :: CoinSelection i o -> Fee
-      -- ^ Estimate fees based on number of inputs and values of the outputs
-      -- Some pointers / order of magnitude from the current configuration:
-      --     a: 155381 # absolute minimal fees per transaction
-      --     b: 43.946 # additional minimal fees per byte of transaction size
+    { feeEstimator
+        :: FeeEstimator i o
     , dustThreshold
-      :: DustThreshold
-      -- ^ Defines the maximum size of a dust coin.
-      --
-      -- Change values that are less than or equal to this threshold will be
-      -- evicted from created transactions.
-      --
-    } deriving (Generic)
+        :: DustThreshold
+    } deriving Generic
 
 newtype ErrAdjustForFee
     = ErrCannotCoverFee Word64
@@ -173,7 +174,7 @@ adjustForFee unsafeOpt utxo coinSel = do
             "adjustForFee: fee must be non-null" unsafeOpt (not . nullFee)
     senderPaysFee opt utxo coinSel
   where
-    nullFee opt = estimateFee opt coinSel == Fee 0
+    nullFee opt = estimateFee (feeEstimator opt) coinSel == Fee 0
 
 -- | The sender pays fee in this scenario, so fees are removed from the change
 -- outputs, and new inputs are selected if necessary.
@@ -183,7 +184,9 @@ senderPaysFee
     -> UTxO u
     -> CoinSelection i o
     -> ExceptT ErrAdjustForFee m (CoinSelection i o)
-senderPaysFee opt utxo sel = evalStateT (go sel) utxo where
+senderPaysFee FeeOptions {feeEstimator, dustThreshold} utxo sel =
+    evalStateT (go sel) utxo
+  where
     go
         :: CoinSelection i o
         -> StateT (UTxO u) (ExceptT ErrAdjustForFee m) (CoinSelection i o)
@@ -191,16 +194,12 @@ senderPaysFee opt utxo sel = evalStateT (go sel) utxo where
         -- 1/
         -- We compute fees using all inputs, outputs and changes since all of
         -- them have an influence on the fee calculation.
-        let upperBound = estimateFee opt coinSel
+        let feeUpperBound = estimateFee feeEstimator coinSel
         -- 2/
         -- Substract fee from change outputs, proportionally to their value.
-        let coinSel' = CoinSelection
-                { inputs = inps
-                , outputs = outs
-                , change =
-                    reduceChangeOutputs (dustThreshold opt) upperBound chgs
-                }
-        let remFee = remainingFee opt coinSel'
+        let chgs' = reduceChangeOutputs dustThreshold feeUpperBound chgs
+        let coinSel' = coinSel { change = chgs' }
+        let remFee = remainingFee feeEstimator coinSel'
         -- 3.1/
         -- Should the change cover the fee, we're (almost) good. By removing
         -- change outputs, we make them smaller and may reduce the size of the
@@ -417,35 +416,32 @@ coalesceDust (DustThreshold threshold) coins =
 
 -- | Computes how much is left to pay given a particular selection
 remainingFee
-    :: HasCallStack
-    => Buildable i
-    => Buildable o
-    => FeeOptions i o
+    :: (HasCallStack, Buildable i, Buildable o)
+    => FeeEstimator i o
     -> CoinSelection i o
     -> Fee
-remainingFee opts s = do
-    if fee >= diff
-    then Fee (fee - diff)
-    else do
+remainingFee FeeEstimator {estimateFee} s
+    | fee >= diff =
+        Fee (fee - diff)
+    | feeDangling >= diff =
+        Fee (feeDangling - fee)
+    | otherwise =
         -- NOTE
         -- The only case where we may end up with an unbalanced transaction is
         -- when we have a dangling change output (i.e. adding it costs too much
         -- and we can't afford it, but not having it result in too many coins
         -- left for fees).
-        let Fee feeDangling =
-                estimateFee opts $ s { change = [Coin (diff - fee)] }
-        if (feeDangling >= diff)
-            then Fee (feeDangling - fee)
-            else error $ unwords
-                [ "Generated an unbalanced tx! Too much left for fees"
-                , ": fee (raw) =", show fee
-                , ": fee (dangling) =", show feeDangling
-                , ", diff =", show diff
-                , "\nselection =", pretty s
-                ]
+        error $ unwords
+            [ "Generated an unbalanced tx! Too much left for fees"
+            , ": fee (raw) =", show fee
+            , ": fee (dangling) =", show feeDangling
+            , ", diff =", show diff
+            , "\nselection =", pretty s
+            ]
   where
-    Fee fee = estimateFee opts s
-    diff = inputBalance s - (outputBalance s + changeBalance s)
+    Fee fee = estimateFee s
+    diff = feeBalance s
+    Fee feeDangling = estimateFee s { change = [Coin (diff - fee)] }
 
 -- | Splits up the given coin of value __@v@__, distributing its value over the
 --   given coin list of length __@n@__, so that each coin value is increased by
