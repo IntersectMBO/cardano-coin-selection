@@ -37,7 +37,7 @@ import Cardano.Fee
     , splitCoin
     )
 import Cardano.Types
-    ( Coin (..), ShowFmt (..), UTxO (..), isValidCoin )
+    ( Coin (..), UTxO (..), isValidCoin )
 import Control.Arrow
     ( left )
 import Control.Monad
@@ -69,7 +69,7 @@ import GHC.Generics
 import Numeric.Rounding
     ( RoundingDirection (..), round )
 import Test.Cardano.Types
-    ( Address (..), Hash (..), TxIn (..) )
+    ( Address (..), Hash (..), ShowFmt (..), TxIn (..) )
 import Test.Hspec
     ( Spec, SpecWith, before, describe, it, shouldBe, shouldSatisfy )
 import Test.QuickCheck

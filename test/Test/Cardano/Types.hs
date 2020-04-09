@@ -21,6 +21,9 @@ module Test.Cardano.Types
     -- * Hashes
     , Hash (..)
 
+    -- * Formatting
+    , ShowFmt (..)
+
     -- * Transactions
     , TxIn (..)
     , TxOut (..)
@@ -42,7 +45,7 @@ import Data.ByteString
 import Data.Word
     ( Word32 )
 import Fmt
-    ( Buildable (..), ordinalF, prefixF, suffixF )
+    ( Buildable (..), fmt, ordinalF, prefixF, suffixF )
 import GHC.Generics
     ( Generic )
 import GHC.TypeLits
@@ -91,6 +94,20 @@ instance Buildable (Hash tag) where
       where
         builder = build . toText $ h
         toText = T.decodeUtf8 . convertToBase Base16 . getHash
+
+{-------------------------------------------------------------------------------
+                                Formatting
+-------------------------------------------------------------------------------}
+
+-- | A polymorphic wrapper type with a custom 'Show' instance to display data
+--   through 'Buildable' instances.
+newtype ShowFmt a = ShowFmt { unShowFmt :: a }
+    deriving (Generic, Eq, Ord)
+
+instance NFData a => NFData (ShowFmt a)
+
+instance Buildable a => Show (ShowFmt a) where
+    show (ShowFmt a) = fmt (build a)
 
 {-------------------------------------------------------------------------------
                                 Transactions

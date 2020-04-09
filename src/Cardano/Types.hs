@@ -28,8 +28,7 @@ module Cardano.Types
     , restrictedTo
     , Dom (..)
 
-    -- * Polymorphic
-    , ShowFmt (..)
+    -- * Utilities
     , invariant
     , distance
     ) where
@@ -51,7 +50,7 @@ import Data.Set
 import Data.Word
     ( Word64 )
 import Fmt
-    ( Buildable (..), blockListF', fmt )
+    ( Buildable (..), blockListF' )
 import GHC.Generics
     ( Generic )
 import Numeric.Natural
@@ -159,16 +158,6 @@ restrictedTo (UTxO utxo) outs =
 class Dom a where
     type DomElem a :: Type
     dom :: a -> Set (DomElem a)
-
--- | A polymorphic wrapper type with a custom show instance to display data
--- through 'Buildable' instances.
-newtype ShowFmt a = ShowFmt { unShowFmt :: a }
-    deriving (Generic, Eq, Ord)
-
-instance NFData a => NFData (ShowFmt a)
-
-instance Buildable a => Show (ShowFmt a) where
-    show (ShowFmt a) = fmt (build a)
 
 -- | Checks whether or not an invariant holds, by applying the given predicate
 --   to the given value.

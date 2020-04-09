@@ -36,7 +36,7 @@ import Cardano.CoinSelection
     , Output (..)
     )
 import Cardano.Types
-    ( Coin (..), ShowFmt (..), UTxO (..) )
+    ( Coin (..), UTxO (..) )
 import Control.Monad.Trans.Except
     ( runExceptT )
 import Data.List.NonEmpty
@@ -48,7 +48,7 @@ import Data.Word
 import Fmt
     ( Buildable (..), blockListF, nameF )
 import Test.Cardano.Types
-    ( Address (..), Hash (..), TxIn (..) )
+    ( Address (..), Hash (..), ShowFmt (..), TxIn (..) )
 import Test.Hspec
     ( Spec, SpecWith, describe, it, shouldBe )
 import Test.QuickCheck
