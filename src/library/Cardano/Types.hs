@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE NumericUnderscores #-}
 
 -- |
 -- Copyright: © 2018-2020 IOHK
@@ -58,8 +59,11 @@ newtype Coin = Coin
 instance NFData Coin
 
 instance Bounded Coin where
-    minBound = Coin 0
-    maxBound = Coin 45000000000000000
+    minBound =
+        Coin 0
+    maxBound =
+        Coin 45_000_000_000_000_000
+        -- = 45 billion Ada × 1 million Lovelace/Ada:
 
 instance Buildable Coin where
     build = build . getCoin
