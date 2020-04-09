@@ -78,6 +78,7 @@ import Test.QuickCheck
     ( Arbitrary (..)
     , Gen
     , Property
+    , arbitraryBoundedIntegral
     , checkCoverage
     , choose
     , cover
@@ -1007,7 +1008,7 @@ instance (i ~ u, Arbitrary o, Arbitrary u, Ord o, Ord u) =>
 instance Arbitrary (Hash "Tx") where
     shrink _ = []
     arbitrary = do
-        bytes <- BS.pack <$> vectorOf 32 arbitrary
+        bytes <- BS.pack <$> vectorOf 8 arbitraryBoundedIntegral
         pure $ Hash bytes
 
 instance Arbitrary Address where
