@@ -5,6 +5,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE NumericUnderscores #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeApplications #-}
@@ -38,9 +39,11 @@ import Cardano.CoinSelection.Fee
     , FeeEstimator (..)
     , FeeOptions (..)
     , adjustForFee
+    , calculateFee
     , coalesceDust
     , distributeFee
     , reduceChangeOutputs
+    , remainingFee
     , splitCoin
     )
 import Cardano.CoinSelection.LargestFirst
@@ -418,6 +421,11 @@ spec = do
             (checkCoverage propSplitCoinProducesValidCoins)
         it "results are all within unity of ideal unrounded results"
             (checkCoverage propSplitCoinFair)
+
+    describe "remainingFee" $ do
+        it "is zero if (and only if) the coin selection is perfectly balanced"
+            (checkCoverage $
+                propRemainingFeeZeroOnlyWhenBalanced @TxIn @Address)
 
 --------------------------------------------------------------------------------
 -- Fee Adjustment - Properties
@@ -856,6 +864,29 @@ propSplitCoinFair (coinToSplit, coinsToIncrease) = (.&&.)
         = fromIntegral c
         + fromIntegral (unCoin coinToSplit)
         % fromIntegral (length coinsToIncrease)
+
+propRemainingFeeZeroOnlyWhenBalanced
+    :: forall i o . (Buildable i, Buildable o)
+    => FeeParameters i o
+    -> DustThreshold
+    -> CoinSelection i o
+    -> Property
+propRemainingFeeZeroOnlyWhenBalanced feeParams dustThreshold selection =
+    withMaxSuccess 100_000 $ property $
+    cover 0.4 (remainder == Fee 0)
+        "remainder = 0" $
+    cover 8.0 (remainder /= Fee 0)
+        "remainder ≠ 0" $
+    remainder == Fee 0 `shouldBe` isBalanced selection
+  where
+    feeEstimator@FeeEstimator {estimateFee} =
+        feeEstimatorFromParameters feeParams
+    isBalanced :: CoinSelection i o -> Bool
+    isBalanced s = calculateFee s == estimateFee s
+    feeUpperBound = estimateFee selection
+    reducedChange = reduceChangeOutputs
+        dustThreshold feeUpperBound (change selection)
+    remainder = remainingFee feeEstimator selection { change = reducedChange }
 
 --------------------------------------------------------------------------------
 -- Fee Adjustment - Unit Tests

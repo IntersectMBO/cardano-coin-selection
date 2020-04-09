@@ -34,6 +34,7 @@ module Cardano.CoinSelection.Fee
     , ErrAdjustForFee(..)
     , adjustForFee
     , reduceChangeOutputs
+    , remainingFee
 
       -- * Dust Processing
     , DustThreshold (..)
