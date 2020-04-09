@@ -12,10 +12,10 @@
 module Cardano.CoinSelection
     (
       -- * Types
-      CoinSelectionAlgorithm (..)
-    , CoinSelection (..)
+      CoinSelection (..)
+    , CoinSelectionAlgorithm (..)
     , CoinSelectionOptions (..)
-    , ErrCoinSelection (..)
+    , CoinSelectionError (..)
     , Input (..)
     , Output (..)
 
@@ -60,7 +60,7 @@ newtype CoinSelectionAlgorithm i o u m e = CoinSelectionAlgorithm
         :: CoinSelectionOptions i o e
         -> NonEmpty (Output o)
         -> UTxO u
-        -> ExceptT (ErrCoinSelection e) m (CoinSelection i o, UTxO u)
+        -> ExceptT (CoinSelectionError e) m (CoinSelection i o, UTxO u)
     }
 
 -- | Represents the result of running a /coin selection algorithm/.
@@ -175,7 +175,7 @@ feeBalance sel = inputBalance sel - outputBalance sel - changeBalance sel
 -- | Represents the set of possible failures that can occur when attempting
 --   to produce a 'CoinSelection'.
 --
-data ErrCoinSelection e
+data CoinSelectionError e
     = ErrUtxoBalanceInsufficient Word64 Word64
     -- ^ The UTxO balance was insufficient to cover the total payment amount.
     --

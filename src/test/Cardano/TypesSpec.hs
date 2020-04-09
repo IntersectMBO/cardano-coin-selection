@@ -12,22 +12,22 @@ module Cardano.TypesSpec
 
 import Prelude
 
-import Cardano.Types
-    ( Coin (..)
-    , Dom (..)
+import Cardano.Test.Utilities
+    ( Address (..)
+    , Hash (..)
     , ShowFmt (..)
-    , UTxO (..)
-    , balance
+    , TxIn (..)
+    , TxOut (..)
     , excluding
     , isSubsetOf
-    , isValidCoin
     , restrictedBy
     , restrictedTo
+    , unsafeFromHex
     )
+import Cardano.Types
+    ( Coin (..), UTxO (..), coinIsValid, utxoBalance )
 import Data.Set
     ( Set, (\\) )
-import Test.Cardano.Types
-    ( Address (..), Hash (..), TxIn (..), TxOut (..) )
 import Test.Hspec
     ( Spec, describe, it )
 import Test.QuickCheck
@@ -42,8 +42,6 @@ import Test.QuickCheck
     , vectorOf
     , (===)
     )
-import Test.Unsafe
-    ( unsafeFromHex )
 
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
@@ -51,7 +49,7 @@ import qualified Data.Set as Set
 spec :: Spec
 spec = do
     describe "Generators are valid" $ do
-        it "Arbitrary Coin" $ property isValidCoin
+        it "Arbitrary Coin" $ property coinIsValid
 
     describe "Lemma 2.1 - Properties of UTxO operations" $ do
         it "2.1.1) ins⊲ u ⊆ u"
@@ -176,7 +174,7 @@ prop_2_6_1 (u, v) =
     -- a v' that has no overlap with u.
     v' = v `excluding` dom u
     cond = not (u `isSubsetOf` mempty || v' `isSubsetOf` mempty)
-    prop = balance (u <> v') === balance u + balance v'
+    prop = utxoBalance (u <> v') === utxoBalance u + utxoBalance v'
 
 prop_2_6_2 :: Ord u => (Set u, UTxO u) -> Property
 prop_2_6_2 (ins, u) =
@@ -184,9 +182,18 @@ prop_2_6_2 (ins, u) =
   where
     cond = not $ Set.null $ dom u `Set.intersection` ins
     prop =
-        balance (u `excluding` ins)
+        utxoBalance (u `excluding` ins)
             ===
-        balance u - balance (u `restrictedBy` ins)
+        utxoBalance u - utxoBalance (u `restrictedBy` ins)
+
+{-------------------------------------------------------------------------------
+                               UTxO Utilities
+-------------------------------------------------------------------------------}
+
+-- | Extracts the domain of a UTxO: the set of references to unspent transaction
+--   ouputs.
+dom :: UTxO u -> Set u
+dom (UTxO utxo) = Map.keysSet utxo
 
 {-------------------------------------------------------------------------------
                             Arbitrary Instances

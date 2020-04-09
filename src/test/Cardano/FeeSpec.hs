@@ -36,8 +36,10 @@ import Cardano.Fee
     , reduceChangeOutputs
     , splitCoin
     )
+import Cardano.Test.Utilities
+    ( Address (..), Hash (..), ShowFmt (..), TxIn (..) )
 import Cardano.Types
-    ( Coin (..), ShowFmt (..), UTxO (..), isValidCoin )
+    ( Coin (..), UTxO (..), coinIsValid )
 import Control.Arrow
     ( left )
 import Control.Monad
@@ -66,10 +68,8 @@ import Fmt
     ( Buildable (..), nameF, tupleF )
 import GHC.Generics
     ( Generic )
-import Numeric.Rounding
+import Internal.Rounding
     ( RoundingDirection (..), round )
-import Test.Cardano.Types
-    ( Address (..), Hash (..), TxIn (..) )
 import Test.Hspec
     ( Spec, SpecWith, before, describe, it, shouldBe, shouldSatisfy )
 import Test.QuickCheck
@@ -722,19 +722,19 @@ propReduceChangeOutputsDataCoverage
 propReduceChangeOutputsDataGenerationValid
     :: ReduceChangeOutputsData -> Property
 propReduceChangeOutputsDataGenerationValid rcod = property $
-    all isValidCoin (rcodCoins rcod)
+    all coinIsValid (rcodCoins rcod)
 
 propReduceChangeOutputsDataShrinkingValid
     :: ReduceChangeOutputsData -> Property
 propReduceChangeOutputsDataShrinkingValid rcod = property $
     all isValidData (shrink rcod)
   where
-    isValidData d = all isValidCoin (rcodCoins d)
+    isValidData d = all coinIsValid (rcodCoins d)
 
 propReduceChangeOutputsProducesValidCoins :: ReduceChangeOutputsData -> Property
 propReduceChangeOutputsProducesValidCoins
     (ReduceChangeOutputsData fee threshold coins) = property $
-        all isValidCoin (reduceChangeOutputs threshold fee coins)
+        all coinIsValid (reduceChangeOutputs threshold fee coins)
 
 propReduceChangeOutputsPreservesSum :: ReduceChangeOutputsData -> Property
 propReduceChangeOutputsPreservesSum
@@ -817,13 +817,13 @@ propSplitCoinDataCoverage (SplitCoinData coinToSplit coinsToIncrease) =
 
 propSplitCoinDataGenerationValid :: SplitCoinData -> Property
 propSplitCoinDataGenerationValid scd = property $
-    all isValidCoin (scdCoinToSplit scd : scdCoinsToIncrease scd)
+    all coinIsValid (scdCoinToSplit scd : scdCoinsToIncrease scd)
 
 propSplitCoinDataShrinkingValid :: SplitCoinData -> Property
 propSplitCoinDataShrinkingValid scd = property $
     all isValidData (shrink scd)
   where
-    isValidData d = all isValidCoin (scdCoinToSplit d : scdCoinsToIncrease d)
+    isValidData d = all coinIsValid (scdCoinToSplit d : scdCoinsToIncrease d)
 
 propSplitCoinPreservesSum :: SplitCoinData -> Property
 propSplitCoinPreservesSum (SplitCoinData coinToSplit coinsToIncrease) =
@@ -834,7 +834,7 @@ propSplitCoinPreservesSum (SplitCoinData coinToSplit coinsToIncrease) =
 
 propSplitCoinProducesValidCoins :: SplitCoinData -> Property
 propSplitCoinProducesValidCoins (SplitCoinData coinToSplit coinsToIncrease) =
-    property $ all isValidCoin $ splitCoin coinToSplit coinsToIncrease
+    property $ all coinIsValid $ splitCoin coinToSplit coinsToIncrease
 
 propSplitCoinFair :: (Coin, NonEmpty Coin) -> Property
 propSplitCoinFair (coinToSplit, coinsToIncrease) = (.&&.)

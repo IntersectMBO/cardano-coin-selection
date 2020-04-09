@@ -4,9 +4,10 @@
 -- Copyright: © 2018-2020 IOHK
 -- License: Apache-2.0
 --
--- Provides functionality relating to rounding.of fractional numbers.
-
-module Numeric.Rounding
+-- Provides internal types and functions relating to rounding of fractional
+-- numbers.
+--
+module Internal.Rounding
     ( RoundingDirection (..)
     , round
     ) where

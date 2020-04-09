@@ -22,8 +22,10 @@ import Cardano.Fee
     ( DustThreshold (..), Fee (..), FeeOptions (..) )
 import Cardano.FeeSpec
     ()
+import Cardano.Test.Utilities
+    ( Address, Hash (..), TxIn (..) )
 import Cardano.Types
-    ( Coin (..), UTxO (..), balance )
+    ( Coin (..), UTxO (..), utxoBalance )
 import Data.ByteString
     ( ByteString )
 import Data.Function
@@ -32,8 +34,6 @@ import Data.Word
     ( Word8 )
 import Numeric.Natural
     ( Natural )
-import Test.Cardano.Types
-    ( Address, Hash (..), TxIn (..) )
 import Test.Hspec
     ( Spec, SpecWith, describe, it, shouldSatisfy )
 import Test.QuickCheck
@@ -76,7 +76,7 @@ spec = do
                 feeOpts <- pick (genFeeOptions dust)
                 let selections = depleteUTxO feeOpts batchSize utxo
                 monitor $ label $ accuracy dust
-                    (balance utxo)
+                    (utxoBalance utxo)
                     (fromIntegral $ sum $ inputBalance <$> selections)
               where
                 title :: String
@@ -183,7 +183,7 @@ prop_inputsGreaterThanOutputs
 prop_inputsGreaterThanOutputs feeOpts batchSize utxo = do
     let selections  = depleteUTxO feeOpts batchSize utxo
     let totalChange = sum (changeBalance <$> selections)
-    let balanceUTxO = balance utxo
+    let balanceUTxO = utxoBalance utxo
     property (balanceUTxO >= fromIntegral totalChange)
         & counterexample ("Total change balance: " <> show totalChange)
         & counterexample ("Total UTxO balance: " <> show balanceUTxO)

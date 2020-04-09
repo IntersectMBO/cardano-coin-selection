@@ -17,13 +17,13 @@ import Prelude
 import Cardano.CoinSelection
     ( CoinSelection (..)
     , CoinSelectionAlgorithm (..)
+    , CoinSelectionError (..)
     , CoinSelectionOptions (..)
-    , ErrCoinSelection (..)
     , Input (..)
     , Output (..)
     )
 import Cardano.Types
-    ( Coin (..), UTxO (..), balance )
+    ( Coin (..), UTxO (..), utxoBalance )
 import Control.Arrow
     ( left )
 import Control.Monad
@@ -184,7 +184,7 @@ payForOutputs
     => CoinSelectionOptions i o e
     -> NonEmpty (Output o)
     -> UTxO u
-    -> ExceptT (ErrCoinSelection e) m (CoinSelection i o, UTxO u)
+    -> ExceptT (CoinSelectionError e) m (CoinSelection i o, UTxO u)
 payForOutputs options outputsRequested utxo =
     case foldM payForOutput (utxoDescending, mempty) outputsDescending of
         Just (utxoRemaining, selection) ->
@@ -203,7 +203,7 @@ payForOutputs options outputsRequested utxo =
       | otherwise =
           ErrMaximumInputCountExceeded inputCountMax
     amountAvailable =
-        fromIntegral $ balance utxo
+        fromIntegral $ utxoBalance utxo
     amountRequested =
         sum $ (getCoin . outputValue) <$> outputsRequested
     inputCountMax =

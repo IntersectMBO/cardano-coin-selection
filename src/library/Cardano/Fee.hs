@@ -52,7 +52,7 @@ import Cardano.CoinSelection
     , outputBalance
     )
 import Cardano.Types
-    ( Coin (..), UTxO (..), invariant, isValidCoin, pickRandom )
+    ( Coin (..), UTxO (..), coinIsValid, utxoPickRandom )
 import Control.Monad.Trans.Class
     ( lift )
 import Control.Monad.Trans.Except
@@ -77,7 +77,9 @@ import GHC.Generics
     ( Generic )
 import GHC.Stack
     ( HasCallStack )
-import Numeric.Rounding
+import Internal.Invariant
+    ( invariant )
+import Internal.Rounding
     ( RoundingDirection (..), round )
 import Quiet
     ( Quiet (Quiet) )
@@ -236,7 +238,7 @@ coverRemainingFee (Fee fee) = go [] where
             return acc
         | otherwise = do
             -- We ignore the size of the fee, and just pick randomly
-            StateT (lift . pickRandom) >>= \case
+            StateT (lift . utxoPickRandom) >>= \case
                 Just entry ->
                     go (uncurry Input entry : acc)
                 Nothing -> do
@@ -519,7 +521,7 @@ splitCoin = go
         let
             newChange = Coin $ (getCoin remaining) + (getCoin a)
         in
-            if isValidCoin newChange
+            if coinIsValid newChange
             then [newChange]
             else [a, remaining]
     go rest@(Coin remaining) ls@(a : as) =
@@ -528,7 +530,7 @@ splitCoin = go
             newRemaining = Coin (remaining - piece)
             newChange = Coin (piece + getCoin a)
         in
-            if isValidCoin newChange
+            if coinIsValid newChange
             then newChange : go newRemaining as
             else a : go rest as
 

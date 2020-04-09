@@ -19,15 +19,15 @@ import Prelude
 import Cardano.CoinSelection
     ( CoinSelection (..)
     , CoinSelectionAlgorithm (..)
+    , CoinSelectionError (..)
     , CoinSelectionOptions (..)
-    , ErrCoinSelection (..)
     , Input (..)
     , Output (..)
     )
 import Cardano.CoinSelection.LargestFirst
     ( largestFirst )
 import Cardano.Types
-    ( Coin (..), UTxO (..), distance, invariant, pickRandom )
+    ( Coin (..), UTxO (..), utxoPickRandom )
 import Control.Arrow
     ( left )
 import Control.Monad
@@ -48,6 +48,8 @@ import Data.Ord
     ( Down (..) )
 import Data.Word
     ( Word64 )
+import Internal.Invariant
+    ( invariant )
 
 import qualified Data.List as L
 import qualified Data.List.NonEmpty as NE
@@ -217,7 +219,7 @@ payForOutputs
     => CoinSelectionOptions i o e
     -> NonEmpty (Output o)
     -> UTxO u
-    -> ExceptT (ErrCoinSelection e) m (CoinSelection i o, UTxO u)
+    -> ExceptT (CoinSelectionError e) m (CoinSelection i o, UTxO u)
 payForOutputs options outputsRequested utxo = do
     mRandomSelections <- lift $ runMaybeT $ foldM makeRandomSelection
         (inputCountMax, utxo, []) outputsDescending
@@ -273,7 +275,7 @@ makeRandomSelection
         | sumInputs selected >= targetMin (mkTargetRange txout) =
             MaybeT $ return $ Just (selected, remaining)
         | otherwise =
-            pickRandomT remaining >>= \(picked, remaining') ->
+            utxoPickRandomT remaining >>= \(picked, remaining') ->
                 coverRandomly (picked : selected, remaining')
 
 -- | Perform an improvement to random selection on a given output.
@@ -301,7 +303,7 @@ improveSelection (maxN0, selection, utxo0) (inps0, txout) = do
         -> m (Word64, [Input i], UTxO u)
     improve (maxN, inps, utxo)
         | maxN >= 1 && sumInputs inps < targetAim target = do
-            runMaybeT (pickRandomT utxo) >>= \case
+            runMaybeT (utxoPickRandomT utxo) >>= \case
                 Nothing ->
                     return (maxN, inps, utxo)
                 Just (io, utxo') | isImprovement io inps -> do
@@ -362,13 +364,13 @@ mkTargetRange (Output _ (Coin c)) = TargetRange
     , targetMax = 3 * c
     }
 
--- | Re-wrap 'pickRandom' in a 'MaybeT' monad
-pickRandomT
+-- | Re-wrap 'utxoPickRandom' in a 'MaybeT' monad
+utxoPickRandomT
     :: (i ~ u, MonadRandom m)
     => UTxO u
     -> MaybeT m (Input i, UTxO u)
-pickRandomT =
-    MaybeT . fmap (\(mi, u) -> (, u) . uncurry Input <$> mi) . pickRandom
+utxoPickRandomT =
+    MaybeT . fmap (\(mi, u) -> (, u) . uncurry Input <$> mi) . utxoPickRandom
 
 -- | Compute corresponding change outputs from a target output and a selection
 -- of inputs.
@@ -394,6 +396,11 @@ mkChange (Output _ (Coin out)) inps =
 --------------------------------------------------------------------------------
 -- Utilities
 --------------------------------------------------------------------------------
+
+-- | Compute distance between two numeric values |a - b|
+distance :: (Ord a, Num a) => a -> a -> a
+distance a b =
+    if a < b then b - a else a - b
 
 sumInputs :: [Input i] -> Word64
 sumInputs = sum . fmap (getCoin . inputValue)

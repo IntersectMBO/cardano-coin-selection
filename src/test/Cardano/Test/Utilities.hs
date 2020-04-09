@@ -6,50 +6,69 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE NumericUnderscores #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 
--- | Utility types used purely for testing.
+-- | Utility functions and types used purely for testing.
 --
 -- Copyright: © 2018-2020 IOHK
 -- License: Apache-2.0
 --
-module Test.Cardano.Types
+module Cardano.Test.Utilities
     (
     -- * Addresses
       Address (..)
 
+    -- * Decoding
+    , unsafeFromHex
+
     -- * Hashes
     , Hash (..)
+
+    -- * Formatting
+    , ShowFmt (..)
 
     -- * Transactions
     , TxIn (..)
     , TxOut (..)
+
+    -- * UTxO Operations
+    , excluding
+    , isSubsetOf
+    , restrictedBy
+    , restrictedTo
 
     ) where
 
 import Prelude
 
 import Cardano.Types
-    ( Coin (..) )
+    ( Coin (..), UTxO (..) )
 import Control.DeepSeq
     ( NFData (..) )
 import Data.ByteArray
     ( ByteArrayAccess )
 import Data.ByteArray.Encoding
-    ( Base (Base16), convertToBase )
+    ( Base (Base16), convertFromBase, convertToBase )
 import Data.ByteString
     ( ByteString )
+import Data.Set
+    ( Set )
 import Data.Word
     ( Word32 )
 import Fmt
-    ( Buildable (..), ordinalF, prefixF, suffixF )
+    ( Buildable (..), fmt, ordinalF, prefixF, suffixF )
 import GHC.Generics
     ( Generic )
+import GHC.Stack
+    ( HasCallStack )
 import GHC.TypeLits
     ( Symbol )
 import Quiet
     ( Quiet (Quiet) )
 
+import qualified Data.Map.Strict as Map
+import qualified Data.Set as Set
 import qualified Data.Text.Encoding as T
 
 {-------------------------------------------------------------------------------
@@ -75,6 +94,15 @@ instance Buildable Address where
             . unAddress
 
 {-------------------------------------------------------------------------------
+                                  Decoding
+-------------------------------------------------------------------------------}
+
+-- | Decode an hex-encoded 'ByteString' into raw bytes, or fail.
+unsafeFromHex :: HasCallStack => ByteString -> ByteString
+unsafeFromHex =
+    either (error . show) id . convertFromBase @ByteString @ByteString Base16
+
+{-------------------------------------------------------------------------------
                                    Hashes
 -------------------------------------------------------------------------------}
 
@@ -91,6 +119,20 @@ instance Buildable (Hash tag) where
       where
         builder = build . toText $ h
         toText = T.decodeUtf8 . convertToBase Base16 . getHash
+
+{-------------------------------------------------------------------------------
+                                Formatting
+-------------------------------------------------------------------------------}
+
+-- | A polymorphic wrapper type with a custom 'Show' instance to display data
+--   through 'Buildable' instances.
+newtype ShowFmt a = ShowFmt { unShowFmt :: a }
+    deriving (Generic, Eq, Ord)
+
+instance NFData a => NFData (ShowFmt a)
+
+instance Buildable a => Show (ShowFmt a) where
+    show (ShowFmt a) = fmt (build a)
 
 {-------------------------------------------------------------------------------
                                 Transactions
@@ -129,3 +171,27 @@ instance Buildable TxOut where
         <> suffixF 8 addrF
       where
         addrF = build $ address txout
+
+{-------------------------------------------------------------------------------
+                               UTxO Operations
+-------------------------------------------------------------------------------}
+
+-- | ins⋪ u
+excluding :: Ord u => UTxO u -> Set u -> UTxO u
+excluding (UTxO utxo) =
+    UTxO . Map.withoutKeys utxo
+
+-- | a ⊆ b
+isSubsetOf :: Ord u => UTxO u -> UTxO u -> Bool
+isSubsetOf (UTxO a) (UTxO b) =
+    a `Map.isSubmapOf` b
+
+-- | ins⊲ u
+restrictedBy :: Ord u => UTxO u -> Set u -> UTxO u
+restrictedBy (UTxO utxo) =
+    UTxO . Map.restrictKeys utxo
+
+-- | u ⊳ outs
+restrictedTo :: UTxO u -> Set Coin -> UTxO u
+restrictedTo (UTxO utxo) outs =
+    UTxO $ Map.filter (`Set.member` outs) utxo

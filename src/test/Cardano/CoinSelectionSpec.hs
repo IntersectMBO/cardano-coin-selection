@@ -30,13 +30,15 @@ import Prelude
 import Cardano.CoinSelection
     ( CoinSelection (..)
     , CoinSelectionAlgorithm (..)
+    , CoinSelectionError (..)
     , CoinSelectionOptions (..)
-    , ErrCoinSelection (..)
     , Input (..)
     , Output (..)
     )
+import Cardano.Test.Utilities
+    ( Address (..), Hash (..), ShowFmt (..), TxIn (..) )
 import Cardano.Types
-    ( Coin (..), ShowFmt (..), UTxO (..) )
+    ( Coin (..), UTxO (..) )
 import Control.Monad.Trans.Except
     ( runExceptT )
 import Data.List.NonEmpty
@@ -47,8 +49,6 @@ import Data.Word
     ( Word64, Word8 )
 import Fmt
     ( Buildable (..), blockListF, nameF )
-import Test.Cardano.Types
-    ( Address (..), Hash (..), TxIn (..) )
 import Test.Hspec
     ( Spec, SpecWith, describe, it, shouldBe )
 import Test.QuickCheck
@@ -150,7 +150,7 @@ data CoinSelectionResult = CoinSelectionResult
 coinSelectionUnitTest
     :: CoinSelectionAlgorithm TxIn Address TxIn IO ErrValidation
     -> String
-    -> Either (ErrCoinSelection ErrValidation) CoinSelectionResult
+    -> Either (CoinSelectionError ErrValidation) CoinSelectionResult
     -> CoinSelectionFixture TxIn Address
     -> SpecWith ()
 coinSelectionUnitTest alg lbl expected (CoinSelectionFixture n fn utxoF outsF) =

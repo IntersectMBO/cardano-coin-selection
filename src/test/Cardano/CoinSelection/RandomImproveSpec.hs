@@ -12,8 +12,8 @@ import Prelude
 import Cardano.CoinSelection
     ( CoinSelection (..)
     , CoinSelectionAlgorithm (..)
+    , CoinSelectionError (..)
     , CoinSelectionOptions (..)
-    , ErrCoinSelection (..)
     )
 import Cardano.CoinSelection.LargestFirst
     ( largestFirst )
@@ -28,6 +28,8 @@ import Cardano.CoinSelectionSpec
     , coinSelectionUnitTest
     , noValidation
     )
+import Cardano.Test.Utilities
+    ( Address, TxIn )
 import Control.Monad.Trans.Except
     ( runExceptT )
 import Crypto.Random
@@ -40,8 +42,6 @@ import Data.Functor.Identity
     ( Identity (..) )
 import Data.List.NonEmpty
     ( NonEmpty (..) )
-import Test.Cardano.Types
-    ( Address, TxIn )
 import Test.Hspec
     ( Spec, before, describe, it, shouldSatisfy )
 import Test.QuickCheck

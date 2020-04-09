@@ -13,7 +13,7 @@ license-file:        LICENSE
 category:            Web
 build-type:          Simple
 extra-source-files:  README.md
-cabal-version:       >=1.10
+cabal-version:       2.0
 
 source-repository head
   type:     git
@@ -23,6 +23,28 @@ flag werror
     description: Enable `-Werror`
     default: False
     manual: True
+
+library cardano-coin-selection-internal
+  default-language:
+      Haskell2010
+  default-extensions:
+      NoImplicitPrelude
+      OverloadedStrings
+  ghc-options:
+      -Wall
+      -Wcompat
+      -fwarn-redundant-constraints
+  if (flag(werror))
+    ghc-options:
+      -Werror
+  build-depends:
+      base < 4.14
+  hs-source-dirs:
+      src/internal
+  exposed-modules:
+      Internal
+      Internal.Invariant
+      Internal.Rounding
 
 library
   default-language:
@@ -40,6 +62,7 @@ library
   build-depends:
       base < 4.14
     , bytestring
+    , cardano-coin-selection-internal
     , containers
     , cryptonite
     , deepseq
@@ -48,7 +71,7 @@ library
     , text
     , transformers
   hs-source-dirs:
-      src
+      src/library
   exposed-modules:
       Cardano.CoinSelection
       Cardano.CoinSelection.LargestFirst
@@ -56,9 +79,8 @@ library
       Cardano.CoinSelection.RandomImprove
       Cardano.Fee
       Cardano.Types
-      Numeric.Rounding
 
-test-suite unit
+test-suite cardano-coin-selection-test
   default-language:
       Haskell2010
   default-extensions:
@@ -74,6 +96,7 @@ test-suite unit
       base
     , bytestring
     , cardano-coin-selection
+    , cardano-coin-selection-internal
     , containers
     , cryptonite
     , deepseq
@@ -86,12 +109,12 @@ test-suite unit
     , text
     , transformers
     , vector
-  build-tools:
-      hspec-discover
+  build-tool-depends:
+      hspec-discover:hspec-discover
   type:
       exitcode-stdio-1.0
   hs-source-dirs:
-      test
+      src/test
   main-is:
       Spec.hs
   other-modules:
@@ -101,7 +124,6 @@ test-suite unit
       Cardano.CoinSelectionSpec
       Cardano.FeeSpec
       Cardano.TypesSpec
-      Test.Cardano.Types
-      Test.Unsafe
+      Cardano.Test.Utilities
       Test.Vector.Shuffle
       Test.Vector.ShuffleSpec
