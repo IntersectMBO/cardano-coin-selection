@@ -15,7 +15,7 @@ module Cardano.Types
 
     -- * UTxO
     , UTxO (..)
-    , balance
+    , utxoBalance
     , pickRandom
 
     ) where
@@ -97,8 +97,8 @@ pickRandom (UTxO utxo)
         return (Just $ Map.elemAt ix utxo, UTxO $ Map.deleteAt ix utxo)
 
 -- | Compute the balance of a UTxO.
-balance :: UTxO u -> Natural
-balance =
+utxoBalance :: UTxO u -> Natural
+utxoBalance =
     Map.foldl' fn 0 . getUTxO
   where
     fn :: Natural -> Coin -> Natural

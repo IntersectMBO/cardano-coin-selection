@@ -23,7 +23,7 @@ import Cardano.CoinSelection
     , Output (..)
     )
 import Cardano.Types
-    ( Coin (..), UTxO (..), balance )
+    ( Coin (..), UTxO (..), utxoBalance )
 import Control.Arrow
     ( left )
 import Control.Monad
@@ -203,7 +203,7 @@ payForOutputs options outputsRequested utxo =
       | otherwise =
           ErrMaximumInputCountExceeded inputCountMax
     amountAvailable =
-        fromIntegral $ balance utxo
+        fromIntegral $ utxoBalance utxo
     amountRequested =
         sum $ (getCoin . outputValue) <$> outputsRequested
     inputCountMax =

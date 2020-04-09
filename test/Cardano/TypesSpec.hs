@@ -13,7 +13,7 @@ module Cardano.TypesSpec
 import Prelude
 
 import Cardano.Types
-    ( Coin (..), UTxO (..), balance, coinIsValid )
+    ( Coin (..), UTxO (..), coinIsValid, utxoBalance )
 import Data.Set
     ( Set, (\\) )
 import Test.Hspec
@@ -174,7 +174,7 @@ prop_2_6_1 (u, v) =
     -- a v' that has no overlap with u.
     v' = v `excluding` dom u
     cond = not (u `isSubsetOf` mempty || v' `isSubsetOf` mempty)
-    prop = balance (u <> v') === balance u + balance v'
+    prop = utxoBalance (u <> v') === utxoBalance u + utxoBalance v'
 
 prop_2_6_2 :: Ord u => (Set u, UTxO u) -> Property
 prop_2_6_2 (ins, u) =
@@ -182,9 +182,9 @@ prop_2_6_2 (ins, u) =
   where
     cond = not $ Set.null $ dom u `Set.intersection` ins
     prop =
-        balance (u `excluding` ins)
+        utxoBalance (u `excluding` ins)
             ===
-        balance u - balance (u `restrictedBy` ins)
+        utxoBalance u - utxoBalance (u `restrictedBy` ins)
 
 {-------------------------------------------------------------------------------
                                UTxO Utilities
