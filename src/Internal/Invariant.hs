@@ -1,7 +1,8 @@
--- | Functions relating to verification of invariants.
---
+-- |
 -- Copyright: © 2018-2020 IOHK
 -- License: Apache-2.0
+--
+-- Provides internal functions relating to verification of invariants.
 --
 module Internal.Invariant
     ( invariant
