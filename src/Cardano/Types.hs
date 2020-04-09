@@ -22,10 +22,6 @@ module Cardano.Types
     , UTxO (..)
     , balance
     , pickRandom
-    , excluding
-    , isSubsetOf
-    , restrictedBy
-    , restrictedTo
     , Dom (..)
 
     -- * Utilities
@@ -59,7 +55,6 @@ import Quiet
     ( Quiet (Quiet) )
 
 import qualified Data.Map.Strict as Map
-import qualified Data.Set as Set
 
 {-------------------------------------------------------------------------------
                                      Coin
@@ -125,26 +120,6 @@ balance =
   where
     fn :: Natural -> Coin -> Natural
     fn tot out = tot + fromIntegral (getCoin out)
-
--- | ins⋪ u
-excluding :: Ord u => UTxO u -> Set u -> UTxO u
-excluding (UTxO utxo) =
-    UTxO . Map.withoutKeys utxo
-
--- | a ⊆ b
-isSubsetOf :: Ord u => UTxO u -> UTxO u -> Bool
-isSubsetOf (UTxO a) (UTxO b) =
-    a `Map.isSubmapOf` b
-
--- | ins⊲ u
-restrictedBy :: Ord u => UTxO u -> Set u -> UTxO u
-restrictedBy (UTxO utxo) =
-    UTxO . Map.restrictKeys utxo
-
--- | u ⊳ outs
-restrictedTo :: UTxO u -> Set Coin -> UTxO u
-restrictedTo (UTxO utxo) outs =
-    UTxO $ Map.filter (`Set.member` outs) utxo
 
 {-------------------------------------------------------------------------------
                                Polymorphic Types

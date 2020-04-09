@@ -13,16 +13,7 @@ module Cardano.TypesSpec
 import Prelude
 
 import Cardano.Types
-    ( Coin (..)
-    , Dom (..)
-    , UTxO (..)
-    , balance
-    , excluding
-    , isSubsetOf
-    , isValidCoin
-    , restrictedBy
-    , restrictedTo
-    )
+    ( Coin (..), Dom (..), UTxO (..), balance, isValidCoin )
 import Data.Set
     ( Set, (\\) )
 import Test.Hspec
@@ -40,9 +31,17 @@ import Test.QuickCheck
     , (===)
     )
 import Test.Utilities
-    ( unsafeFromHex )
-import Test.Utilities
-    ( Address (..), Hash (..), ShowFmt (..), TxIn (..), TxOut (..) )
+    ( Address (..)
+    , Hash (..)
+    , ShowFmt (..)
+    , TxIn (..)
+    , TxOut (..)
+    , excluding
+    , isSubsetOf
+    , restrictedBy
+    , restrictedTo
+    , unsafeFromHex
+    )
 
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set

@@ -28,7 +28,7 @@ import Cardano.CoinSelectionSpec
     , noValidation
     )
 import Cardano.Types
-    ( Coin (..), UTxO (..), excluding )
+    ( Coin (..), UTxO (..) )
 import Control.Monad
     ( unless )
 import Control.Monad.Trans.Except
@@ -46,7 +46,7 @@ import Test.QuickCheck
 import Test.QuickCheck.Monadic
     ( monadicIO )
 import Test.Utilities
-    ( Address, TxIn )
+    ( Address, TxIn, excluding )
 import Test.Vector.Shuffle
     ( shuffleNonEmpty )
 

@@ -32,12 +32,18 @@ module Test.Utilities
     , TxIn (..)
     , TxOut (..)
 
+    -- * UTxO Operations
+    , excluding
+    , isSubsetOf
+    , restrictedBy
+    , restrictedTo
+
     ) where
 
 import Prelude
 
 import Cardano.Types
-    ( Coin (..) )
+    ( Coin (..), UTxO (..) )
 import Control.DeepSeq
     ( NFData (..) )
 import Data.ByteArray
@@ -46,6 +52,8 @@ import Data.ByteArray.Encoding
     ( Base (Base16), convertFromBase, convertToBase )
 import Data.ByteString
     ( ByteString )
+import Data.Set
+    ( Set )
 import Data.Word
     ( Word32 )
 import Fmt
@@ -59,6 +67,8 @@ import GHC.TypeLits
 import Quiet
     ( Quiet (Quiet) )
 
+import qualified Data.Map.Strict as Map
+import qualified Data.Set as Set
 import qualified Data.Text.Encoding as T
 
 {-------------------------------------------------------------------------------
@@ -161,3 +171,27 @@ instance Buildable TxOut where
         <> suffixF 8 addrF
       where
         addrF = build $ address txout
+
+{-------------------------------------------------------------------------------
+                               UTxO Operations
+-------------------------------------------------------------------------------}
+
+-- | ins⋪ u
+excluding :: Ord u => UTxO u -> Set u -> UTxO u
+excluding (UTxO utxo) =
+    UTxO . Map.withoutKeys utxo
+
+-- | a ⊆ b
+isSubsetOf :: Ord u => UTxO u -> UTxO u -> Bool
+isSubsetOf (UTxO a) (UTxO b) =
+    a `Map.isSubmapOf` b
+
+-- | ins⊲ u
+restrictedBy :: Ord u => UTxO u -> Set u -> UTxO u
+restrictedBy (UTxO utxo) =
+    UTxO . Map.restrictKeys utxo
+
+-- | u ⊳ outs
+restrictedTo :: UTxO u -> Set Coin -> UTxO u
+restrictedTo (UTxO utxo) outs =
+    UTxO $ Map.filter (`Set.member` outs) utxo
