@@ -52,7 +52,7 @@ import Cardano.CoinSelection
     , outputBalance
     )
 import Cardano.Types
-    ( Coin (..), UTxO (..), invariant, isValidCoin, pickRandom )
+    ( Coin (..), UTxO (..), isValidCoin, pickRandom )
 import Control.Monad.Trans.Class
     ( lift )
 import Control.Monad.Trans.Except
@@ -77,6 +77,8 @@ import GHC.Generics
     ( Generic )
 import GHC.Stack
     ( HasCallStack )
+import Internal.Invariant
+    ( invariant )
 import Internal.Rounding
     ( RoundingDirection (..), round )
 import Quiet

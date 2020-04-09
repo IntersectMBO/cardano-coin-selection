@@ -27,7 +27,7 @@ import Cardano.CoinSelection
 import Cardano.CoinSelection.LargestFirst
     ( largestFirst )
 import Cardano.Types
-    ( Coin (..), UTxO (..), invariant, pickRandom )
+    ( Coin (..), UTxO (..), pickRandom )
 import Control.Arrow
     ( left )
 import Control.Monad
@@ -48,6 +48,8 @@ import Data.Ord
     ( Down (..) )
 import Data.Word
     ( Word64 )
+import Internal.Invariant
+    ( invariant )
 
 import qualified Data.List as L
 import qualified Data.List.NonEmpty as NE
