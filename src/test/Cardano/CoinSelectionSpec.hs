@@ -35,6 +35,8 @@ import Cardano.CoinSelection
     , Input (..)
     , Output (..)
     )
+import Cardano.Test.Utilities
+    ( Address (..), Hash (..), ShowFmt (..), TxIn (..) )
 import Cardano.Types
     ( Coin (..), UTxO (..) )
 import Control.Monad.Trans.Except
@@ -65,8 +67,6 @@ import Test.QuickCheck
     )
 import Test.QuickCheck.Monadic
     ( monadicIO )
-import Test.Utilities
-    ( Address (..), Hash (..), ShowFmt (..), TxIn (..) )
 import Test.Vector.Shuffle
     ( shuffle )
 

@@ -28,6 +28,8 @@ import Cardano.CoinSelectionSpec
     , coinSelectionUnitTest
     , noValidation
     )
+import Cardano.Test.Utilities
+    ( Address, TxIn )
 import Control.Monad.Trans.Except
     ( runExceptT )
 import Crypto.Random
@@ -44,8 +46,6 @@ import Test.Hspec
     ( Spec, before, describe, it, shouldSatisfy )
 import Test.QuickCheck
     ( Property, property, (===), (==>) )
-import Test.Utilities
-    ( Address, TxIn )
 
 import qualified Data.List as L
 import qualified Data.List.NonEmpty as NE

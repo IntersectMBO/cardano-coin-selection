@@ -36,6 +36,8 @@ import Cardano.Fee
     , reduceChangeOutputs
     , splitCoin
     )
+import Cardano.Test.Utilities
+    ( Address (..), Hash (..), ShowFmt (..), TxIn (..) )
 import Cardano.Types
     ( Coin (..), UTxO (..), coinIsValid )
 import Control.Arrow
@@ -95,8 +97,6 @@ import Test.QuickCheck
     )
 import Test.QuickCheck.Monadic
     ( monadicIO )
-import Test.Utilities
-    ( Address (..), Hash (..), ShowFmt (..), TxIn (..) )
 
 import qualified Cardano.CoinSelection as CS
 import qualified Data.ByteString as BS

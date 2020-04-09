@@ -22,6 +22,8 @@ import Cardano.Fee
     ( DustThreshold (..), Fee (..), FeeOptions (..) )
 import Cardano.FeeSpec
     ()
+import Cardano.Test.Utilities
+    ( Address, Hash (..), TxIn (..) )
 import Cardano.Types
     ( Coin (..), UTxO (..), utxoBalance )
 import Data.ByteString
@@ -51,8 +53,6 @@ import Test.QuickCheck
     )
 import Test.QuickCheck.Monadic
     ( monadicIO, monitor, pick )
-import Test.Utilities
-    ( Address, Hash (..), TxIn (..) )
 
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as B8

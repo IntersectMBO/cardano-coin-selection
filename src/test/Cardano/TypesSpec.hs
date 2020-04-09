@@ -12,6 +12,18 @@ module Cardano.TypesSpec
 
 import Prelude
 
+import Cardano.Test.Utilities
+    ( Address (..)
+    , Hash (..)
+    , ShowFmt (..)
+    , TxIn (..)
+    , TxOut (..)
+    , excluding
+    , isSubsetOf
+    , restrictedBy
+    , restrictedTo
+    , unsafeFromHex
+    )
 import Cardano.Types
     ( Coin (..), UTxO (..), coinIsValid, utxoBalance )
 import Data.Set
@@ -29,18 +41,6 @@ import Test.QuickCheck
     , scale
     , vectorOf
     , (===)
-    )
-import Test.Utilities
-    ( Address (..)
-    , Hash (..)
-    , ShowFmt (..)
-    , TxIn (..)
-    , TxOut (..)
-    , excluding
-    , isSubsetOf
-    , restrictedBy
-    , restrictedTo
-    , unsafeFromHex
     )
 
 import qualified Data.Map.Strict as Map

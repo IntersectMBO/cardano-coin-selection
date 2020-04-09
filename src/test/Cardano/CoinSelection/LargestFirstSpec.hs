@@ -27,6 +27,8 @@ import Cardano.CoinSelectionSpec
     , coinSelectionUnitTest
     , noValidation
     )
+import Cardano.Test.Utilities
+    ( Address, TxIn, excluding )
 import Cardano.Types
     ( Coin (..), UTxO (..) )
 import Control.Monad
@@ -45,8 +47,6 @@ import Test.QuickCheck
     ( Property, property, (===), (==>) )
 import Test.QuickCheck.Monadic
     ( monadicIO )
-import Test.Utilities
-    ( Address, TxIn, excluding )
 import Test.Vector.Shuffle
     ( shuffleNonEmpty )
 

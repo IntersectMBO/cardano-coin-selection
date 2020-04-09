@@ -14,7 +14,7 @@
 -- Copyright: © 2018-2020 IOHK
 -- License: Apache-2.0
 --
-module Test.Utilities
+module Cardano.Test.Utilities
     (
     -- * Addresses
       Address (..)
