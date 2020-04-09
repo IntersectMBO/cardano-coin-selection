@@ -6,7 +6,7 @@
 --
 -- Provides functionality relating to rounding.of fractional numbers.
 
-module Numeric.Rounding
+module Internal.Rounding
     ( RoundingDirection (..)
     , round
     ) where

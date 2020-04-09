@@ -77,7 +77,7 @@ import GHC.Generics
     ( Generic )
 import GHC.Stack
     ( HasCallStack )
-import Numeric.Rounding
+import Internal.Rounding
     ( RoundingDirection (..), round )
 import Quiet
     ( Quiet (Quiet) )

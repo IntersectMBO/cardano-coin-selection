@@ -66,7 +66,7 @@ import Fmt
     ( Buildable (..), nameF, tupleF )
 import GHC.Generics
     ( Generic )
-import Numeric.Rounding
+import Internal.Rounding
     ( RoundingDirection (..), round )
 import Test.Hspec
     ( Spec, SpecWith, before, describe, it, shouldBe, shouldSatisfy )

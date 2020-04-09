@@ -56,7 +56,7 @@ library
       Cardano.CoinSelection.RandomImprove
       Cardano.Fee
       Cardano.Types
-      Numeric.Rounding
+      Internal.Rounding
 
 test-suite unit
   default-language:
