@@ -52,7 +52,7 @@ import Cardano.CoinSelection
     , outputBalance
     )
 import Cardano.Types
-    ( Coin (..), UTxO (..), isValidCoin, pickRandom )
+    ( Coin (..), UTxO (..), coinIsValid, pickRandom )
 import Control.Monad.Trans.Class
     ( lift )
 import Control.Monad.Trans.Except
@@ -521,7 +521,7 @@ splitCoin = go
         let
             newChange = Coin $ (getCoin remaining) + (getCoin a)
         in
-            if isValidCoin newChange
+            if coinIsValid newChange
             then [newChange]
             else [a, remaining]
     go rest@(Coin remaining) ls@(a : as) =
@@ -530,7 +530,7 @@ splitCoin = go
             newRemaining = Coin (remaining - piece)
             newChange = Coin (piece + getCoin a)
         in
-            if isValidCoin newChange
+            if coinIsValid newChange
             then newChange : go newRemaining as
             else a : go rest as
 

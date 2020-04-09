@@ -11,7 +11,7 @@ module Cardano.Types
     (
     -- * Coin
       Coin (..)
-    , isValidCoin
+    , coinIsValid
 
     -- * UTxO
     , UTxO (..)
@@ -62,8 +62,8 @@ instance Bounded Coin where
 instance Buildable Coin where
     build = build . getCoin
 
-isValidCoin :: Coin -> Bool
-isValidCoin c = c >= minBound && c <= maxBound
+coinIsValid :: Coin -> Bool
+coinIsValid c = c >= minBound && c <= maxBound
 
 {-------------------------------------------------------------------------------
                                     UTxO

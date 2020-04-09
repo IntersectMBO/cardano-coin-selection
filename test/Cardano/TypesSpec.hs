@@ -13,7 +13,7 @@ module Cardano.TypesSpec
 import Prelude
 
 import Cardano.Types
-    ( Coin (..), UTxO (..), balance, isValidCoin )
+    ( Coin (..), UTxO (..), balance, coinIsValid )
 import Data.Set
     ( Set, (\\) )
 import Test.Hspec
@@ -49,7 +49,7 @@ import qualified Data.Set as Set
 spec :: Spec
 spec = do
     describe "Generators are valid" $ do
-        it "Arbitrary Coin" $ property isValidCoin
+        it "Arbitrary Coin" $ property coinIsValid
 
     describe "Lemma 2.1 - Properties of UTxO operations" $ do
         it "2.1.1) ins⊲ u ⊆ u"
