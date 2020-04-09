@@ -99,8 +99,8 @@ newtype Fee = Fee
 
 -- | Defines the maximum size of a dust coin.
 --
--- Change values that are less than or equal to this threshold will be
--- evicted from created transactions.
+-- Change values that are less than or equal to this threshold will not be
+-- included in transactions.
 --
 -- This type is isomorphic to 'Coin'.
 --
