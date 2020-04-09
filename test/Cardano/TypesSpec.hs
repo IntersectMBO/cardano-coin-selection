@@ -13,7 +13,7 @@ module Cardano.TypesSpec
 import Prelude
 
 import Cardano.Types
-    ( Coin (..), Dom (..), UTxO (..), balance, isValidCoin )
+    ( Coin (..), UTxO (..), balance, isValidCoin )
 import Data.Set
     ( Set, (\\) )
 import Test.Hspec
@@ -185,6 +185,15 @@ prop_2_6_2 (ins, u) =
         balance (u `excluding` ins)
             ===
         balance u - balance (u `restrictedBy` ins)
+
+{-------------------------------------------------------------------------------
+                               UTxO Utilities
+-------------------------------------------------------------------------------}
+
+-- | Extracts the domain of a UTxO: the set of references to unspent transaction
+--   ouputs.
+dom :: UTxO u -> Set u
+dom (UTxO utxo) = Map.keysSet utxo
 
 {-------------------------------------------------------------------------------
                             Arbitrary Instances

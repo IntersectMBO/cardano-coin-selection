@@ -1,12 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingVia #-}
-{-# LANGUAGE DuplicateRecordFields #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE NumericUnderscores #-}
-{-# LANGUAGE TypeFamilies #-}
 
 -- |
 -- Copyright: © 2018-2020 IOHK
@@ -22,7 +17,6 @@ module Cardano.Types
     , UTxO (..)
     , balance
     , pickRandom
-    , Dom (..)
 
     -- * Utilities
     , invariant
@@ -37,12 +31,8 @@ import Crypto.Number.Generate
     ( generateBetween )
 import Crypto.Random.Types
     ( MonadRandom )
-import Data.Kind
-    ( Type )
 import Data.Map.Strict
     ( Map )
-import Data.Set
-    ( Set )
 import Data.Word
     ( Word64 )
 import Fmt
@@ -90,10 +80,6 @@ newtype UTxO u = UTxO
 
 instance NFData u => NFData (UTxO u)
 
-instance Dom (UTxO u) where
-    type DomElem (UTxO u) = u
-    dom (UTxO utxo) = Map.keysSet utxo
-
 instance Buildable u => Buildable (UTxO u) where
     build (UTxO utxo) =
         blockListF' "-" utxoF (Map.toList utxo)
@@ -120,19 +106,6 @@ balance =
   where
     fn :: Natural -> Coin -> Natural
     fn tot out = tot + fromIntegral (getCoin out)
-
-{-------------------------------------------------------------------------------
-                               Polymorphic Types
--------------------------------------------------------------------------------}
-
--- | Allows us to define the "domain" of any type — @UTxO@ in particular — and
--- use 'dom' to refer to the /inputs/ of an /UTxO/.
---
--- This is the terminology used in the [Formal Specification for a Cardano
--- Wallet](https://github.com/input-output-hk/cardano-wallet/blob/master/specifications/wallet/formal-specification-for-a-cardano-wallet.pdf).
-class Dom a where
-    type DomElem a :: Type
-    dom :: a -> Set (DomElem a)
 
 -- | Checks whether or not an invariant holds, by applying the given predicate
 --   to the given value.
