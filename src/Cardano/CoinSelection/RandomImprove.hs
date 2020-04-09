@@ -27,7 +27,7 @@ import Cardano.CoinSelection
 import Cardano.CoinSelection.LargestFirst
     ( largestFirst )
 import Cardano.Types
-    ( Coin (..), UTxO (..), distance, invariant, pickRandom )
+    ( Coin (..), UTxO (..), invariant, pickRandom )
 import Control.Arrow
     ( left )
 import Control.Monad
@@ -394,6 +394,11 @@ mkChange (Output _ (Coin out)) inps =
 --------------------------------------------------------------------------------
 -- Utilities
 --------------------------------------------------------------------------------
+
+-- | Compute distance between two numeric values |a - b|
+distance :: (Ord a, Num a) => a -> a -> a
+distance a b =
+    if a < b then b - a else a - b
 
 sumInputs :: [Input i] -> Word64
 sumInputs = sum . fmap (getCoin . inputValue)

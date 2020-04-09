@@ -20,7 +20,6 @@ module Cardano.Types
 
     -- * Utilities
     , invariant
-    , distance
     ) where
 
 import Prelude
@@ -128,8 +127,3 @@ invariant
     -> a
 invariant msg a predicate =
     if predicate a then a else error msg
-
--- | Compute distance between two numeric values |a - b|
-distance :: (Ord a, Num a) => a -> a -> a
-distance a b =
-    if a < b then b - a else a - b
