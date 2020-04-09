@@ -16,7 +16,7 @@ module Cardano.Types
     -- * UTxO
     , UTxO (..)
     , utxoBalance
-    , pickRandom
+    , utxoPickRandom
 
     ) where
 
@@ -85,11 +85,11 @@ instance Buildable u => Buildable (UTxO u) where
 
 -- | Pick a random element from a UTxO, returns 'Nothing' if the UTxO is empty.
 -- Otherwise, returns the selected entry and, the UTxO minus the selected one.
-pickRandom
+utxoPickRandom
     :: MonadRandom m
     => UTxO u
     -> m (Maybe (u, Coin), UTxO u)
-pickRandom (UTxO utxo)
+utxoPickRandom (UTxO utxo)
     | Map.null utxo =
         return (Nothing, UTxO utxo)
     | otherwise = do

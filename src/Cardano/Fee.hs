@@ -52,7 +52,7 @@ import Cardano.CoinSelection
     , outputBalance
     )
 import Cardano.Types
-    ( Coin (..), UTxO (..), coinIsValid, pickRandom )
+    ( Coin (..), UTxO (..), coinIsValid, utxoPickRandom )
 import Control.Monad.Trans.Class
     ( lift )
 import Control.Monad.Trans.Except
@@ -238,7 +238,7 @@ coverRemainingFee (Fee fee) = go [] where
             return acc
         | otherwise = do
             -- We ignore the size of the fee, and just pick randomly
-            StateT (lift . pickRandom) >>= \case
+            StateT (lift . utxoPickRandom) >>= \case
                 Just entry ->
                     go (uncurry Input entry : acc)
                 Nothing -> do
