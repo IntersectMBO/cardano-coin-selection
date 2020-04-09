@@ -39,7 +39,7 @@ import Test.QuickCheck
     , vectorOf
     , (===)
     )
-import Test.Unsafe
+import Test.Utilities
     ( unsafeFromHex )
 import Test.Utilities
     ( Address (..), Hash (..), ShowFmt (..), TxIn (..), TxOut (..) )

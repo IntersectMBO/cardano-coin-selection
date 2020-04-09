@@ -6,6 +6,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE NumericUnderscores #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 
 -- | Utility functions and types used purely for testing.
@@ -17,6 +18,9 @@ module Test.Utilities
     (
     -- * Addresses
       Address (..)
+
+    -- * Decoding
+    , unsafeFromHex
 
     -- * Hashes
     , Hash (..)
@@ -39,7 +43,7 @@ import Control.DeepSeq
 import Data.ByteArray
     ( ByteArrayAccess )
 import Data.ByteArray.Encoding
-    ( Base (Base16), convertToBase )
+    ( Base (Base16), convertFromBase, convertToBase )
 import Data.ByteString
     ( ByteString )
 import Data.Word
@@ -48,6 +52,8 @@ import Fmt
     ( Buildable (..), fmt, ordinalF, prefixF, suffixF )
 import GHC.Generics
     ( Generic )
+import GHC.Stack
+    ( HasCallStack )
 import GHC.TypeLits
     ( Symbol )
 import Quiet
@@ -76,6 +82,15 @@ instance Buildable Address where
         toText = T.decodeUtf8
             . convertToBase Base16
             . unAddress
+
+{-------------------------------------------------------------------------------
+                                  Decoding
+-------------------------------------------------------------------------------}
+
+-- | Decode an hex-encoded 'ByteString' into raw bytes, or fail.
+unsafeFromHex :: HasCallStack => ByteString -> ByteString
+unsafeFromHex =
+    either (error . show) id . convertFromBase @ByteString @ByteString Base16
 
 {-------------------------------------------------------------------------------
                                    Hashes
