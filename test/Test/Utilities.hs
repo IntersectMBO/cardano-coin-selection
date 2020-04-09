@@ -8,12 +8,12 @@
 {-# LANGUAGE NumericUnderscores #-}
 {-# LANGUAGE TypeFamilies #-}
 
--- | Utility types used purely for testing.
+-- | Utility functions and types used purely for testing.
 --
 -- Copyright: © 2018-2020 IOHK
 -- License: Apache-2.0
 --
-module Test.Cardano.Types
+module Test.Utilities
     (
     -- * Addresses
       Address (..)

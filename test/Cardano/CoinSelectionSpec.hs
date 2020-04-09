@@ -47,8 +47,6 @@ import Data.Word
     ( Word64, Word8 )
 import Fmt
     ( Buildable (..), blockListF, nameF )
-import Test.Cardano.Types
-    ( Address (..), Hash (..), ShowFmt (..), TxIn (..) )
 import Test.Hspec
     ( Spec, SpecWith, describe, it, shouldBe )
 import Test.QuickCheck
@@ -67,6 +65,8 @@ import Test.QuickCheck
     )
 import Test.QuickCheck.Monadic
     ( monadicIO )
+import Test.Utilities
+    ( Address (..), Hash (..), ShowFmt (..), TxIn (..) )
 import Test.Vector.Shuffle
     ( shuffle )
 

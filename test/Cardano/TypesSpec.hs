@@ -25,8 +25,6 @@ import Cardano.Types
     )
 import Data.Set
     ( Set, (\\) )
-import Test.Cardano.Types
-    ( Address (..), Hash (..), ShowFmt (..), TxIn (..), TxOut (..) )
 import Test.Hspec
     ( Spec, describe, it )
 import Test.QuickCheck
@@ -43,6 +41,8 @@ import Test.QuickCheck
     )
 import Test.Unsafe
     ( unsafeFromHex )
+import Test.Utilities
+    ( Address (..), Hash (..), ShowFmt (..), TxIn (..), TxOut (..) )
 
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set

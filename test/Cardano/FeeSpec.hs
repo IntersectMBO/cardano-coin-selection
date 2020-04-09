@@ -68,8 +68,6 @@ import GHC.Generics
     ( Generic )
 import Numeric.Rounding
     ( RoundingDirection (..), round )
-import Test.Cardano.Types
-    ( Address (..), Hash (..), ShowFmt (..), TxIn (..) )
 import Test.Hspec
     ( Spec, SpecWith, before, describe, it, shouldBe, shouldSatisfy )
 import Test.QuickCheck
@@ -97,6 +95,8 @@ import Test.QuickCheck
     )
 import Test.QuickCheck.Monadic
     ( monadicIO )
+import Test.Utilities
+    ( Address (..), Hash (..), ShowFmt (..), TxIn (..) )
 
 import qualified Cardano.CoinSelection as CS
 import qualified Data.ByteString as BS

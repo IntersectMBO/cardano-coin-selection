@@ -40,12 +40,12 @@ import Data.Functor.Identity
     ( Identity (..) )
 import Data.List.NonEmpty
     ( NonEmpty (..) )
-import Test.Cardano.Types
-    ( Address, TxIn )
 import Test.Hspec
     ( Spec, before, describe, it, shouldSatisfy )
 import Test.QuickCheck
     ( Property, property, (===), (==>) )
+import Test.Utilities
+    ( Address, TxIn )
 
 import qualified Data.List as L
 import qualified Data.List.NonEmpty as NE

@@ -32,8 +32,6 @@ import Data.Word
     ( Word8 )
 import Numeric.Natural
     ( Natural )
-import Test.Cardano.Types
-    ( Address, Hash (..), TxIn (..) )
 import Test.Hspec
     ( Spec, SpecWith, describe, it, shouldSatisfy )
 import Test.QuickCheck
@@ -53,6 +51,8 @@ import Test.QuickCheck
     )
 import Test.QuickCheck.Monadic
     ( monadicIO, monitor, pick )
+import Test.Utilities
+    ( Address, Hash (..), TxIn (..) )
 
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as B8
