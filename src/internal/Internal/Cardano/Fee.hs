@@ -71,9 +71,7 @@ import GHC.Generics
 import GHC.Stack
     ( HasCallStack )
 import Internal.Cardano.CoinSelection
-    ( CoinSelection (..), Input (..), feeBalance )
-import Internal.Cardano.Types
-    ( Coin (..), UTxO (..), coinIsValid, utxoPickRandom )
+    ( CoinSelection (..), Input (..), feeBalance, Coin (..), UTxO (..), coinIsValid, utxoPickRandom )
 import Internal.Data.Invariant
     ( invariant )
 import Internal.Numeric.Rounding

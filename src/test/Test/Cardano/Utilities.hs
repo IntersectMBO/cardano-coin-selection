@@ -62,7 +62,7 @@ import GHC.Stack
     ( HasCallStack )
 import GHC.TypeLits
     ( Symbol )
-import Internal.Cardano.Types
+import Internal.Cardano.CoinSelection
     ( Coin (..), UTxO (..) )
 import Quiet
     ( Quiet (Quiet) )

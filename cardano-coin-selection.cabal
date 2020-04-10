@@ -56,7 +56,6 @@ library cardano-coin-selection-internal
       Internal.Cardano.CoinSelection.Migration
       Internal.Cardano.CoinSelection.RandomImprove
       Internal.Cardano.Fee
-      Internal.Cardano.Types
       Internal.Data.Invariant
       Internal.Numeric.Rounding
 
@@ -84,7 +83,6 @@ library
       Cardano.CoinSelection.Migration
       Cardano.CoinSelection.RandomImprove
       Cardano.Fee
-      Cardano.Types
 
 test-suite cardano-coin-selection-test
   default-language:

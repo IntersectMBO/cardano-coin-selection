@@ -33,9 +33,10 @@ import Internal.Cardano.CoinSelection
     , CoinSelectionOptions (..)
     , Input (..)
     , Output (..)
+    , Coin (..)
+    , UTxO (..)
+    , utxoBalance
     )
-import Internal.Cardano.Types
-    ( Coin (..), UTxO (..), utxoBalance )
 
 import qualified Data.List as L
 import qualified Data.List.NonEmpty as NE

@@ -4,8 +4,17 @@
 --
 module Cardano.CoinSelection
     (
+      -- * Coin
+      Coin (..)
+    , coinIsValid
+
+      -- * UTxO
+    , UTxO (..)
+    , utxoBalance
+    , utxoPickRandom
+
       -- * Coin Selection
-      CoinSelection (..)
+    , CoinSelection (..)
     , Input (..)
     , Output (..)
 

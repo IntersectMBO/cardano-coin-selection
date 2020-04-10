@@ -34,11 +34,9 @@ import Internal.Cardano.CoinSelection
     , CoinSelectionError (..)
     , CoinSelectionOptions (..)
     , Input (..)
-    )
+    , Coin (..), UTxO (..) )
 import Internal.Cardano.CoinSelection.LargestFirst
     ( largestFirst )
-import Internal.Cardano.Types
-    ( Coin (..), UTxO (..) )
 import Test.Cardano.Utilities
     ( Address, TxIn, excluding )
 import Test.Hspec

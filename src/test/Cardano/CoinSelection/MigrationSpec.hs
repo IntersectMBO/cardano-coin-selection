@@ -23,13 +23,11 @@ import Data.Function
 import Data.Word
     ( Word8 )
 import Internal.Cardano.CoinSelection
-    ( CoinSelection (..), Input (..), changeBalance, inputBalance )
+    ( CoinSelection (..), Input (..), changeBalance, inputBalance,  Coin (..), UTxO (..), utxoBalance )
 import Internal.Cardano.CoinSelection.Migration
     ( depleteUTxO, idealBatchSize )
 import Internal.Cardano.Fee
     ( DustThreshold (..), Fee (..), FeeEstimator (..), FeeOptions (..) )
-import Internal.Cardano.Types
-    ( Coin (..), UTxO (..), utxoBalance )
 import Numeric.Natural
     ( Natural )
 import Test.Cardano.Utilities

@@ -44,9 +44,7 @@ import Internal.Cardano.CoinSelection
     , CoinSelectionOptions (..)
     , Input (..)
     , Output (..)
-    )
-import Internal.Cardano.Types
-    ( Coin (..), UTxO (..) )
+    , Coin (..), UTxO (..) )
 import Test.Cardano.Utilities
     ( Address (..), Hash (..), ShowFmt (..), TxIn (..) )
 import Test.Hspec

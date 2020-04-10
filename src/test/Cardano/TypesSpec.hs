@@ -14,7 +14,7 @@ import Prelude
 
 import Data.Set
     ( Set, (\\) )
-import Internal.Cardano.Types
+import Internal.Cardano.CoinSelection
     ( Coin (..), UTxO (..), coinIsValid, utxoBalance )
 import Test.Cardano.Utilities
     ( Address (..)

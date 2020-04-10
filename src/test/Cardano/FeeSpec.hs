@@ -51,7 +51,7 @@ import Internal.Cardano.CoinSelection
     , CoinSelectionAlgorithm (..)
     , Input (..)
     , Output (..)
-    )
+    , Coin (..), UTxO (..), coinIsValid )
 import Internal.Cardano.CoinSelection.LargestFirst
     ( largestFirst )
 import Internal.Cardano.Fee
@@ -66,8 +66,6 @@ import Internal.Cardano.Fee
     , reduceChangeOutputs
     , splitCoin
     )
-import Internal.Cardano.Types
-    ( Coin (..), UTxO (..), coinIsValid )
 import Internal.Numeric.Rounding
     ( RoundingDirection (..), round )
 import Test.Cardano.Utilities

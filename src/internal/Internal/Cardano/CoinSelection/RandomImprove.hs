@@ -43,11 +43,11 @@ import Internal.Cardano.CoinSelection
     , CoinSelectionOptions (..)
     , Input (..)
     , Output (..)
-    )
+    , Coin (..)
+    , UTxO (..)
+    , utxoPickRandom )
 import Internal.Cardano.CoinSelection.LargestFirst
     ( largestFirst )
-import Internal.Cardano.Types
-    ( Coin (..), UTxO (..), utxoPickRandom )
 import Internal.Data.Invariant
     ( invariant )
 

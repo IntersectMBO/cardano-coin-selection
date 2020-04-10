@@ -54,11 +54,11 @@ import Internal.Cardano.CoinSelection
     , Input (..)
     , changeBalance
     , inputBalance
+    , Coin (..)
+    , UTxO (..)
     )
 import Internal.Cardano.Fee
     ( DustThreshold (..), Fee (..), FeeEstimator (..), FeeOptions (..) )
-import Internal.Cardano.Types
-    ( Coin (..), UTxO (..) )
 
 import qualified Data.Map.Strict as Map
 
