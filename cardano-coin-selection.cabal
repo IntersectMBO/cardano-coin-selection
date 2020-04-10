@@ -79,6 +79,12 @@ library
   hs-source-dirs:
       src/library
   exposed-modules:
+      Cardano.CoinSelection
+      Cardano.CoinSelection.LargestFirst
+      Cardano.CoinSelection.Migration
+      Cardano.CoinSelection.RandomImprove
+      Cardano.Fee
+      Cardano.Types
 
 test-suite cardano-coin-selection-test
   default-language:
