@@ -16,8 +16,6 @@ import Cardano.CoinSelectionSpec
     ()
 import Cardano.FeeSpec
     ()
-import Cardano.Test.Utilities
-    ( Address, Hash (..), TxIn (..) )
 import Data.ByteString
     ( ByteString )
 import Data.Function
@@ -34,6 +32,8 @@ import Internal.Cardano.Types
     ( Coin (..), UTxO (..), utxoBalance )
 import Numeric.Natural
     ( Natural )
+import Test.Cardano.Utilities
+    ( Address, Hash (..), TxIn (..) )
 import Test.Hspec
     ( Spec, SpecWith, describe, it, shouldSatisfy )
 import Test.QuickCheck

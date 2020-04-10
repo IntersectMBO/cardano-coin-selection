@@ -18,8 +18,6 @@ import Cardano.CoinSelectionSpec
     , coinSelectionUnitTest
     , noValidation
     )
-import Cardano.Test.Utilities
-    ( Address, TxIn )
 import Control.Monad.Trans.Except
     ( runExceptT )
 import Crypto.Random
@@ -42,6 +40,8 @@ import Internal.Cardano.CoinSelection.LargestFirst
     ( largestFirst )
 import Internal.Cardano.CoinSelection.RandomImprove
     ( randomImprove )
+import Test.Cardano.Utilities
+    ( Address, TxIn )
 import Test.Hspec
     ( Spec, before, describe, it, shouldSatisfy )
 import Test.QuickCheck

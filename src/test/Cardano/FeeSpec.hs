@@ -18,8 +18,6 @@ module Cardano.FeeSpec
 import Prelude hiding
     ( round )
 
-import Cardano.Test.Utilities
-    ( Address (..), Hash (..), ShowFmt (..), TxIn (..) )
 import Control.Arrow
     ( left )
 import Control.Monad
@@ -72,6 +70,8 @@ import Internal.Cardano.Types
     ( Coin (..), UTxO (..), coinIsValid )
 import Internal.Numeric.Rounding
     ( RoundingDirection (..), round )
+import Test.Cardano.Utilities
+    ( Address (..), Hash (..), ShowFmt (..), TxIn (..) )
 import Test.Hspec
     ( Spec, SpecWith, before, describe, it, shouldBe, shouldSatisfy )
 import Test.QuickCheck

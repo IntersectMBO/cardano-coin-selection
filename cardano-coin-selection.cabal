@@ -123,6 +123,6 @@ test-suite cardano-coin-selection-test
       Cardano.CoinSelectionSpec
       Cardano.FeeSpec
       Cardano.TypesSpec
-      Cardano.Test.Utilities
+      Test.Cardano.Utilities
       Test.Vector.Shuffle
       Test.Vector.ShuffleSpec

@@ -27,8 +27,6 @@ module Cardano.CoinSelectionSpec
 
 import Prelude
 
-import Cardano.Test.Utilities
-    ( Address (..), Hash (..), ShowFmt (..), TxIn (..) )
 import Control.Monad.Trans.Except
     ( runExceptT )
 import Data.List.NonEmpty
@@ -49,6 +47,8 @@ import Internal.Cardano.CoinSelection
     )
 import Internal.Cardano.Types
     ( Coin (..), UTxO (..) )
+import Test.Cardano.Utilities
+    ( Address (..), Hash (..), ShowFmt (..), TxIn (..) )
 import Test.Hspec
     ( Spec, SpecWith, describe, it, shouldBe )
 import Test.QuickCheck

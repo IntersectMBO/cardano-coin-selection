@@ -12,7 +12,11 @@ module Cardano.TypesSpec
 
 import Prelude
 
-import Cardano.Test.Utilities
+import Data.Set
+    ( Set, (\\) )
+import Internal.Cardano.Types
+    ( Coin (..), UTxO (..), coinIsValid, utxoBalance )
+import Test.Cardano.Utilities
     ( Address (..)
     , Hash (..)
     , ShowFmt (..)
@@ -24,10 +28,6 @@ import Cardano.Test.Utilities
     , restrictedTo
     , unsafeFromHex
     )
-import Data.Set
-    ( Set, (\\) )
-import Internal.Cardano.Types
-    ( Coin (..), UTxO (..), coinIsValid, utxoBalance )
 import Test.Hspec
     ( Spec, describe, it )
 import Test.QuickCheck
