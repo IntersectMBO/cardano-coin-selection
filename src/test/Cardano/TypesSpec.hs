@@ -24,10 +24,10 @@ import Cardano.Test.Utilities
     , restrictedTo
     , unsafeFromHex
     )
-import Cardano.Types
-    ( Coin (..), UTxO (..), coinIsValid, utxoBalance )
 import Data.Set
     ( Set, (\\) )
+import Internal.Cardano.Types
+    ( Coin (..), UTxO (..), coinIsValid, utxoBalance )
 import Test.Hspec
     ( Spec, describe, it )
 import Test.QuickCheck

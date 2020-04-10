@@ -19,7 +19,7 @@
 -- For more information refer to:
 -- https://iohk.io/blog/self-organisation-in-coin-selection/
 
-module Cardano.Fee
+module Internal.Cardano.Fee
     (
       -- * Types
       Fee (..)
@@ -46,10 +46,6 @@ module Cardano.Fee
 import Prelude hiding
     ( round )
 
-import Cardano.CoinSelection
-    ( CoinSelection (..), Input (..), feeBalance )
-import Cardano.Types
-    ( Coin (..), UTxO (..), coinIsValid, utxoPickRandom )
 import Control.Monad.Trans.Class
     ( lift )
 import Control.Monad.Trans.Except
@@ -74,6 +70,10 @@ import GHC.Generics
     ( Generic )
 import GHC.Stack
     ( HasCallStack )
+import Internal.Cardano.CoinSelection
+    ( CoinSelection (..), Input (..), feeBalance )
+import Internal.Cardano.Types
+    ( Coin (..), UTxO (..), coinIsValid, utxoPickRandom )
 import Internal.Invariant
     ( invariant )
 import Internal.Rounding

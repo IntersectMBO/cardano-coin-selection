@@ -9,15 +9,6 @@ module Cardano.CoinSelection.LargestFirstSpec
 
 import Prelude
 
-import Cardano.CoinSelection
-    ( CoinSelection (..)
-    , CoinSelectionAlgorithm (..)
-    , CoinSelectionError (..)
-    , CoinSelectionOptions (..)
-    , Input (..)
-    )
-import Cardano.CoinSelection.LargestFirst
-    ( largestFirst )
 import Cardano.CoinSelectionSpec
     ( CoinSelProp (..)
     , CoinSelectionFixture (..)
@@ -29,8 +20,6 @@ import Cardano.CoinSelectionSpec
     )
 import Cardano.Test.Utilities
     ( Address, TxIn, excluding )
-import Cardano.Types
-    ( Coin (..), UTxO (..) )
 import Control.Monad
     ( unless )
 import Control.Monad.Trans.Except
@@ -41,6 +30,17 @@ import Data.Functor.Identity
     ( Identity (runIdentity) )
 import Data.List.NonEmpty
     ( NonEmpty (..) )
+import Internal.Cardano.CoinSelection
+    ( CoinSelection (..)
+    , CoinSelectionAlgorithm (..)
+    , CoinSelectionError (..)
+    , CoinSelectionOptions (..)
+    , Input (..)
+    )
+import Internal.Cardano.CoinSelection.LargestFirst
+    ( largestFirst )
+import Internal.Cardano.Types
+    ( Coin (..), UTxO (..) )
 import Test.Hspec
     ( Spec, describe, it, shouldSatisfy )
 import Test.QuickCheck

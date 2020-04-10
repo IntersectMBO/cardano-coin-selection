@@ -42,8 +42,6 @@ module Cardano.Test.Utilities
 
 import Prelude
 
-import Cardano.Types
-    ( Coin (..), UTxO (..) )
 import Control.DeepSeq
     ( NFData (..) )
 import Data.ByteArray
@@ -64,6 +62,8 @@ import GHC.Stack
     ( HasCallStack )
 import GHC.TypeLits
     ( Symbol )
+import Internal.Cardano.Types
+    ( Coin (..), UTxO (..) )
 import Quiet
     ( Quiet (Quiet) )
 

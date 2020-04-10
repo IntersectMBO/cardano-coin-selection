@@ -39,10 +39,24 @@ library cardano-coin-selection-internal
       -Werror
   build-depends:
       base < 4.14
+    , bytestring
+    , containers
+    , cryptonite
+    , deepseq
+    , fmt
+    , quiet
+    , text
+    , transformers
   hs-source-dirs:
       src/internal
   exposed-modules:
       Internal
+      Internal.Cardano.CoinSelection
+      Internal.Cardano.CoinSelection.LargestFirst
+      Internal.Cardano.CoinSelection.Migration
+      Internal.Cardano.CoinSelection.RandomImprove
+      Internal.Cardano.Fee
+      Internal.Cardano.Types
       Internal.Invariant
       Internal.Rounding
 
@@ -61,24 +75,10 @@ library
       -Werror
   build-depends:
       base < 4.14
-    , bytestring
     , cardano-coin-selection-internal
-    , containers
-    , cryptonite
-    , deepseq
-    , fmt
-    , quiet
-    , text
-    , transformers
   hs-source-dirs:
       src/library
   exposed-modules:
-      Cardano.CoinSelection
-      Cardano.CoinSelection.LargestFirst
-      Cardano.CoinSelection.Migration
-      Cardano.CoinSelection.RandomImprove
-      Cardano.Fee
-      Cardano.Types
 
 test-suite cardano-coin-selection-test
   default-language:
@@ -95,7 +95,6 @@ test-suite cardano-coin-selection-test
   build-depends:
       base
     , bytestring
-    , cardano-coin-selection
     , cardano-coin-selection-internal
     , containers
     , cryptonite

@@ -8,22 +8,12 @@
 -- This module contains an implementation of the __Largest-First__ coin
 -- selection algorithm.
 --
-module Cardano.CoinSelection.LargestFirst (
+module Internal.Cardano.CoinSelection.LargestFirst (
     largestFirst
   ) where
 
 import Prelude
 
-import Cardano.CoinSelection
-    ( CoinSelection (..)
-    , CoinSelectionAlgorithm (..)
-    , CoinSelectionError (..)
-    , CoinSelectionOptions (..)
-    , Input (..)
-    , Output (..)
-    )
-import Cardano.Types
-    ( Coin (..), UTxO (..), utxoBalance )
 import Control.Arrow
     ( left )
 import Control.Monad
@@ -36,6 +26,16 @@ import Data.List.NonEmpty
     ( NonEmpty (..) )
 import Data.Ord
     ( Down (..) )
+import Internal.Cardano.CoinSelection
+    ( CoinSelection (..)
+    , CoinSelectionAlgorithm (..)
+    , CoinSelectionError (..)
+    , CoinSelectionOptions (..)
+    , Input (..)
+    , Output (..)
+    )
+import Internal.Cardano.Types
+    ( Coin (..), UTxO (..), utxoBalance )
 
 import qualified Data.List as L
 import qualified Data.List.NonEmpty as NE

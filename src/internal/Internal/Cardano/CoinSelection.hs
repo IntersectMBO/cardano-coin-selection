@@ -9,7 +9,7 @@
 -- Provides general functions and types relating to coin selection and fee
 -- balancing.
 --
-module Cardano.CoinSelection
+module Internal.Cardano.CoinSelection
     (
       -- * Types
       CoinSelection (..)
@@ -29,8 +29,6 @@ module Cardano.CoinSelection
 
 import Prelude
 
-import Cardano.Types
-    ( Coin (..), UTxO (..) )
 import Control.Monad.Trans.Except
     ( ExceptT (..) )
 import Data.List
@@ -43,6 +41,8 @@ import Fmt
     ( Buildable (..), blockListF, blockListF', listF, nameF )
 import GHC.Generics
     ( Generic )
+import Internal.Cardano.Types
+    ( Coin (..), UTxO (..) )
 
 {-------------------------------------------------------------------------------
                                 Coin Selection

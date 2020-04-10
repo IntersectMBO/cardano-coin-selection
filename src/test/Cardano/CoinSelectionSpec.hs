@@ -27,18 +27,8 @@ module Cardano.CoinSelectionSpec
 
 import Prelude
 
-import Cardano.CoinSelection
-    ( CoinSelection (..)
-    , CoinSelectionAlgorithm (..)
-    , CoinSelectionError (..)
-    , CoinSelectionOptions (..)
-    , Input (..)
-    , Output (..)
-    )
 import Cardano.Test.Utilities
     ( Address (..), Hash (..), ShowFmt (..), TxIn (..) )
-import Cardano.Types
-    ( Coin (..), UTxO (..) )
 import Control.Monad.Trans.Except
     ( runExceptT )
 import Data.List.NonEmpty
@@ -49,6 +39,16 @@ import Data.Word
     ( Word64, Word8 )
 import Fmt
     ( Buildable (..), blockListF, nameF )
+import Internal.Cardano.CoinSelection
+    ( CoinSelection (..)
+    , CoinSelectionAlgorithm (..)
+    , CoinSelectionError (..)
+    , CoinSelectionOptions (..)
+    , Input (..)
+    , Output (..)
+    )
+import Internal.Cardano.Types
+    ( Coin (..), UTxO (..) )
 import Test.Hspec
     ( Spec, SpecWith, describe, it, shouldBe )
 import Test.QuickCheck

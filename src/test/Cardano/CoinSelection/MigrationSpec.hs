@@ -12,26 +12,26 @@ module Cardano.CoinSelection.MigrationSpec
 
 import Prelude
 
-import Cardano.CoinSelection
-    ( CoinSelection (..), Input (..), changeBalance, inputBalance )
-import Cardano.CoinSelection.Migration
-    ( depleteUTxO, idealBatchSize )
 import Cardano.CoinSelectionSpec
     ()
-import Cardano.Fee
-    ( DustThreshold (..), Fee (..), FeeEstimator (..), FeeOptions (..) )
 import Cardano.FeeSpec
     ()
 import Cardano.Test.Utilities
     ( Address, Hash (..), TxIn (..) )
-import Cardano.Types
-    ( Coin (..), UTxO (..), utxoBalance )
 import Data.ByteString
     ( ByteString )
 import Data.Function
     ( (&) )
 import Data.Word
     ( Word8 )
+import Internal.Cardano.CoinSelection
+    ( CoinSelection (..), Input (..), changeBalance, inputBalance )
+import Internal.Cardano.CoinSelection.Migration
+    ( depleteUTxO, idealBatchSize )
+import Internal.Cardano.Fee
+    ( DustThreshold (..), Fee (..), FeeEstimator (..), FeeOptions (..) )
+import Internal.Cardano.Types
+    ( Coin (..), UTxO (..), utxoBalance )
 import Numeric.Natural
     ( Natural )
 import Test.Hspec

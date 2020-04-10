@@ -33,24 +33,13 @@
 -- for the previous ones to be inserted before making new ones (we also say
 -- that a wallet is not "fragmented enough").
 
-module Cardano.CoinSelection.Migration
+module Internal.Cardano.CoinSelection.Migration
     ( depleteUTxO
     , idealBatchSize
     ) where
 
 import Prelude
 
-import Cardano.CoinSelection
-    ( CoinSelection (..)
-    , CoinSelectionOptions (..)
-    , Input (..)
-    , changeBalance
-    , inputBalance
-    )
-import Cardano.Fee
-    ( DustThreshold (..), Fee (..), FeeEstimator (..), FeeOptions (..) )
-import Cardano.Types
-    ( Coin (..), UTxO (..) )
 import Control.Monad.Trans.State
     ( State, evalState, get, put )
 import Data.List.NonEmpty
@@ -59,6 +48,17 @@ import Data.Maybe
     ( mapMaybe )
 import Data.Word
     ( Word8 )
+import Internal.Cardano.CoinSelection
+    ( CoinSelection (..)
+    , CoinSelectionOptions (..)
+    , Input (..)
+    , changeBalance
+    , inputBalance
+    )
+import Internal.Cardano.Fee
+    ( DustThreshold (..), Fee (..), FeeEstimator (..), FeeOptions (..) )
+import Internal.Cardano.Types
+    ( Coin (..), UTxO (..) )
 
 import qualified Data.Map.Strict as Map
 

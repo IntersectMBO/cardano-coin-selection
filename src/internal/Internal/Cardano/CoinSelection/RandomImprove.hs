@@ -10,24 +10,12 @@
 -- This module contains an implementation of the __Random-Improve__ coin
 -- selection algorithm.
 --
-module Cardano.CoinSelection.RandomImprove
+module Internal.Cardano.CoinSelection.RandomImprove
     ( randomImprove
     ) where
 
 import Prelude
 
-import Cardano.CoinSelection
-    ( CoinSelection (..)
-    , CoinSelectionAlgorithm (..)
-    , CoinSelectionError (..)
-    , CoinSelectionOptions (..)
-    , Input (..)
-    , Output (..)
-    )
-import Cardano.CoinSelection.LargestFirst
-    ( largestFirst )
-import Cardano.Types
-    ( Coin (..), UTxO (..), utxoPickRandom )
 import Control.Arrow
     ( left )
 import Control.Monad
@@ -48,6 +36,18 @@ import Data.Ord
     ( Down (..) )
 import Data.Word
     ( Word64 )
+import Internal.Cardano.CoinSelection
+    ( CoinSelection (..)
+    , CoinSelectionAlgorithm (..)
+    , CoinSelectionError (..)
+    , CoinSelectionOptions (..)
+    , Input (..)
+    , Output (..)
+    )
+import Internal.Cardano.CoinSelection.LargestFirst
+    ( largestFirst )
+import Internal.Cardano.Types
+    ( Coin (..), UTxO (..), utxoPickRandom )
 import Internal.Invariant
     ( invariant )
 

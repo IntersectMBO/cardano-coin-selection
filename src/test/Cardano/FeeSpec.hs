@@ -18,30 +18,8 @@ module Cardano.FeeSpec
 import Prelude hiding
     ( round )
 
-import Cardano.CoinSelection
-    ( CoinSelection (..)
-    , CoinSelectionAlgorithm (..)
-    , Input (..)
-    , Output (..)
-    )
-import Cardano.CoinSelection.LargestFirst
-    ( largestFirst )
-import Cardano.Fee
-    ( DustThreshold (..)
-    , ErrAdjustForFee (..)
-    , Fee (..)
-    , FeeEstimator (..)
-    , FeeOptions (..)
-    , adjustForFee
-    , coalesceDust
-    , distributeFee
-    , reduceChangeOutputs
-    , splitCoin
-    )
 import Cardano.Test.Utilities
     ( Address (..), Hash (..), ShowFmt (..), TxIn (..) )
-import Cardano.Types
-    ( Coin (..), UTxO (..), coinIsValid )
 import Control.Arrow
     ( left )
 import Control.Monad
@@ -70,6 +48,28 @@ import Fmt
     ( Buildable (..), nameF, tupleF )
 import GHC.Generics
     ( Generic )
+import Internal.Cardano.CoinSelection
+    ( CoinSelection (..)
+    , CoinSelectionAlgorithm (..)
+    , Input (..)
+    , Output (..)
+    )
+import Internal.Cardano.CoinSelection.LargestFirst
+    ( largestFirst )
+import Internal.Cardano.Fee
+    ( DustThreshold (..)
+    , ErrAdjustForFee (..)
+    , Fee (..)
+    , FeeEstimator (..)
+    , FeeOptions (..)
+    , adjustForFee
+    , coalesceDust
+    , distributeFee
+    , reduceChangeOutputs
+    , splitCoin
+    )
+import Internal.Cardano.Types
+    ( Coin (..), UTxO (..), coinIsValid )
 import Internal.Rounding
     ( RoundingDirection (..), round )
 import Test.Hspec
@@ -101,11 +101,11 @@ import Test.QuickCheck
 import Test.QuickCheck.Monadic
     ( monadicIO )
 
-import qualified Cardano.CoinSelection as CS
 import qualified Data.ByteString as BS
 import qualified Data.Foldable as F
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map.Strict as Map
+import qualified Internal.Cardano.CoinSelection as CS
 
 spec :: Spec
 spec = do

@@ -9,16 +9,6 @@ module Cardano.CoinSelection.RandomImproveSpec
 
 import Prelude
 
-import Cardano.CoinSelection
-    ( CoinSelection (..)
-    , CoinSelectionAlgorithm (..)
-    , CoinSelectionError (..)
-    , CoinSelectionOptions (..)
-    )
-import Cardano.CoinSelection.LargestFirst
-    ( largestFirst )
-import Cardano.CoinSelection.RandomImprove
-    ( randomImprove )
 import Cardano.CoinSelectionSpec
     ( CoinSelProp (..)
     , CoinSelectionFixture (..)
@@ -42,6 +32,16 @@ import Data.Functor.Identity
     ( Identity (..) )
 import Data.List.NonEmpty
     ( NonEmpty (..) )
+import Internal.Cardano.CoinSelection
+    ( CoinSelection (..)
+    , CoinSelectionAlgorithm (..)
+    , CoinSelectionError (..)
+    , CoinSelectionOptions (..)
+    )
+import Internal.Cardano.CoinSelection.LargestFirst
+    ( largestFirst )
+import Internal.Cardano.CoinSelection.RandomImprove
+    ( randomImprove )
 import Test.Hspec
     ( Spec, before, describe, it, shouldSatisfy )
 import Test.QuickCheck
