@@ -70,7 +70,7 @@ import Internal.Cardano.Fee
     )
 import Internal.Cardano.Types
     ( Coin (..), UTxO (..), coinIsValid )
-import Internal.Rounding
+import Internal.Numeric.Rounding
     ( RoundingDirection (..), round )
 import Test.Hspec
     ( Spec, SpecWith, before, describe, it, shouldBe, shouldSatisfy )

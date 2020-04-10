@@ -58,7 +58,7 @@ library cardano-coin-selection-internal
       Internal.Cardano.Fee
       Internal.Cardano.Types
       Internal.Data.Invariant
-      Internal.Rounding
+      Internal.Numeric.Rounding
 
 library
   default-language:

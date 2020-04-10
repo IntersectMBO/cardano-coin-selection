@@ -7,7 +7,7 @@
 -- Provides internal types and functions relating to rounding of fractional
 -- numbers.
 --
-module Internal.Rounding
+module Internal.Numeric.Rounding
     ( RoundingDirection (..)
     , round
     ) where
