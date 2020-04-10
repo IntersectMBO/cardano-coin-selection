@@ -48,7 +48,7 @@ import Internal.Cardano.CoinSelection.LargestFirst
     ( largestFirst )
 import Internal.Cardano.Types
     ( Coin (..), UTxO (..), utxoPickRandom )
-import Internal.Invariant
+import Internal.Data.Invariant
     ( invariant )
 
 import qualified Data.List as L

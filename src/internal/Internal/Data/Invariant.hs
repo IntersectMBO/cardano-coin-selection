@@ -4,7 +4,7 @@
 --
 -- Provides internal functions relating to verification of invariants.
 --
-module Internal.Invariant
+module Internal.Data.Invariant
     ( invariant
     ) where
 

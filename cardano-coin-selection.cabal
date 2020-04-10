@@ -57,7 +57,7 @@ library cardano-coin-selection-internal
       Internal.Cardano.CoinSelection.RandomImprove
       Internal.Cardano.Fee
       Internal.Cardano.Types
-      Internal.Invariant
+      Internal.Data.Invariant
       Internal.Rounding
 
 library

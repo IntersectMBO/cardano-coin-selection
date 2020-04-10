@@ -74,7 +74,7 @@ import Internal.Cardano.CoinSelection
     ( CoinSelection (..), Input (..), feeBalance )
 import Internal.Cardano.Types
     ( Coin (..), UTxO (..), coinIsValid, utxoPickRandom )
-import Internal.Invariant
+import Internal.Data.Invariant
     ( invariant )
 import Internal.Rounding
     ( RoundingDirection (..), round )
