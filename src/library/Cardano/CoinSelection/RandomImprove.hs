@@ -271,7 +271,7 @@ makeRandomSelection
     coverRandomly (selected, remaining)
         | L.length selected > fromIntegral inputCountRemaining =
             MaybeT $ return Nothing
-        | sumInputs selected >= targetMin (mkTargetRange txout) =
+        | sumEntries selected >= targetMin (mkTargetRange txout) =
             MaybeT $ return $ Just (selected, remaining)
         | otherwise =
             utxoPickRandomT remaining >>= \(picked, remaining') ->
@@ -301,7 +301,7 @@ improveSelection (maxN0, selection, utxo0) (inps0, txout) = do
         :: (Word64, [CoinMapEntry i], CoinMap i)
         -> m (Word64, [CoinMapEntry i], CoinMap i)
     improve (maxN, inps, utxo)
-        | maxN >= 1 && sumInputs inps < targetAim target = do
+        | maxN >= 1 && sumEntries inps < targetAim target = do
             runMaybeT (utxoPickRandomT utxo) >>= \case
                 Nothing ->
                     return (maxN, inps, utxo)
@@ -318,12 +318,12 @@ improveSelection (maxN0, selection, utxo0) (inps0, txout) = do
     isImprovement io selected =
         let
             condA = -- (a) It doesn’t exceed a specified upper limit.
-                sumInputs (io : selected) < targetMax target
+                sumEntries (io : selected) < targetMax target
 
             condB = -- (b) Addition gets us closer to the ideal change
-                distance (targetAim target) (sumInputs (io : selected))
+                distance (targetAim target) (sumEntries (io : selected))
                 <
-                distance (targetAim target) (sumInputs selected)
+                distance (targetAim target) (sumEntries selected)
 
             -- (c) Doesn't exceed maximum number of inputs
             -- Guaranteed by the precondition on 'improve'.
@@ -382,7 +382,7 @@ mkChange (CoinMapEntry _ (Coin out)) inps =
     let
         selected = invariant
             "mkChange: output is smaller than selected inputs!"
-            (sumInputs inps)
+            (sumEntries inps)
             (>= out)
         Coin maxCoinValue = maxBound
     in
@@ -403,5 +403,5 @@ distance :: (Ord a, Num a) => a -> a -> a
 distance a b =
     if a < b then b - a else a - b
 
-sumInputs :: [CoinMapEntry i] -> Word64
-sumInputs = sum . fmap (unCoin . entryValue)
+sumEntries :: [CoinMapEntry i] -> Word64
+sumEntries = sum . fmap (unCoin . entryValue)

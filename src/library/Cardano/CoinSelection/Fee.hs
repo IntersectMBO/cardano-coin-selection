@@ -242,7 +242,7 @@ senderPaysFee FeeOptions {feeEstimator, dustThreshold} utxo sel =
             -- change plus the extra change brought up by this entry and see if
             -- we can now correctly cover fee.
             inps' <- coverRemainingFee remFee
-            let extraChange = splitCoin (Coin $ sumInputs inps') chgs
+            let extraChange = splitCoin (Coin $ sumEntries inps') chgs
             go $ CoinSelection (inps <> coinMapFromList inps') outs extraChange
 
 -- | A short / simple version of the 'random' fee policy to cover for fee in
@@ -253,7 +253,7 @@ coverRemainingFee
     -> StateT (CoinMap i) (ExceptT ErrAdjustForFee m) [CoinMapEntry i]
 coverRemainingFee (Fee fee) = go [] where
     go acc
-        | sumInputs acc >= fee =
+        | sumEntries acc >= fee =
             return acc
         | otherwise = do
             -- We ignore the size of the fee, and just pick randomly
@@ -261,7 +261,7 @@ coverRemainingFee (Fee fee) = go [] where
                 Just entry ->
                     go (entry : acc)
                 Nothing -> do
-                    lift $ throwE $ ErrCannotCoverFee (fee - sumInputs acc)
+                    lift $ throwE $ ErrCannotCoverFee (fee - sumEntries acc)
 
 -- | Pays for the given fee by subtracting it from the given list of change
 --   outputs, so that each change output is reduced by a portion of the fee
@@ -572,5 +572,5 @@ fractionalPart = snd . properFraction @_ @Integer
 applyN :: Int -> (a -> a) -> a -> a
 applyN n f = F.foldr (.) id (replicate n f)
 
-sumInputs :: [CoinMapEntry i] -> Word64
-sumInputs = sum . fmap (unCoin . entryValue)
+sumEntries :: [CoinMapEntry i] -> Word64
+sumEntries = sum . fmap (unCoin . entryValue)
