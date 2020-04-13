@@ -49,7 +49,7 @@ import Cardano.CoinSelection
     , changeBalance
     , inputBalance
     )
-import Cardano.Fee
+import Cardano.CoinSelection.Fee
     ( DustThreshold (..), Fee (..), FeeEstimator (..), FeeOptions (..) )
 import Control.Monad.Trans.State
     ( State, evalState, get, put )

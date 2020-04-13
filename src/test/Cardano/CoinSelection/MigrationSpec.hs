@@ -21,13 +21,13 @@ import Cardano.CoinSelection
     , inputBalance
     , utxoBalance
     )
+import Cardano.CoinSelection.Fee
+    ( DustThreshold (..), Fee (..), FeeEstimator (..), FeeOptions (..) )
+import Cardano.CoinSelection.FeeSpec
+    ()
 import Cardano.CoinSelection.Migration
     ( depleteUTxO, idealBatchSize )
 import Cardano.CoinSelectionSpec
-    ()
-import Cardano.Fee
-    ( DustThreshold (..), Fee (..), FeeEstimator (..), FeeOptions (..) )
-import Cardano.FeeSpec
     ()
 import Cardano.Test.Utilities
     ( Address, Hash (..), TxIn (..) )

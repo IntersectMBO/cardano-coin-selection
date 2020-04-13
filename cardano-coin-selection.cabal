@@ -74,10 +74,10 @@ library
       src/library
   exposed-modules:
       Cardano.CoinSelection
+      Cardano.CoinSelection.Fee
       Cardano.CoinSelection.LargestFirst
       Cardano.CoinSelection.Migration
       Cardano.CoinSelection.RandomImprove
-      Cardano.Fee
 
 test-suite cardano-coin-selection-test
   default-language:
@@ -117,12 +117,12 @@ test-suite cardano-coin-selection-test
   main-is:
       Spec.hs
   other-modules:
+      Cardano.CoinSelection.FeeSpec
       Cardano.CoinSelection.LargestFirstSpec
       Cardano.CoinSelection.MigrationSpec
       Cardano.CoinSelection.RandomImproveSpec
       Cardano.CoinSelection.TypesSpec
       Cardano.CoinSelectionSpec
-      Cardano.FeeSpec
       Cardano.Test.Utilities
       Test.Vector.Shuffle
       Test.Vector.ShuffleSpec
