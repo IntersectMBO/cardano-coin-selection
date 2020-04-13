@@ -35,7 +35,6 @@ import Cardano.CoinSelection
     , CoinSelectionAlgorithm (..)
     , CoinSelectionError (..)
     , CoinSelectionOptions (..)
-    , UTxO (..)
     , coinMapFromList
     , coinMapToList
     )
@@ -94,9 +93,9 @@ spec = do
 --------------------------------------------------------------------------------
 
 prop_utxoToListOrderDeterministic
-    :: Ord u => UTxO u -> Property
+    :: Ord u => CoinMap u -> Property
 prop_utxoToListOrderDeterministic u = monadicIO $ QC.run $ do
-    let list0 = Map.toList $ getUTxO u
+    let list0 = Map.toList $ getCoinMap u
     list1 <- shuffle list0
     return $
         cover 90 (list0 /= list1) "shuffled" $
@@ -108,7 +107,7 @@ prop_utxoToListOrderDeterministic u = monadicIO $ QC.run $ do
 
 -- | Data for running
 data CoinSelProp o u = CoinSelProp
-    { csUtxO :: UTxO u
+    { csUtxO :: CoinMap u
         -- ^ Available UTxO for the selection
     , csOuts :: CoinMap o
         -- ^ Requested outputs for the payment
@@ -116,7 +115,7 @@ data CoinSelProp o u = CoinSelProp
 
 instance (Buildable o, Buildable u) => Buildable (CoinSelProp o u) where
     build (CoinSelProp utxo outs) = mempty
-        <> build utxo
+        <> nameF "utxo" (blockListF $ coinMapToList utxo)
         <> nameF "outs" (blockListF $ coinMapToList outs)
 
 -- | A fixture for testing the coin selection
@@ -183,7 +182,7 @@ coinSelectionUnitTest alg lbl expected (CoinSelectionFixture n fn utxoF outsF) =
         <> ", Output=" <> show outsF
         <> " --> " <> show (rsInputs <$> expected)
 
-    setup :: IO (UTxO TxIn, CoinMap Address)
+    setup :: IO (CoinMap TxIn, CoinMap Address)
     setup = do
         utxo <- generate (genUTxO utxoF)
         outs <- generate (genOutputs outsF)
@@ -224,7 +223,7 @@ instance (Arbitrary o, Arbitrary u, Ord o, Ord u) =>
         (shrink utxo)
         (coinMapFromList <$> filter (not . null) (shrink (coinMapToList outs)))
     arbitrary = CoinSelProp
-        <$> arbitrary
+        <$> (coinMapFromList . getNonEmpty <$> arbitrary)
         <*> (coinMapFromList . getNonEmpty <$> arbitrary)
 
 instance Arbitrary Address where
@@ -256,20 +255,20 @@ instance Arbitrary a => Arbitrary (CoinMapEntry a) where
         <$> arbitrary
         <*> arbitrary
 
-instance (Arbitrary u, Ord u) => Arbitrary (UTxO u) where
-    shrink (UTxO utxo) = UTxO <$> shrink utxo
+instance (Arbitrary a, Ord a) => Arbitrary (CoinMap a) where
+    shrink (CoinMap m) = CoinMap <$> shrink m
     arbitrary = do
         n <- choose (1, 100)
-        utxo <- zip
+        entries <- zip
             <$> vectorOf n arbitrary
             <*> vectorOf n arbitrary
-        return $ UTxO $ Map.fromList utxo
+        return $ CoinMap $ Map.fromList entries
 
-genUTxO :: (Arbitrary u, Ord u) => [Word64] -> Gen (UTxO u)
+genUTxO :: [Word64] -> Gen (CoinMap TxIn)
 genUTxO coins = do
     let n = length coins
     inps <- vectorOf n arbitrary
-    return $ UTxO $ Map.fromList $ zip inps (Coin <$> coins)
+    return $ CoinMap $ Map.fromList $ zip inps (Coin <$> coins)
 
 genOutputs :: [Word64] -> Gen (CoinMap Address)
 genOutputs coins = do

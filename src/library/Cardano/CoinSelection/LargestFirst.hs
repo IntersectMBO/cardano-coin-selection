@@ -22,11 +22,9 @@ import Cardano.CoinSelection
     , CoinSelectionAlgorithm (..)
     , CoinSelectionError (..)
     , CoinSelectionOptions (..)
-    , UTxO (..)
     , coinMapFromList
     , coinMapToList
     , coinMapValue
-    , utxoBalance
     )
 import Control.Arrow
     ( left )
@@ -40,7 +38,6 @@ import Data.Ord
     ( Down (..) )
 
 import qualified Data.List as L
-import qualified Data.Map.Strict as Map
 
 -- | An implementation of the __Largest-First__ coin selection algorithm.
 --
@@ -184,13 +181,13 @@ payForOutputs
     :: (i ~ u, Ord u, Ord o, Monad m)
     => CoinSelectionOptions i o e
     -> CoinMap o
-    -> UTxO u
-    -> ExceptT (CoinSelectionError e) m (CoinSelection i o, UTxO u)
+    -> CoinMap u
+    -> ExceptT (CoinSelectionError e) m (CoinSelection i o, CoinMap u)
 payForOutputs options outputsRequested utxo =
     case foldM payForOutput (utxoDescending, mempty) outputsDescending of
         Just (utxoRemaining, selection) ->
             validateSelection selection $>
-                (selection, UTxO $ Map.fromList utxoRemaining)
+                (selection, coinMapFromList utxoRemaining)
         Nothing ->
             throwE errorCondition
   where
@@ -204,7 +201,7 @@ payForOutputs options outputsRequested utxo =
       | otherwise =
           ErrMaximumInputCountExceeded inputCountMax
     amountAvailable =
-        fromIntegral $ utxoBalance utxo
+        fromIntegral $ getCoin $ coinMapValue utxo
     amountRequested =
         getCoin $ coinMapValue outputsRequested
     inputCountMax =
@@ -214,12 +211,11 @@ payForOutputs options outputsRequested utxo =
     outputsDescending =
         L.sortOn (Down . entryValue) $ coinMapToList outputsRequested
     utxoCount =
-        fromIntegral $ L.length $ (Map.toList . getUTxO) utxo
+        fromIntegral $ L.length $ coinMapToList utxo
     utxoDescending =
         take (fromIntegral inputCountMax)
-            $ L.sortOn (Down . snd)
-            $ Map.toList
-            $ getUTxO utxo
+            $ L.sortOn (Down . entryValue)
+            $ coinMapToList utxo
     validateSelection =
         except . left ErrInvalidSelection . validate options
 
@@ -235,25 +231,25 @@ payForOutputs options outputsRequested utxo =
 --
 payForOutput
     :: forall i o u . (i ~ u, Ord o, Ord u)
-    => ([(u, Coin)], CoinSelection i o)
+    => ([CoinMapEntry u], CoinSelection i o)
     -> CoinMapEntry o
-    -> Maybe ([(u, Coin)], CoinSelection i o)
+    -> Maybe ([CoinMapEntry u], CoinSelection i o)
 payForOutput (utxoAvailable, currentSelection) out =
     let target = fromIntegral $ getCoin $ entryValue out in
     coverTarget target utxoAvailable mempty
   where
     coverTarget
         :: Integer
-        -> [(u, Coin)]
-        -> [(u, Coin)]
-        -> Maybe ([(u, Coin)], CoinSelection i o)
+        -> [CoinMapEntry u]
+        -> [CoinMapEntry u]
+        -> Maybe ([CoinMapEntry u], CoinSelection i o)
     coverTarget target utxoRemaining utxoSelected
         | target <= 0 = Just
             -- We've selected enough to cover the target, so stop here.
             ( utxoRemaining
             , currentSelection <> CoinSelection
                 { inputs =
-                    coinMapFromList $ uncurry CoinMapEntry <$> utxoSelected
+                    coinMapFromList utxoSelected
                 , outputs =
                     coinMapFromList [out]
                 , change =
@@ -264,9 +260,10 @@ payForOutput (utxoAvailable, currentSelection) out =
             -- We haven't yet selected enough to cover the target, so attempt
             -- to select a little more and then continue.
             case utxoRemaining of
-                (i, o):utxoRemaining' ->
-                    let utxoSelected' = (i, o):utxoSelected
-                        target' = target - fromIntegral (getCoin o)
+                utxoEntry : utxoRemaining' ->
+                    let utxoSelected' = utxoEntry : utxoSelected
+                        target' = target -
+                            fromIntegral (getCoin $ entryValue utxoEntry)
                     in
                     coverTarget target' utxoRemaining' utxoSelected'
                 [] ->

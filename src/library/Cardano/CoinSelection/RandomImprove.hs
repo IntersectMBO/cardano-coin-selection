@@ -24,10 +24,9 @@ import Cardano.CoinSelection
     , CoinSelectionAlgorithm (..)
     , CoinSelectionError (..)
     , CoinSelectionOptions (..)
-    , UTxO (..)
     , coinMapFromList
+    , coinMapRandomEntry
     , coinMapToList
-    , utxoPickRandom
     )
 import Cardano.CoinSelection.LargestFirst
     ( largestFirst )
@@ -218,8 +217,8 @@ payForOutputs
     :: (i ~ u, Ord o, Ord u, MonadRandom m)
     => CoinSelectionOptions i o e
     -> CoinMap o
-    -> UTxO u
-    -> ExceptT (CoinSelectionError e) m (CoinSelection i o, UTxO u)
+    -> CoinMap u
+    -> ExceptT (CoinSelectionError e) m (CoinSelection i o, CoinMap u)
 payForOutputs options outputsRequested utxo = do
     mRandomSelections <- lift $ runMaybeT $ foldM makeRandomSelection
         (inputCountMax, utxo, []) outputsDescending
@@ -254,9 +253,9 @@ payForOutputs options outputsRequested utxo = do
 --
 makeRandomSelection
     :: forall i o u m . (i ~ u, MonadRandom m)
-    => (Word64, UTxO u, [([CoinMapEntry i], CoinMapEntry o)])
+    => (Word64, CoinMap u, [([CoinMapEntry i], CoinMapEntry o)])
     -> CoinMapEntry o
-    -> MaybeT m (Word64, UTxO u, [([CoinMapEntry i], CoinMapEntry o)])
+    -> MaybeT m (Word64, CoinMap u, [([CoinMapEntry i], CoinMapEntry o)])
 makeRandomSelection
     (inputCountRemaining, utxoRemaining, existingSelections) txout = do
         (utxoSelected, utxoRemaining') <- coverRandomly ([], utxoRemaining)
@@ -267,8 +266,8 @@ makeRandomSelection
             )
   where
     coverRandomly
-        :: ([CoinMapEntry i], UTxO u)
-        -> MaybeT m ([CoinMapEntry i], UTxO u)
+        :: ([CoinMapEntry i], CoinMap u)
+        -> MaybeT m ([CoinMapEntry i], CoinMap u)
     coverRandomly (selected, remaining)
         | L.length selected > fromIntegral inputCountRemaining =
             MaybeT $ return Nothing
@@ -281,9 +280,9 @@ makeRandomSelection
 -- | Perform an improvement to random selection on a given output.
 improveSelection
     :: forall i o u m . (i ~ u, MonadRandom m, Ord o, Ord u)
-    => (Word64, CoinSelection i o, UTxO u)
+    => (Word64, CoinSelection i o, CoinMap u)
     -> ([CoinMapEntry i], CoinMapEntry o)
-    -> m (Word64, CoinSelection i o, UTxO u)
+    -> m (Word64, CoinSelection i o, CoinMap u)
 improveSelection (maxN0, selection, utxo0) (inps0, txout) = do
     (maxN, inps, utxo) <- improve (maxN0, inps0, utxo0)
     return
@@ -299,8 +298,8 @@ improveSelection (maxN0, selection, utxo0) (inps0, txout) = do
     target = mkTargetRange txout
 
     improve
-        :: (Word64, [CoinMapEntry i], UTxO u)
-        -> m (Word64, [CoinMapEntry i], UTxO u)
+        :: (Word64, [CoinMapEntry i], CoinMap u)
+        -> m (Word64, [CoinMapEntry i], CoinMap u)
     improve (maxN, inps, utxo)
         | maxN >= 1 && sumInputs inps < targetAim target = do
             runMaybeT (utxoPickRandomT utxo) >>= \case
@@ -367,12 +366,12 @@ mkTargetRange (CoinMapEntry _ (Coin c)) = TargetRange
 -- | Re-wrap 'utxoPickRandom' in a 'MaybeT' monad
 utxoPickRandomT
     :: (i ~ u, MonadRandom m)
-    => UTxO u
-    -> MaybeT m (CoinMapEntry i, UTxO u)
+    => CoinMap u
+    -> MaybeT m (CoinMapEntry i, CoinMap u)
 utxoPickRandomT =
     MaybeT
-        . fmap (\(mi, u) -> (, u) . uncurry CoinMapEntry <$> mi)
-        . utxoPickRandom
+        . fmap (\(mi, u) -> (, u) <$> mi)
+        . coinMapRandomEntry
 
 -- | Compute corresponding change outputs from a target output and a selection
 -- of inputs.

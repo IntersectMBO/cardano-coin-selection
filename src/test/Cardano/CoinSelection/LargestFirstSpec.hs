@@ -11,12 +11,12 @@ import Prelude
 
 import Cardano.CoinSelection
     ( Coin (..)
+    , CoinMap (..)
     , CoinMapEntry (..)
     , CoinSelection (..)
     , CoinSelectionAlgorithm (..)
     , CoinSelectionError (..)
     , CoinSelectionOptions (..)
-    , UTxO (..)
     , coinMapToList
     )
 import Cardano.CoinSelection.LargestFirst
@@ -248,7 +248,7 @@ propInputDecreasingOrder (CoinSelProp utxo txOuts) =
   where
     prop (CoinSelection inps _ _) =
         let
-            utxo' = (Map.toList . getUTxO) $ utxo `excluding`
+            utxo' = (Map.toList . getCoinMap) $ utxo `excluding`
                 Set.fromList (entryKey <$> coinMapToList inps)
         in unless (L.null utxo') $
             (getExtremumValue L.minimum (entryValue <$> coinMapToList inps))

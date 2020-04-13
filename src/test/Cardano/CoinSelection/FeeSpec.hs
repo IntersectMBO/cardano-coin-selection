@@ -24,7 +24,6 @@ import Cardano.CoinSelection
     , CoinMapEntry (..)
     , CoinSelection (..)
     , CoinSelectionAlgorithm (..)
-    , UTxO (..)
     , changeBalance
     , coinIsValid
     , coinMapFromList
@@ -432,7 +431,7 @@ isValidSelection s = inputBalance s >= outputBalance s + changeBalance s
 data FeeProp i o u = FeeProp
     { selection :: CoinSelection i o
      -- ^ inputs from wich largestFirst can be calculated
-    , availableUtxo :: UTxO u
+    , availableUtxo :: CoinMap u
      -- ^ additional UTxO from which fee calculation will pick needed coins
     , feeDust :: (Word64, Word64)
      -- ^ constant fee and dust threshold
@@ -442,7 +441,7 @@ instance (Buildable i, Buildable o, Buildable u) =>
     Buildable (FeeProp i o u) where
         build (FeeProp cc utxo opt) = mempty
             <> nameF "selection" (build cc)
-            <> build utxo
+            <> nameF "utxo" (build (coinMapToList utxo))
             <> nameF "options" (tupleF opt)
 
 propDeterministic
@@ -890,10 +889,10 @@ feeUnitTest (FeeFixture inpsF outsF chngsF utxoF feeF dustF) expected =
   where
     setup
         :: forall i o u . (i ~ u, Arbitrary o, Arbitrary u, Ord o, Ord u)
-        => IO (UTxO u, CoinSelection i o)
+        => IO (CoinMap u, CoinSelection i o)
     setup = do
         utxo <- generate (genUTxO $ Coin <$> utxoF)
-        inps <- (fmap (uncurry CoinMapEntry) . Map.toList . getUTxO) <$>
+        inps <- (fmap (uncurry CoinMapEntry) . Map.toList . getCoinMap) <$>
             generate (genUTxO $ Coin <$> inpsF)
         outs <- generate (genOutputs $ Coin <$> outsF)
         let chngs = map Coin chngsF
@@ -947,11 +946,11 @@ deriving newtype instance Arbitrary a => Arbitrary (ShowFmt a)
 genUTxO
     :: (Arbitrary u, Ord u)
     => [Coin]
-    -> Gen (UTxO u)
+    -> Gen (CoinMap u)
 genUTxO coins = do
     let n = length coins
     inps <- vectorOf n arbitrary
-    return $ UTxO $ Map.fromList $ zip inps coins
+    return $ CoinMap $ Map.fromList $ zip inps coins
 
 genOutputs :: (Arbitrary o, Ord o) => [Coin] -> Gen (CoinMap o)
 genOutputs coins = do
@@ -992,13 +991,13 @@ instance (i ~ u, Arbitrary o, Arbitrary u, Ord o, Ord u) =>
     Arbitrary (FeeProp i o u)
   where
     shrink (FeeProp cs utxo opts) =
-        case Map.toList $ getUTxO utxo  of
+        case Map.toList $ getCoinMap utxo of
             [] ->
                 map (\cs' -> FeeProp cs' utxo opts) (shrink cs)
             us ->
                 concatMap (\cs' ->
                     [ FeeProp cs' mempty opts
-                    , FeeProp cs' (UTxO $ Map.fromList (drop 1 us)) opts
+                    , FeeProp cs' (CoinMap $ Map.fromList (drop 1 us)) opts
                     ]
                 ) (shrink cs)
     arbitrary = do

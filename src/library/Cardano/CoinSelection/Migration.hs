@@ -42,10 +42,10 @@ import Prelude
 
 import Cardano.CoinSelection
     ( Coin (..)
+    , CoinMap (..)
     , CoinMapEntry (..)
     , CoinSelection (..)
     , CoinSelectionOptions (..)
-    , UTxO (..)
     , changeBalance
     , coinMapFromList
     , inputBalance
@@ -79,11 +79,11 @@ depleteUTxO
         -- ^ Fee computation and threshold definition
     -> Word8
         -- ^ Maximum number of inputs we can select per transaction
-    -> UTxO u
+    -> CoinMap u
         -- ^ UTxO to deplete
     -> [CoinSelection i o]
 depleteUTxO feeOpts batchSize utxo =
-    evalState migrate (uncurry CoinMapEntry <$> Map.toList (getUTxO utxo))
+    evalState migrate (uncurry CoinMapEntry <$> Map.toList (getCoinMap utxo))
   where
     migrate :: State [CoinMapEntry i] [CoinSelection i o]
     migrate = do

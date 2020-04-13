@@ -14,13 +14,13 @@ import Prelude
 
 import Cardano.CoinSelection
     ( Coin (..)
+    , CoinMap (..)
     , CoinMapEntry (..)
     , CoinSelection (..)
-    , UTxO (..)
     , changeBalance
     , coinMapToList
+    , coinMapValue
     , inputBalance
-    , utxoBalance
     )
 import Cardano.CoinSelection.Fee
     ( DustThreshold (..), Fee (..), FeeEstimator (..), FeeOptions (..) )
@@ -82,7 +82,7 @@ spec = do
                 feeOpts <- pick (genFeeOptions dust)
                 let selections = depleteUTxO feeOpts batchSize utxo
                 monitor $ label $ accuracy dust
-                    (utxoBalance utxo)
+                    (fromIntegral $ getCoin $ coinMapValue utxo)
                     (fromIntegral $ sum $ inputBalance <$> selections)
               where
                 title :: String
@@ -136,7 +136,7 @@ spec = do
                         $ 5 * (length (inputs s) + length (outputs s))
                     }
             let batchSize = 1
-            let utxo = UTxO $ Map.fromList
+            let utxo = CoinMap $ Map.fromList
                     [ ( TxIn
                         { txinId = Hash "|\243^\SUBg\242\231\&1\213\203"
                         , txinIx = 2
@@ -156,7 +156,7 @@ prop_onlyChangeOutputs
     :: forall i o u . (i ~ u, Ord o, Ord u, Show o)
     => FeeOptions i o
     -> Word8
-    -> UTxO u
+    -> CoinMap u
     -> Property
 prop_onlyChangeOutputs feeOpts batchSize utxo = do
     let allOutputs =
@@ -168,7 +168,7 @@ prop_noLessThanThreshold
     :: forall i o u . (i ~ u, Ord o, Ord u)
     => FeeOptions i o
     -> Word8
-    -> UTxO u
+    -> CoinMap u
     -> Property
 prop_noLessThanThreshold feeOpts batchSize utxo = do
     let allChange = change
@@ -184,12 +184,12 @@ prop_inputsGreaterThanOutputs
     :: forall i o u . (i ~ u, Ord o, Ord u, Show o, Show u)
     => FeeOptions i o
     -> Word8
-    -> UTxO u
+    -> CoinMap u
     -> Property
 prop_inputsGreaterThanOutputs feeOpts batchSize utxo = do
     let selections  = depleteUTxO feeOpts batchSize utxo
     let totalChange = sum (changeBalance <$> selections)
-    let balanceUTxO = utxoBalance utxo
+    let balanceUTxO = getCoin $ coinMapValue utxo
     property (balanceUTxO >= fromIntegral totalChange)
         & counterexample ("Total change balance: " <> show totalChange)
         & counterexample ("Total UTxO balance: " <> show balanceUTxO)
@@ -200,7 +200,7 @@ prop_inputsAreUnique
     :: forall i o u . (i ~ u, Ord o, Ord u)
     => FeeOptions i o
     -> Word8
-    -> UTxO u
+    -> CoinMap u
     -> Property
 prop_inputsAreUnique feeOpts batchSize utxo = do
     let selectionInputList =
@@ -214,13 +214,13 @@ prop_inputsStillInUTxO
     :: forall i o u . (i ~ u, Ord o, Ord u)
     => FeeOptions i o
     -> Word8
-    -> UTxO u
+    -> CoinMap u
     -> Property
 prop_inputsStillInUTxO feeOpts batchSize utxo = do
     let selectionInputSet = Set.fromList $
             coinMapToList . inputs =<< depleteUTxO feeOpts batchSize utxo
     let utxoSet = Set.fromList $
-            fmap (uncurry CoinMapEntry) $ Map.toList $ getUTxO utxo
+            fmap (uncurry CoinMapEntry) $ Map.toList $ getCoinMap utxo
     property (selectionInputSet `Set.isSubsetOf` utxoSet)
 
 -- | Every coin selection is well-balanced (i.e. actual fees are exactly the
@@ -229,7 +229,7 @@ prop_wellBalanced
     :: forall i o u . (i ~ u, Ord o, Ord u, Show o, Show u)
     => FeeOptions i o
     -> Word8
-    -> UTxO u
+    -> CoinMap u
     -> Property
 prop_wellBalanced feeOpts batchSize utxo = do
     let selections = depleteUTxO feeOpts batchSize utxo
@@ -280,12 +280,12 @@ genFeeOptions (Coin dust) = do
         }
 
 -- | Generate a given UTxO with a particular percentage of dust
-genUTxO :: Double -> Coin -> Gen (UTxO TxIn)
+genUTxO :: Double -> Coin -> Gen (CoinMap TxIn)
 genUTxO r (Coin dust) = do
     n <- choose (10, 1000)
     inps <- genTxIn n
     coins <- vectorOf n genCoin
-    pure $ UTxO $ Map.fromList $ zip inps coins
+    pure $ CoinMap $ Map.fromList $ zip inps coins
   where
     genTxIn :: Int -> Gen [TxIn]
     genTxIn n = do

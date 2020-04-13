@@ -48,13 +48,13 @@ import Prelude hiding
 
 import Cardano.CoinSelection
     ( Coin (..)
+    , CoinMap (..)
     , CoinMapEntry (..)
     , CoinSelection (..)
-    , UTxO (..)
     , coinIsValid
     , coinMapFromList
+    , coinMapRandomEntry
     , feeBalance
-    , utxoPickRandom
     )
 import Control.Monad.Trans.Class
     ( lift )
@@ -172,7 +172,7 @@ newtype ErrAdjustForFee
 adjustForFee
     :: (i ~ u, Buildable o, Buildable u, Ord u, MonadRandom m)
     => FeeOptions i o
-    -> UTxO u
+    -> CoinMap u
     -> CoinSelection i o
     -> ExceptT ErrAdjustForFee m (CoinSelection i o)
 adjustForFee unsafeOpt utxo coinSel = do
@@ -187,7 +187,7 @@ adjustForFee unsafeOpt utxo coinSel = do
 senderPaysFee
     :: forall i o u m . (i ~ u, Buildable o, Buildable u, Ord u, MonadRandom m)
     => FeeOptions i o
-    -> UTxO u
+    -> CoinMap u
     -> CoinSelection i o
     -> ExceptT ErrAdjustForFee m (CoinSelection i o)
 senderPaysFee FeeOptions {feeEstimator, dustThreshold} utxo sel =
@@ -195,7 +195,7 @@ senderPaysFee FeeOptions {feeEstimator, dustThreshold} utxo sel =
   where
     go
         :: CoinSelection i o
-        -> StateT (UTxO u) (ExceptT ErrAdjustForFee m) (CoinSelection i o)
+        -> StateT (CoinMap u) (ExceptT ErrAdjustForFee m) (CoinSelection i o)
     go coinSel@(CoinSelection inps outs chgs) = do
         -- 1/
         -- We compute fees using all inputs, outputs and changes since all of
@@ -236,16 +236,16 @@ senderPaysFee FeeOptions {feeEstimator, dustThreshold} utxo sel =
 coverRemainingFee
     :: (i ~ u, MonadRandom m)
     => Fee
-    -> StateT (UTxO u) (ExceptT ErrAdjustForFee m) [CoinMapEntry i]
+    -> StateT (CoinMap u) (ExceptT ErrAdjustForFee m) [CoinMapEntry i]
 coverRemainingFee (Fee fee) = go [] where
     go acc
         | sumInputs acc >= fee =
             return acc
         | otherwise = do
             -- We ignore the size of the fee, and just pick randomly
-            StateT (lift . utxoPickRandom) >>= \case
+            StateT (lift . coinMapRandomEntry) >>= \case
                 Just entry ->
-                    go (uncurry CoinMapEntry entry : acc)
+                    go (entry : acc)
                 Nothing -> do
                     lift $ throwE $ ErrCannotCoverFee (fee - sumInputs acc)
 

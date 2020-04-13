@@ -18,17 +18,13 @@ module Cardano.CoinSelection
       Coin (..)
     , coinIsValid
 
-      -- * UTxO
-    , UTxO (..)
-    , utxoBalance
-    , utxoPickRandom
-
       -- * Coin Map
     , CoinMap (..)
     , CoinMapEntry (..)
     , coinMapFromList
     , coinMapToList
     , coinMapValue
+    , coinMapRandomEntry
 
       -- * Coin Selection
     , CoinSelection (..)
@@ -65,11 +61,9 @@ import Data.Map.Strict
 import Data.Word
     ( Word64, Word8 )
 import Fmt
-    ( Buildable (..), blockListF, blockListF', listF, nameF )
+    ( Buildable (..), blockListF, listF, nameF )
 import GHC.Generics
     ( Generic )
-import Numeric.Natural
-    ( Natural )
 import Quiet
     ( Quiet (Quiet) )
 
@@ -105,48 +99,6 @@ coinIsValid :: Coin -> Bool
 coinIsValid c = c >= minBound && c <= maxBound
 
 --------------------------------------------------------------------------------
--- UTxO
---------------------------------------------------------------------------------
-
-newtype UTxO u = UTxO
-    { getUTxO :: Map u Coin }
-    deriving stock (Eq, Generic, Ord)
-    deriving newtype (Semigroup, Monoid)
-    deriving Show via (Quiet (UTxO u))
-
-instance NFData u => NFData (UTxO u)
-
-instance Buildable u => Buildable (UTxO u) where
-    build (UTxO utxo) =
-        blockListF' "-" utxoF (Map.toList utxo)
-      where
-        utxoF (inp, out) = build inp <> " => " <> build out
-
--- | Selects an element at random from a UTxO set, returning both the selected
---   entry and the UTxO set with the element removed.
---
--- If the given UTxO set is empty, this function returns 'Nothing'.
---
-utxoPickRandom
-    :: MonadRandom m
-    => UTxO u
-    -> m (Maybe (u, Coin), UTxO u)
-utxoPickRandom (UTxO utxo)
-    | Map.null utxo =
-        return (Nothing, UTxO utxo)
-    | otherwise = do
-        ix <- fromEnum <$> generateBetween 0 (toEnum (Map.size utxo - 1))
-        return (Just $ Map.elemAt ix utxo, UTxO $ Map.deleteAt ix utxo)
-
--- | Compute the balance of a UTxO.
-utxoBalance :: UTxO u -> Natural
-utxoBalance =
-    Map.foldl' fn 0 . getUTxO
-  where
-    fn :: Natural -> Coin -> Natural
-    fn tot out = tot + fromIntegral (getCoin out)
-
---------------------------------------------------------------------------------
 -- Coin Map
 --------------------------------------------------------------------------------
 
@@ -179,6 +131,24 @@ coinMapToList = fmap (uncurry CoinMapEntry) . Map.toList . getCoinMap
 coinMapValue :: CoinMap a -> Coin
 coinMapValue = Coin . sum . fmap (getCoin . entryValue) . coinMapToList
 
+-- | Selects an entry at random from a 'CoinMap', returning both the selected
+--   entry and the map with the entry removed.
+--
+-- If the given map is empty, this function returns 'Nothing'.
+--
+coinMapRandomEntry
+    :: MonadRandom m
+    => CoinMap a
+    -> m (Maybe (CoinMapEntry a), CoinMap a)
+coinMapRandomEntry (CoinMap m)
+    | Map.null m =
+        return (Nothing, CoinMap m)
+    | otherwise = do
+        ix <- fromEnum <$> generateBetween 0 (toEnum (Map.size m - 1))
+        let entry = uncurry CoinMapEntry $ Map.elemAt ix m
+        let remainder = CoinMap $ Map.deleteAt ix m
+        return (Just entry, remainder)
+
 --------------------------------------------------------------------------------
 -- Coin Selection
 --------------------------------------------------------------------------------
@@ -194,8 +164,8 @@ newtype CoinSelectionAlgorithm i o u m e = CoinSelectionAlgorithm
     { selectCoins
         :: CoinSelectionOptions i o e
         -> CoinMap o
-        -> UTxO u
-        -> ExceptT (CoinSelectionError e) m (CoinSelection i o, UTxO u)
+        -> CoinMap u
+        -> ExceptT (CoinSelectionError e) m (CoinSelection i o, CoinMap u)
     }
 
 -- | Represents the result of running a /coin selection algorithm/.
