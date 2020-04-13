@@ -180,10 +180,10 @@ largestFirst = CoinSelectionAlgorithm payForOutputs
 payForOutputs
     :: (i ~ u, Ord u, Ord o, Monad m)
     => CoinSelectionOptions i o e
-    -> CoinMap o
     -> CoinMap u
+    -> CoinMap o
     -> ExceptT (CoinSelectionError e) m (CoinSelection i o, CoinMap u)
-payForOutputs options outputsRequested utxo =
+payForOutputs options utxo outputsRequested =
     case foldM payForOutput (utxoDescending, mempty) outputsDescending of
         Just (utxoRemaining, selection) ->
             validateSelection selection $>

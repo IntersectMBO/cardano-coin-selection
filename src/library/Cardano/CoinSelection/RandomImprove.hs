@@ -216,10 +216,10 @@ randomImprove = CoinSelectionAlgorithm payForOutputs
 payForOutputs
     :: (i ~ u, Ord o, Ord u, MonadRandom m)
     => CoinSelectionOptions i o e
-    -> CoinMap o
     -> CoinMap u
+    -> CoinMap o
     -> ExceptT (CoinSelectionError e) m (CoinSelection i o, CoinMap u)
-payForOutputs options outputsRequested utxo = do
+payForOutputs options utxo outputsRequested = do
     mRandomSelections <- lift $ runMaybeT $ foldM makeRandomSelection
         (inputCountMax, utxo, []) outputsDescending
     case mRandomSelections of
@@ -233,7 +233,7 @@ payForOutputs options outputsRequested utxo = do
         Nothing ->
             -- In the case that we fail to generate a selection, fall back to
             -- the "Largest-First" algorithm as a backup.
-            selectCoins largestFirst options outputsRequested utxo
+            selectCoins largestFirst options utxo outputsRequested
   where
     inputCountMax =
         fromIntegral $ maximumInputCount options outputCount

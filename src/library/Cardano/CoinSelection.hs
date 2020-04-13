@@ -163,8 +163,8 @@ coinMapRandomEntry (CoinMap m)
 newtype CoinSelectionAlgorithm i o u m e = CoinSelectionAlgorithm
     { selectCoins
         :: CoinSelectionOptions i o e
-        -> CoinMap o
         -> CoinMap u
+        -> CoinMap o
         -> ExceptT (CoinSelectionError e) m (CoinSelection i o, CoinMap u)
     }
 

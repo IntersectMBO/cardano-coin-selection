@@ -165,7 +165,7 @@ coinSelectionUnitTest alg lbl expected (CoinSelectionFixture n fn utxoF outsF) =
         (utxo,txOuts) <- setup
         result <- runExceptT $ do
             (CoinSelection inps outs chngs, _) <-
-                selectCoins alg (CoinSelectionOptions (const n) fn) txOuts utxo
+                selectCoins alg (CoinSelectionOptions (const n) fn) utxo txOuts
             return $ CoinSelectionResult
                 { rsInputs = getCoin . entryValue <$> coinMapToList inps
                 , rsChange = getCoin <$> chngs

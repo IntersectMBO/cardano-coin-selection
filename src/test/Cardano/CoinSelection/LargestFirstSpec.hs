@@ -237,7 +237,7 @@ propAtLeast (CoinSelProp utxo txOuts) =
     prop (CoinSelection inps _ _) =
         length inps `shouldSatisfy` (>= length txOuts)
     selection = runIdentity $ runExceptT $ selectCoins
-        largestFirst (CoinSelectionOptions (const 100) noValidation) txOuts utxo
+        largestFirst (CoinSelectionOptions (const 100) noValidation) utxo txOuts
 
 propInputDecreasingOrder
     :: (Ord o, Ord u)
@@ -256,4 +256,4 @@ propInputDecreasingOrder (CoinSelProp utxo txOuts) =
             (>= (getExtremumValue L.maximum (snd <$> utxo')))
     getExtremumValue f = f . map getCoin
     selection = runIdentity $ runExceptT $ selectCoins largestFirst
-        (CoinSelectionOptions (const 100) noValidation) txOuts utxo
+        (CoinSelectionOptions (const 100) noValidation) utxo txOuts

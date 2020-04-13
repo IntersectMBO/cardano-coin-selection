@@ -965,7 +965,7 @@ genSelection
 genSelection outs = do
     let opts = CS.CoinSelectionOptions (const 100) (const $ pure ())
     utxo <- vectorOf (length outs * 3) arbitrary >>= genUTxO
-    case runIdentity $ runExceptT $ selectCoins largestFirst opts outs utxo of
+    case runIdentity $ runExceptT $ selectCoins largestFirst opts utxo outs of
         Left _ -> genSelection outs
         Right (s,_) -> return s
 
