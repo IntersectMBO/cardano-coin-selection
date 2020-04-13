@@ -248,12 +248,9 @@ payForOutput (utxoAvailable, currentSelection) out =
             -- We've selected enough to cover the target, so stop here.
             ( utxoRemaining
             , currentSelection <> CoinSelection
-                { inputs =
-                    coinMapFromList utxoSelected
-                , outputs =
-                    coinMapFromList [out]
-                , change =
-                    [Coin $ fromIntegral $ abs target | target < 0]
+                { inputs  = coinMapFromList utxoSelected
+                , outputs = coinMapFromList [out]
+                , change  = [Coin $ fromIntegral $ abs target | target < 0]
                 }
             )
         | otherwise =
