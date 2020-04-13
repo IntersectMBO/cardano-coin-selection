@@ -37,7 +37,6 @@ module Cardano.CoinSelection
     , inputBalance
     , outputBalance
     , changeBalance
-    , feeBalance
 
     ) where
 
@@ -240,13 +239,6 @@ outputBalance =  coinMapValue . outputs
 -- | Calculate the total sum of all 'change' for the given 'CoinSelection'.
 changeBalance :: CoinSelection i o -> Coin
 changeBalance = mconcat . change
-
--- | Calculates the fee associated with a given 'CoinSelection'.
-feeBalance :: CoinSelection i o -> Coin
-feeBalance sel = Coin
-    $ unCoin ( inputBalance sel)
-    - unCoin (outputBalance sel)
-    - unCoin (changeBalance sel)
 
 -- | Represents the set of possible failures that can occur when attempting
 --   to produce a 'CoinSelection'.

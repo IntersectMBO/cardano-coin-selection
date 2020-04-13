@@ -25,6 +25,7 @@ module Cardano.CoinSelection.Fee
       Fee (..)
 
       -- * Fee Calculation
+    , calculateFee
     , distributeFee
 
       -- * Fee Adjustment
@@ -51,10 +52,12 @@ import Cardano.CoinSelection
     , CoinMap (..)
     , CoinMapEntry (..)
     , CoinSelection (..)
+    , changeBalance
     , coinIsValid
     , coinMapFromList
     , coinMapRandomEntry
-    , feeBalance
+    , inputBalance
+    , outputBalance
     )
 import Control.Monad.Trans.Class
     ( lift )
@@ -114,6 +117,17 @@ newtype DustThreshold = DustThreshold
     { unDustThreshold :: Word64 }
     deriving stock (Eq, Generic, Ord)
     deriving Show via (Quiet DustThreshold)
+
+--------------------------------------------------------------------------------
+-- Fee Calculation
+--------------------------------------------------------------------------------
+
+-- | Calculates the current fee associated with a given 'CoinSelection'.
+calculateFee :: CoinSelection i o -> Fee
+calculateFee s = Fee
+    $ unCoin ( inputBalance s)
+    - unCoin (outputBalance s)
+    - unCoin (changeBalance s)
 
 --------------------------------------------------------------------------------
 -- Fee Adjustment
@@ -446,7 +460,7 @@ remainingFee FeeEstimator {estimateFee} s
             ]
   where
     Fee fee = estimateFee s
-    Coin diff = feeBalance s
+    Fee diff = calculateFee s
     Fee feeDangling = estimateFee s { change = [Coin (diff - fee)] }
 
 -- | Splits up the given coin of value __@v@__, distributing its value over the
