@@ -1,7 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingVia #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE NumericUnderscores #-}
 {-# LANGUAGE RankNTypes #-}
 
@@ -83,6 +82,12 @@ newtype Coin = Coin
     deriving stock (Eq, Generic, Ord)
     deriving Show via (Quiet Coin)
 
+instance Monoid Coin where
+    mempty = minBound
+
+instance Semigroup Coin where
+    Coin a <> Coin b = Coin (a + b)
+
 instance NFData Coin
 
 instance Bounded Coin where
@@ -103,11 +108,17 @@ coinIsValid c = c >= minBound && c <= maxBound
 --------------------------------------------------------------------------------
 
 newtype CoinMap a = CoinMap { unCoinMap :: Map a Coin }
-    deriving (Eq, Generic, Monoid, Semigroup)
+    deriving (Eq, Generic)
     deriving Show via (Quiet (CoinMap a))
 
 instance Foldable CoinMap where
     foldMap f = F.fold . fmap (f . entryKey) . coinMapToList
+
+instance Ord a => Monoid (CoinMap a) where
+    mempty = CoinMap mempty
+
+instance Ord a => Semigroup (CoinMap a) where
+    CoinMap a <> CoinMap b = CoinMap $ Map.unionWith (<>) a b
 
 data CoinMapEntry a = CoinMapEntry
     { entryKey
@@ -123,13 +134,15 @@ instance Buildable a => Buildable (CoinMapEntry a) where
         <> build (entryValue a)
 
 coinMapFromList :: Ord a => [CoinMapEntry a] -> CoinMap a
-coinMapFromList = CoinMap . Map.fromList . fmap (entryKey &&& entryValue)
+coinMapFromList = CoinMap
+    . Map.fromListWith (<>)
+    . fmap (entryKey &&& entryValue)
 
 coinMapToList :: CoinMap a -> [CoinMapEntry a]
 coinMapToList = fmap (uncurry CoinMapEntry) . Map.toList . unCoinMap
 
 coinMapValue :: CoinMap a -> Coin
-coinMapValue = Coin . sum . fmap (unCoin . entryValue) . coinMapToList
+coinMapValue = mconcat . fmap entryValue . coinMapToList
 
 -- | Selects an entry at random from a 'CoinMap', returning both the selected
 --   entry and the map with the entry removed.
