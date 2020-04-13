@@ -201,9 +201,9 @@ payForOutputs options utxo outputsRequested =
       | otherwise =
           ErrMaximumInputCountExceeded inputCountMax
     amountAvailable =
-        fromIntegral $ getCoin $ coinMapValue utxo
+        fromIntegral $ unCoin $ coinMapValue utxo
     amountRequested =
-        getCoin $ coinMapValue outputsRequested
+        unCoin $ coinMapValue outputsRequested
     inputCountMax =
         fromIntegral $ maximumInputCount options $ fromIntegral outputCount
     outputCount =
@@ -235,7 +235,7 @@ payForOutput
     -> CoinMapEntry o
     -> Maybe ([CoinMapEntry i], CoinSelection i o)
 payForOutput (utxoAvailable, currentSelection) out =
-    let target = fromIntegral $ getCoin $ entryValue out in
+    let target = fromIntegral $ unCoin $ entryValue out in
     coverTarget target utxoAvailable mempty
   where
     coverTarget
@@ -263,7 +263,7 @@ payForOutput (utxoAvailable, currentSelection) out =
                 utxoEntry : utxoRemaining' ->
                     let utxoSelected' = utxoEntry : utxoSelected
                         target' = target -
-                            fromIntegral (getCoin $ entryValue utxoEntry)
+                            fromIntegral (unCoin $ entryValue utxoEntry)
                     in
                     coverTarget target' utxoRemaining' utxoSelected'
                 [] ->

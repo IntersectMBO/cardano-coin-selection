@@ -404,4 +404,4 @@ distance a b =
     if a < b then b - a else a - b
 
 sumInputs :: [CoinMapEntry i] -> Word64
-sumInputs = sum . fmap (getCoin . entryValue)
+sumInputs = sum . fmap (unCoin . entryValue)

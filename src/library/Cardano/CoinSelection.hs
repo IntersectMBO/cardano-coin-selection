@@ -79,7 +79,7 @@ import qualified Data.Map.Strict as Map
 -- One Ada is equal to 1,000,000 Lovelace.
 --
 newtype Coin = Coin
-    { getCoin :: Word64 }
+    { unCoin :: Word64 }
     deriving stock (Eq, Generic, Ord)
     deriving Show via (Quiet Coin)
 
@@ -93,7 +93,7 @@ instance Bounded Coin where
         -- = 45 billion Ada × 1 million Lovelace/Ada:
 
 instance Buildable Coin where
-    build = build . getCoin
+    build = build . unCoin
 
 coinIsValid :: Coin -> Bool
 coinIsValid c = c >= minBound && c <= maxBound
@@ -102,7 +102,7 @@ coinIsValid c = c >= minBound && c <= maxBound
 -- Coin Map
 --------------------------------------------------------------------------------
 
-newtype CoinMap a = CoinMap { getCoinMap :: Map a Coin }
+newtype CoinMap a = CoinMap { unCoinMap :: Map a Coin }
     deriving (Eq, Generic, Monoid, Semigroup)
     deriving Show via (Quiet (CoinMap a))
 
@@ -126,10 +126,10 @@ coinMapFromList :: Ord a => [CoinMapEntry a] -> CoinMap a
 coinMapFromList = CoinMap . Map.fromList . fmap (entryKey &&& entryValue)
 
 coinMapToList :: CoinMap a -> [CoinMapEntry a]
-coinMapToList = fmap (uncurry CoinMapEntry) . Map.toList . getCoinMap
+coinMapToList = fmap (uncurry CoinMapEntry) . Map.toList . unCoinMap
 
 coinMapValue :: CoinMap a -> Coin
-coinMapValue = Coin . sum . fmap (getCoin . entryValue) . coinMapToList
+coinMapValue = Coin . sum . fmap (unCoin . entryValue) . coinMapToList
 
 -- | Selects an entry at random from a 'CoinMap', returning both the selected
 --   entry and the map with the entry removed.
@@ -220,11 +220,11 @@ data CoinSelectionOptions i o e = CoinSelectionOptions
 
 -- | Calculate the total sum of all 'inputs' for the given 'CoinSelection'.
 inputBalance :: CoinSelection i o -> Word64
-inputBalance = getCoin . coinMapValue . inputs
+inputBalance = unCoin . coinMapValue . inputs
 
 -- | Calculate the total sum of all 'outputs' for the given 'CoinSelection'.
 outputBalance :: CoinSelection i o -> Word64
-outputBalance =  getCoin . coinMapValue . outputs
+outputBalance =  unCoin . coinMapValue . outputs
 
 -- | Calculate the total sum of all 'change' for the given 'CoinSelection'.
 changeBalance :: CoinSelection i o -> Word64
@@ -275,4 +275,4 @@ data CoinSelectionError e
 --------------------------------------------------------------------------------
 
 addCoin :: Integral a => a -> Coin -> a
-addCoin total c = total + (fromIntegral (getCoin c))
+addCoin total c = total + (fromIntegral (unCoin c))

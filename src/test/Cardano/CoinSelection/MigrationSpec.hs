@@ -82,7 +82,7 @@ spec = do
                 feeOpts <- pick (genFeeOptions dust)
                 let selections = depleteUTxO feeOpts batchSize utxo
                 monitor $ label $ accuracy dust
-                    (fromIntegral $ getCoin $ coinMapValue utxo)
+                    (fromIntegral $ unCoin $ coinMapValue utxo)
                     (fromIntegral $ sum $ inputBalance <$> selections)
               where
                 title :: String
@@ -177,7 +177,7 @@ prop_noLessThanThreshold feeOpts batchSize utxo = do
             filter (< threshold) allChange
     property (undersizedCoins `shouldSatisfy` null)
   where
-    threshold = Coin $ getDustThreshold $ dustThreshold feeOpts
+    threshold = Coin $ unDustThreshold $ dustThreshold feeOpts
 
 -- | Total input UTxO value >= sum of selection change coins
 prop_inputsGreaterThanOutputs
@@ -189,7 +189,7 @@ prop_inputsGreaterThanOutputs
 prop_inputsGreaterThanOutputs feeOpts batchSize utxo = do
     let selections  = depleteUTxO feeOpts batchSize utxo
     let totalChange = sum (changeBalance <$> selections)
-    let balanceUTxO = getCoin $ coinMapValue utxo
+    let balanceUTxO = unCoin $ coinMapValue utxo
     property (balanceUTxO >= fromIntegral totalChange)
         & counterexample ("Total change balance: " <> show totalChange)
         & counterexample ("Total UTxO balance: " <> show balanceUTxO)
@@ -220,7 +220,7 @@ prop_inputsStillInUTxO feeOpts batchSize utxo = do
     let selectionInputSet = Set.fromList $
             coinMapToList . inputs =<< depleteUTxO feeOpts batchSize utxo
     let utxoSet = Set.fromList $
-            fmap (uncurry CoinMapEntry) $ Map.toList $ getCoinMap utxo
+            fmap (uncurry CoinMapEntry) $ Map.toList $ unCoinMap utxo
     property (selectionInputSet `Set.isSubsetOf` utxoSet)
 
 -- | Every coin selection is well-balanced (i.e. actual fees are exactly the

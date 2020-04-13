@@ -83,7 +83,7 @@ depleteUTxO
         -- ^ UTxO to deplete
     -> [CoinSelection i o]
 depleteUTxO feeOpts batchSize utxo =
-    evalState migrate (uncurry CoinMapEntry <$> Map.toList (getCoinMap utxo))
+    evalState migrate (uncurry CoinMapEntry <$> Map.toList (unCoinMap utxo))
   where
     migrate :: State [CoinMapEntry i] [CoinSelection i o]
     migrate = do
@@ -108,7 +108,7 @@ depleteUTxO feeOpts batchSize utxo =
             in if null chgs then [threshold] else chgs
         }
       where
-        threshold = Coin $ getDustThreshold $ dustThreshold feeOpts
+        threshold = Coin $ unDustThreshold $ dustThreshold feeOpts
         noDust :: Coin -> Maybe Coin
         noDust c
             | c < threshold = Nothing
@@ -159,7 +159,7 @@ depleteUTxO feeOpts batchSize utxo =
         c' = op (integer c)
 
         threshold :: Integer
-        threshold = integer (getDustThreshold (dustThreshold feeOpts))
+        threshold = integer (unDustThreshold (dustThreshold feeOpts))
 
     getNextBatch :: State [a] [a]
     getNextBatch = do

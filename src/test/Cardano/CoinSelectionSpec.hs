@@ -95,7 +95,7 @@ spec = do
 prop_utxoToListOrderDeterministic
     :: Ord u => CoinMap u -> Property
 prop_utxoToListOrderDeterministic u = monadicIO $ QC.run $ do
-    let list0 = Map.toList $ getCoinMap u
+    let list0 = Map.toList $ unCoinMap u
     list1 <- shuffle list0
     return $
         cover 90 (list0 /= list1) "shuffled" $
@@ -167,9 +167,9 @@ coinSelectionUnitTest alg lbl expected (CoinSelectionFixture n fn utxoF outsF) =
             (CoinSelection inps outs chngs, _) <-
                 selectCoins alg (CoinSelectionOptions (const n) fn) utxo txOuts
             return $ CoinSelectionResult
-                { rsInputs = getCoin . entryValue <$> coinMapToList inps
-                , rsChange = getCoin <$> chngs
-                , rsOutputs = getCoin . entryValue <$> coinMapToList outs
+                { rsInputs = unCoin . entryValue <$> coinMapToList inps
+                , rsChange = unCoin <$> chngs
+                , rsOutputs = unCoin . entryValue <$> coinMapToList outs
                 }
         fmap sortCoinSelectionResult result
             `shouldBe` fmap sortCoinSelectionResult expected

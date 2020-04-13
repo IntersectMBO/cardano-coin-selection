@@ -99,7 +99,7 @@ import qualified Data.List.NonEmpty as NE
 -- This type is isomorphic to 'Coin'.
 --
 newtype Fee = Fee
-    { getFee :: Word64 }
+    { unFee :: Word64 }
     deriving stock (Eq, Generic, Ord)
     deriving Show via (Quiet Fee)
 
@@ -111,7 +111,7 @@ newtype Fee = Fee
 -- This type is isomorphic to 'Coin'.
 --
 newtype DustThreshold = DustThreshold
-    { getDustThreshold :: Word64 }
+    { unDustThreshold :: Word64 }
     deriving stock (Eq, Generic, Ord)
     deriving Show via (Quiet DustThreshold)
 
@@ -299,7 +299,7 @@ reduceChangeOutputs threshold (Fee totalFee) changeOutputs
     positiveChangeOutputs = filter (> Coin 0) changeOutputs
 
     totalChange :: Word64
-    totalChange = sum (getCoin <$> changeOutputs)
+    totalChange = sum (unCoin <$> changeOutputs)
 
 -- | Distribute the given fee over the given list of coins, so that each coin
 --   is allocated a __fraction__ of the fee in proportion to its relative size.
@@ -398,11 +398,11 @@ distributeFee (Fee feeTotal) coinsUnsafe =
         calculateIdealFee (Coin c)
             = fromIntegral c
             * fromIntegral feeTotal
-            % fromIntegral (getCoin totalCoinValue)
+            % fromIntegral (unCoin totalCoinValue)
 
     -- The total value of all coins.
     totalCoinValue :: Coin
-    totalCoinValue = Coin $ F.sum $ getCoin <$> coins
+    totalCoinValue = Coin $ F.sum $ unCoin <$> coins
 
 -- | From the given list of coins, remove dust coins with a value less than or
 --   equal to the given threshold value, redistributing their total value over
@@ -418,7 +418,7 @@ coalesceDust (DustThreshold threshold) coins =
     splitCoin valueToDistribute coinsToKeep
   where
     (coinsToKeep, coinsToRemove) = NE.partition (> Coin threshold) coins
-    valueToDistribute = Coin $ sum $ getCoin <$> coinsToRemove
+    valueToDistribute = Coin $ sum $ unCoin <$> coinsToRemove
 
 -- | Computes how much is left to pay given a particular selection
 remainingFee
@@ -483,13 +483,13 @@ remainingFee FeeEstimator {estimateFee} s
 -- coin __'c'__ /unchanged/ in the resulting list, distributing the excess
 -- value to coins that occur /later/ in the list:
 --
--- >>> splitCoin (Coin 10) (Coin <$> [getCoin maxBound, 1])
+-- >>> splitCoin (Coin 10) (Coin <$> [unCoin maxBound, 1])
 -- [Coin 45000000000000000, Coin 11]
 --
--- >>> splitCoin (Coin 10) (Coin <$> [getCoin maxBound - 1, 1])
+-- >>> splitCoin (Coin 10) (Coin <$> [unCoin maxBound - 1, 1])
 -- [Coin 44999999999999999, Coin 11]
 --
--- >>> splitCoin (Coin 10) (Coin <$> [getCoin maxBound - 1, 1, 1])
+-- >>> splitCoin (Coin 10) (Coin <$> [unCoin maxBound - 1, 1, 1])
 -- [Coin 44999999999999999, Coin 6, 6]
 --
 -- == Handling Leftover Remaining Value
@@ -500,10 +500,10 @@ remainingFee FeeEstimator {estimateFee} s
 -- >>> splitCoin (Coin 10) []
 -- [Coin 10]
 --
--- >>> splitCoin (Coin 10) (Coin <$> [getCoin maxBound])
+-- >>> splitCoin (Coin 10) (Coin <$> [unCoin maxBound])
 -- [Coin 45000000000000000, Coin 10]
 --
--- >>> splitCoin (Coin 10) (Coin <$> [getCoin maxBound - 1])
+-- >>> splitCoin (Coin 10) (Coin <$> [unCoin maxBound - 1])
 -- [Coin 44999999999999999, Coin 10]
 --
 -- == Properties
@@ -521,7 +521,7 @@ splitCoin = go
         -- already or if is some overflow happens when we try to add.
     go remaining [a] =
         let
-            newChange = Coin $ (getCoin remaining) + (getCoin a)
+            newChange = Coin $ (unCoin remaining) + (unCoin a)
         in
             if coinIsValid newChange
             then [newChange]
@@ -530,7 +530,7 @@ splitCoin = go
         let
             piece = remaining `div` fromIntegral (length ls)
             newRemaining = Coin (remaining - piece)
-            newChange = Coin (piece + getCoin a)
+            newChange = Coin (piece + unCoin a)
         in
             if coinIsValid newChange
             then newChange : go newRemaining as
@@ -559,4 +559,4 @@ applyN :: Int -> (a -> a) -> a -> a
 applyN n f = F.foldr (.) id (replicate n f)
 
 sumInputs :: [CoinMapEntry i] -> Word64
-sumInputs = sum . fmap (getCoin . entryValue)
+sumInputs = sum . fmap (unCoin . entryValue)

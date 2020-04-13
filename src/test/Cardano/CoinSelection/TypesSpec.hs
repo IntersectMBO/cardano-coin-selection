@@ -100,7 +100,7 @@ prop_2_1_3 (outs, u) =
     cover 50 cond "u ⋂ outs ≠ ∅" (property prop)
   where
     cond = not $ Set.null $
-        Set.fromList (Map.elems (getCoinMap u)) `Set.intersection` outs
+        Set.fromList (Map.elems (unCoinMap u)) `Set.intersection` outs
     prop = (u `restrictedTo` outs) `isSubsetOf` u
 
 prop_2_1_4 :: (Ord u, Show u) => (Set u, CoinMap u, CoinMap u) -> Property
@@ -174,8 +174,8 @@ prop_2_6_1 (u, v) =
     -- a v' that has no overlap with u.
     v' = v `excluding` dom u
     cond = not (u `isSubsetOf` mempty || v' `isSubsetOf` mempty)
-    prop = getCoin (coinMapValue (u <> v'))
-        === getCoin (coinMapValue u) + getCoin (coinMapValue v')
+    prop = unCoin (coinMapValue (u <> v'))
+        === unCoin (coinMapValue u) + unCoin (coinMapValue v')
 
 prop_2_6_2 :: Ord u => (Set u, CoinMap u) -> Property
 prop_2_6_2 (ins, u) =
@@ -183,9 +183,9 @@ prop_2_6_2 (ins, u) =
   where
     cond = not $ Set.null $ dom u `Set.intersection` ins
     prop =
-        getCoin (coinMapValue (u `excluding` ins))
+        unCoin (coinMapValue (u `excluding` ins))
             ===
-        getCoin (coinMapValue u) - getCoin (coinMapValue (u `restrictedBy` ins))
+        unCoin (coinMapValue u) - unCoin (coinMapValue (u `restrictedBy` ins))
 
 --------------------------------------------------------------------------------
 -- UTxO Utilities

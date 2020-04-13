@@ -248,12 +248,12 @@ propInputDecreasingOrder (CoinSelProp utxo txOuts) =
   where
     prop (CoinSelection inps _ _) =
         let
-            utxo' = (Map.toList . getCoinMap) $ utxo `excluding`
+            utxo' = (Map.toList . unCoinMap) $ utxo `excluding`
                 Set.fromList (entryKey <$> coinMapToList inps)
         in unless (L.null utxo') $
             (getExtremumValue L.minimum (entryValue <$> coinMapToList inps))
             `shouldSatisfy`
             (>= (getExtremumValue L.maximum (snd <$> utxo')))
-    getExtremumValue f = f . map getCoin
+    getExtremumValue f = f . map unCoin
     selection = runIdentity $ runExceptT $ selectCoins largestFirst
         (CoinSelectionOptions (const 100) noValidation) utxo txOuts
