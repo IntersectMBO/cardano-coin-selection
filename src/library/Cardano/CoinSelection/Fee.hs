@@ -416,7 +416,7 @@ distributeFee (Fee feeTotal) coinsUnsafe =
 
     -- The total value of all coins.
     totalCoinValue :: Coin
-    totalCoinValue = Coin $ F.sum $ unCoin <$> coins
+    totalCoinValue = F.fold coins
 
 -- | From the given list of coins, remove dust coins with a value less than or
 --   equal to the given threshold value, redistributing their total value over
@@ -432,7 +432,7 @@ coalesceDust (DustThreshold threshold) coins =
     splitCoin valueToDistribute coinsToKeep
   where
     (coinsToKeep, coinsToRemove) = NE.partition (> Coin threshold) coins
-    valueToDistribute = Coin $ sum $ unCoin <$> coinsToRemove
+    valueToDistribute = F.fold coinsToRemove
 
 -- | Computes how much is left to pay given a particular selection
 remainingFee
