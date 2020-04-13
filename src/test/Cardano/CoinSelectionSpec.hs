@@ -85,9 +85,9 @@ spec = do
     lowerConfidence :: Confidence
     lowerConfidence = Confidence (10^(6 :: Integer)) 0.75
 
-{-------------------------------------------------------------------------------
-                                 Properties
--------------------------------------------------------------------------------}
+--------------------------------------------------------------------------------
+-- Properties
+--------------------------------------------------------------------------------
 
 prop_utxoToListOrderDeterministic
     :: Ord u => UTxO u -> Property
@@ -98,9 +98,9 @@ prop_utxoToListOrderDeterministic u = monadicIO $ QC.run $ do
         cover 90 (list0 /= list1) "shuffled" $
         list0 == Map.toList (Map.fromList list1)
 
-{-------------------------------------------------------------------------------
-                         Coin Selection - Unit Tests
--------------------------------------------------------------------------------}
+--------------------------------------------------------------------------------
+-- Coin Selection - Unit Tests
+--------------------------------------------------------------------------------
 
 -- | Data for running
 data CoinSelProp o u = CoinSelProp
@@ -180,9 +180,9 @@ coinSelectionUnitTest alg lbl expected (CoinSelectionFixture n fn utxoF outsF) =
         outs <- generate (genOutputs $ NE.toList outsF)
         pure (utxo, NE.fromList outs)
 
-{-------------------------------------------------------------------------------
-                            Arbitrary Instances
--------------------------------------------------------------------------------}
+--------------------------------------------------------------------------------
+-- Arbitrary Instances
+--------------------------------------------------------------------------------
 
 deriving instance Arbitrary a => Arbitrary (ShowFmt a)
 

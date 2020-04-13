@@ -77,9 +77,9 @@ spec = do
         it "2.6.2) balance (ins⋪ u) = balance u - balance (ins⊲ u)"
             (checkCoverage $ prop_2_6_2 @TxIn)
 
-{-------------------------------------------------------------------------------
-       Wallet Specification - Lemma 2.1 - Properties of UTxO operations
--------------------------------------------------------------------------------}
+--------------------------------------------------------------------------------
+-- Wallet Specification - Lemma 2.1 - Properties of UTxO operations
+--------------------------------------------------------------------------------
 
 prop_2_1_1 :: Ord u => (Set u, UTxO u) -> Property
 prop_2_1_1 (ins, u) =
@@ -160,9 +160,9 @@ prop_2_1_9 (ins, u) =
     cond = not $ Set.null $ dom u `Set.intersection` ins
     prop = (u `excluding` ins) === u `restrictedBy` (dom u \\ ins)
 
-{-------------------------------------------------------------------------------
-       Wallet Specification - Lemma 2.6 - Properties of Balance
--------------------------------------------------------------------------------}
+--------------------------------------------------------------------------------
+-- Wallet Specification - Lemma 2.6 - Properties of Balance
+--------------------------------------------------------------------------------
 
 prop_2_6_1 :: Ord u => (UTxO u, UTxO u) -> Property
 prop_2_6_1 (u, v) =
@@ -186,23 +186,23 @@ prop_2_6_2 (ins, u) =
             ===
         utxoBalance u - utxoBalance (u `restrictedBy` ins)
 
-{-------------------------------------------------------------------------------
-                               UTxO Utilities
--------------------------------------------------------------------------------}
+--------------------------------------------------------------------------------
+-- UTxO Utilities
+--------------------------------------------------------------------------------
 
 -- | Extracts the domain of a UTxO: the set of references to unspent transaction
 --   ouputs.
 dom :: UTxO u -> Set u
 dom (UTxO utxo) = Map.keysSet utxo
 
-{-------------------------------------------------------------------------------
-                            Arbitrary Instances
-
-    Arbitrary instances define here aren't necessarily reflecting on real-life
-    scenario, but they help test the property above by constructing data
-    structures that don't have much entropy and therefore, allow us to even test
-    something when checking for intersections and set restrictions!
--------------------------------------------------------------------------------}
+--------------------------------------------------------------------------------
+-- Arbitrary Instances
+--
+-- Arbitrary instances define here aren't necessarily reflecting on real-life
+-- scenario, but they help test the property above by constructing data
+-- structures that don't have much entropy and therefore, allow us to even test
+-- something when checking for intersections and set restrictions!
+--------------------------------------------------------------------------------
 
 deriving instance Arbitrary a => Arbitrary (ShowFmt a)
 

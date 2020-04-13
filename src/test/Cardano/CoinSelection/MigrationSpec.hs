@@ -141,9 +141,9 @@ spec = do
             property $ prop_inputsGreaterThanOutputs
                 @TxIn @Address feeOpts batchSize utxo
 
-{-------------------------------------------------------------------------------
-                                  Properties
--------------------------------------------------------------------------------}
+--------------------------------------------------------------------------------
+-- Properties
+--------------------------------------------------------------------------------
 
 -- | No coin selection has outputs
 prop_onlyChangeOutputs
@@ -240,9 +240,9 @@ prop_wellBalanced feeOpts batchSize utxo = do
                 ]
         ]
 
-{-------------------------------------------------------------------------------
-                             Arbitrary Instances
--------------------------------------------------------------------------------}
+--------------------------------------------------------------------------------
+-- Arbitrary Instances
+--------------------------------------------------------------------------------
 
 -- A wrapper to avoid overlapping instances imported from other modules.
 newtype Wrapped a = Wrapped { unwrap :: a }
@@ -258,9 +258,9 @@ instance Arbitrary (Wrapped TxIn) where
 instance Arbitrary (Wrapped (Hash "Tx")) where
     arbitrary = Wrapped . Hash <$> (BS.pack <$> vectorOf 32 arbitrary)
 
-{-------------------------------------------------------------------------------
-                                  Generators
--------------------------------------------------------------------------------}
+--------------------------------------------------------------------------------
+-- Generators
+--------------------------------------------------------------------------------
 
 genBatchSize :: Gen Word8
 genBatchSize = choose (50, 150)

@@ -413,9 +413,9 @@ spec = do
         it "results are all within unity of ideal unrounded results"
             (checkCoverage propSplitCoinFair)
 
-{-------------------------------------------------------------------------------
-                         Fee Adjustment - Properties
--------------------------------------------------------------------------------}
+--------------------------------------------------------------------------------
+-- Fee Adjustment - Properties
+--------------------------------------------------------------------------------
 
 -- Check whether a selection is valid
 isValidSelection :: CoinSelection i o -> Bool
@@ -485,9 +485,9 @@ propReducedChanges drg (ShowFmt (FeeProp coinSel utxo (fee, dust))) = do
     coinSel' = left show $ fst $ withDRG drg $ runExceptT $
         adjustForFee feeOpt utxo coinSel
 
-{-------------------------------------------------------------------------------
-                             distributeFee - Properties
--------------------------------------------------------------------------------}
+--------------------------------------------------------------------------------
+-- distributeFee - Properties
+--------------------------------------------------------------------------------
 
 -- | Helper to re-apply the pre-conditions for distributeFee
 propDistributeFee
@@ -608,9 +608,9 @@ propDistributeFeeNoNullFee (fee, outs) =
   where
     prop = property $ Fee 0 `F.notElem` (fst <$> distributeFee fee outs)
 
-{-------------------------------------------------------------------------------
-                         coalesceDust - Properties
--------------------------------------------------------------------------------}
+--------------------------------------------------------------------------------
+-- coalesceDust - Properties
+--------------------------------------------------------------------------------
 
 data CoalesceDustData = CoalesceDustData
     { cddThreshold :: DustThreshold
@@ -681,9 +681,9 @@ propCoalesceDustNeverLengthensList :: CoalesceDustData -> Property
 propCoalesceDustNeverLengthensList (CoalesceDustData threshold coins) =
     property $ length coins >= length (coalesceDust threshold coins)
 
-{-------------------------------------------------------------------------------
-                     reduceChangeOutputs - Properties
--------------------------------------------------------------------------------}
+--------------------------------------------------------------------------------
+-- reduceChangeOutputs - Properties
+--------------------------------------------------------------------------------
 
 data ReduceChangeOutputsData = ReduceChangeOutputsData
     { rcodFee :: Fee
@@ -753,9 +753,9 @@ propReduceChangeOutputsPreservesSum
         | otherwise =
             null coinsRemaining
 
-{-------------------------------------------------------------------------------
-                           splitCoin - Properties
--------------------------------------------------------------------------------}
+--------------------------------------------------------------------------------
+-- splitCoin - Properties
+--------------------------------------------------------------------------------
 
 data SplitCoinData = SplitCoinData
     { scdCoinToSplit :: Coin
@@ -855,9 +855,9 @@ propSplitCoinFair (coinToSplit, coinsToIncrease) = (.&&.)
         + fromIntegral (getCoin coinToSplit)
         % fromIntegral (length coinsToIncrease)
 
-{-------------------------------------------------------------------------------
-                         Fee Adjustment - Unit Tests
--------------------------------------------------------------------------------}
+--------------------------------------------------------------------------------
+-- Fee Adjustment - Unit Tests
+--------------------------------------------------------------------------------
 
 feeOptions
     :: Word64
@@ -933,9 +933,9 @@ data FeeOutput = FeeOutput
         -- ^ Value (in Lovelace) & number of changes
     } deriving (Show, Eq)
 
-{-------------------------------------------------------------------------------
-                            Arbitrary Instances
--------------------------------------------------------------------------------}
+--------------------------------------------------------------------------------
+-- Arbitrary Instances
+--------------------------------------------------------------------------------
 
 deriving newtype instance Arbitrary a => Arbitrary (ShowFmt a)
 
