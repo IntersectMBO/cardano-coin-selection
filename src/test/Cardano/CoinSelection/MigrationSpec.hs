@@ -17,10 +17,10 @@ import Cardano.CoinSelection
     , CoinMap (..)
     , CoinMapEntry (..)
     , CoinSelection (..)
-    , changeBalance
     , coinMapToList
     , coinMapValue
-    , inputBalance
+    , sumChange
+    , sumInputs
     )
 import Cardano.CoinSelection.Fee
     ( DustThreshold (..), Fee (..), FeeEstimator (..), FeeOptions (..) )
@@ -83,7 +83,7 @@ spec = do
                 let selections = depleteUTxO feeOpts batchSize utxo
                 monitor $ label $ accuracy dust
                     (fromIntegral $ unCoin $ coinMapValue utxo)
-                    (fromIntegral $ sum $ unCoin . inputBalance <$> selections)
+                    (fromIntegral $ sum $ unCoin . sumInputs <$> selections)
               where
                 title :: String
                 title = "dust=" <> show (round (100 * r) :: Int) <> "%"
@@ -188,7 +188,7 @@ prop_inputsGreaterThanOutputs
     -> Property
 prop_inputsGreaterThanOutputs feeOpts batchSize utxo = do
     let selections  = depleteUTxO feeOpts batchSize utxo
-    let totalChange = sum (unCoin . changeBalance <$> selections)
+    let totalChange = sum (unCoin . sumChange <$> selections)
     let balanceUTxO = unCoin $ coinMapValue utxo
     property (balanceUTxO >= fromIntegral totalChange)
         & counterexample ("Total change balance: " <> show totalChange)
@@ -236,7 +236,7 @@ prop_wellBalanced feeOpts batchSize utxo = do
     conjoin
         [ counterexample example (actualFee === expectedFee)
         | s <- selections
-        , let actualFee = unCoin (inputBalance s) - unCoin (changeBalance s)
+        , let actualFee = unCoin (sumInputs s) - unCoin (sumChange s)
         , let expectedFee = unFee $ estimateFee (feeEstimator feeOpts) s
         , let example = unlines
                 [ "Coin Selection: " <> show s

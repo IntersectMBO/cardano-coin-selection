@@ -24,12 +24,12 @@ import Cardano.CoinSelection
     , CoinMapEntry (..)
     , CoinSelection (..)
     , CoinSelectionAlgorithm (..)
-    , changeBalance
     , coinIsValid
     , coinMapFromList
     , coinMapToList
-    , inputBalance
-    , outputBalance
+    , sumChange
+    , sumInputs
+    , sumOutputs
     )
 import Cardano.CoinSelection.Fee
     ( DustThreshold (..)
@@ -426,9 +426,9 @@ spec = do
 -- Check whether a selection is valid
 isValidSelection :: CoinSelection i o -> Bool
 isValidSelection s =
-    unCoin ( inputBalance s) >=
-    unCoin (outputBalance s) +
-    unCoin (changeBalance s)
+    unCoin ( sumInputs s) >=
+    unCoin (sumOutputs s) +
+    unCoin (sumChange s)
 
 -- | Data for running fee calculation properties
 data FeeProp i o = FeeProp

@@ -46,9 +46,9 @@ import Cardano.CoinSelection
     , CoinMapEntry (..)
     , CoinSelection (..)
     , CoinSelectionOptions (..)
-    , changeBalance
     , coinMapFromList
-    , inputBalance
+    , sumChange
+    , sumInputs
     )
 import Cardano.CoinSelection.Fee
     ( DustThreshold (..), Fee (..), FeeEstimator (..), FeeOptions (..) )
@@ -145,8 +145,8 @@ depleteUTxO feeOpts batchSize utxo =
             requiredFee = integer $
                 unFee $ estimateFee (feeEstimator feeOpts) coinSel
             actualFee
-                = integer (unCoin $  inputBalance coinSel)
-                - integer (unCoin $ changeBalance coinSel)
+                = integer (unCoin $ sumInputs coinSel)
+                - integer (unCoin $ sumChange coinSel)
 
     -- | Apply the given function to the first coin of the list. If the
     -- operation makes the 'Coin' smaller than the dust threshold, the coin is

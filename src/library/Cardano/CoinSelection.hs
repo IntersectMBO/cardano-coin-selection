@@ -27,16 +27,14 @@ module Cardano.CoinSelection
 
       -- * Coin Selection
     , CoinSelection (..)
+    , sumInputs
+    , sumOutputs
+    , sumChange
 
       -- * Coin Selection Algorithm
     , CoinSelectionAlgorithm (..)
     , CoinSelectionOptions (..)
     , CoinSelectionError (..)
-
-      -- * Calculating Balances
-    , inputBalance
-    , outputBalance
-    , changeBalance
 
     ) where
 
@@ -215,6 +213,18 @@ instance (Buildable i, Buildable o) => Buildable (CoinSelection i o) where
         <> nameF "change"
             (listF $ change s)
 
+-- | Calculate the total sum of all 'inputs' for the given 'CoinSelection'.
+sumInputs :: CoinSelection i o -> Coin
+sumInputs = coinMapValue . inputs
+
+-- | Calculate the total sum of all 'outputs' for the given 'CoinSelection'.
+sumOutputs :: CoinSelection i o -> Coin
+sumOutputs =  coinMapValue . outputs
+
+-- | Calculate the total sum of all 'change' for the given 'CoinSelection'.
+sumChange :: CoinSelection i o -> Coin
+sumChange = mconcat . change
+
 -- | Represents a set of options to be passed to a coin selection algorithm.
 --
 data CoinSelectionOptions i o e = CoinSelectionOptions
@@ -227,18 +237,6 @@ data CoinSelectionOptions i o e = CoinSelectionOptions
             -- ^ Validate the given coin selection, returning a backend-specific
             -- error.
     } deriving (Generic)
-
--- | Calculate the total sum of all 'inputs' for the given 'CoinSelection'.
-inputBalance :: CoinSelection i o -> Coin
-inputBalance = coinMapValue . inputs
-
--- | Calculate the total sum of all 'outputs' for the given 'CoinSelection'.
-outputBalance :: CoinSelection i o -> Coin
-outputBalance =  coinMapValue . outputs
-
--- | Calculate the total sum of all 'change' for the given 'CoinSelection'.
-changeBalance :: CoinSelection i o -> Coin
-changeBalance = mconcat . change
 
 -- | Represents the set of possible failures that can occur when attempting
 --   to produce a 'CoinSelection'.

@@ -52,12 +52,12 @@ import Cardano.CoinSelection
     , CoinMap (..)
     , CoinMapEntry (..)
     , CoinSelection (..)
-    , changeBalance
     , coinIsValid
     , coinMapFromList
     , coinMapRandomEntry
-    , inputBalance
-    , outputBalance
+    , sumChange
+    , sumInputs
+    , sumOutputs
     )
 import Control.Monad.Trans.Class
     ( lift )
@@ -125,9 +125,9 @@ newtype DustThreshold = DustThreshold
 -- | Calculates the current fee associated with a given 'CoinSelection'.
 calculateFee :: CoinSelection i o -> Fee
 calculateFee s = Fee
-    $ unCoin ( inputBalance s)
-    - unCoin (outputBalance s)
-    - unCoin (changeBalance s)
+    $ unCoin (sumInputs  s)
+    - unCoin (sumOutputs s)
+    - unCoin (sumChange  s)
 
 --------------------------------------------------------------------------------
 -- Fee Adjustment
