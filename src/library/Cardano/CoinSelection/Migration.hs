@@ -74,12 +74,12 @@ import qualified Data.Map.Strict as Map
 -- The fee options are used to balance the coin selections and fix a threshold
 -- for dust that is removed from the selections.
 depleteUTxO
-    :: forall i o u . (i ~ u, Ord i, Ord o)
+    :: forall i o . (Ord i, Ord o)
     => FeeOptions i o
         -- ^ Fee computation and threshold definition
     -> Word8
         -- ^ Maximum number of inputs we can select per transaction
-    -> CoinMap u
+    -> CoinMap i
         -- ^ UTxO to deplete
     -> [CoinSelection i o]
 depleteUTxO feeOpts batchSize utxo =

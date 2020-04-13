@@ -153,10 +153,10 @@ spec = do
 
 -- | No coin selection has outputs
 prop_onlyChangeOutputs
-    :: forall i o u . (i ~ u, Ord o, Ord u, Show o)
+    :: forall i o . (Ord i, Ord o, Show o)
     => FeeOptions i o
     -> Word8
-    -> CoinMap u
+    -> CoinMap i
     -> Property
 prop_onlyChangeOutputs feeOpts batchSize utxo = do
     let allOutputs =
@@ -165,10 +165,10 @@ prop_onlyChangeOutputs feeOpts batchSize utxo = do
 
 -- | Every coin in the selection change >= minimum threshold coin
 prop_noLessThanThreshold
-    :: forall i o u . (i ~ u, Ord o, Ord u)
+    :: forall i o . (Ord i, Ord o)
     => FeeOptions i o
     -> Word8
-    -> CoinMap u
+    -> CoinMap i
     -> Property
 prop_noLessThanThreshold feeOpts batchSize utxo = do
     let allChange = change
@@ -181,10 +181,10 @@ prop_noLessThanThreshold feeOpts batchSize utxo = do
 
 -- | Total input UTxO value >= sum of selection change coins
 prop_inputsGreaterThanOutputs
-    :: forall i o u . (i ~ u, Ord o, Ord u, Show o, Show u)
+    :: forall i o . (Ord i, Ord o, Show i, Show o)
     => FeeOptions i o
     -> Word8
-    -> CoinMap u
+    -> CoinMap i
     -> Property
 prop_inputsGreaterThanOutputs feeOpts batchSize utxo = do
     let selections  = depleteUTxO feeOpts batchSize utxo
@@ -197,10 +197,10 @@ prop_inputsGreaterThanOutputs feeOpts batchSize utxo = do
 
 -- | Every selected input is unique, i.e. selected only once
 prop_inputsAreUnique
-    :: forall i o u . (i ~ u, Ord o, Ord u)
+    :: forall i o . (Ord i, Ord o)
     => FeeOptions i o
     -> Word8
-    -> CoinMap u
+    -> CoinMap i
     -> Property
 prop_inputsAreUnique feeOpts batchSize utxo = do
     let selectionInputList =
@@ -211,10 +211,10 @@ prop_inputsAreUnique feeOpts batchSize utxo = do
 
 -- | Every selection input is still a member of the UTxO" $
 prop_inputsStillInUTxO
-    :: forall i o u . (i ~ u, Ord o, Ord u)
+    :: forall i o . (Ord i, Ord o)
     => FeeOptions i o
     -> Word8
-    -> CoinMap u
+    -> CoinMap i
     -> Property
 prop_inputsStillInUTxO feeOpts batchSize utxo = do
     let selectionInputSet = Set.fromList $
@@ -226,10 +226,10 @@ prop_inputsStillInUTxO feeOpts batchSize utxo = do
 -- | Every coin selection is well-balanced (i.e. actual fees are exactly the
 -- expected fees)
 prop_wellBalanced
-    :: forall i o u . (i ~ u, Ord o, Ord u, Show o, Show u)
+    :: forall i o . (Ord i, Ord o, Show i, Show o)
     => FeeOptions i o
     -> Word8
-    -> CoinMap u
+    -> CoinMap i
     -> Property
 prop_wellBalanced feeOpts batchSize utxo = do
     let selections = depleteUTxO feeOpts batchSize utxo

@@ -228,8 +228,8 @@ spec = do
 --------------------------------------------------------------------------------
 
 propAtLeast
-    :: (Ord o, Ord u)
-    => CoinSelProp o u
+    :: (Ord i, Ord o)
+    => CoinSelProp i o
     -> Property
 propAtLeast (CoinSelProp utxo txOuts) =
     isRight selection ==> let Right (s,_) = selection in prop s
@@ -240,8 +240,8 @@ propAtLeast (CoinSelProp utxo txOuts) =
         largestFirst (CoinSelectionOptions (const 100) noValidation) utxo txOuts
 
 propInputDecreasingOrder
-    :: (Ord o, Ord u)
-    => CoinSelProp o u
+    :: (Ord i, Ord o)
+    => CoinSelProp i o
     -> Property
 propInputDecreasingOrder (CoinSelProp utxo txOuts) =
     isRight selection ==> let Right (s,_) = selection in prop s

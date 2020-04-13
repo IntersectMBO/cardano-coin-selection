@@ -428,33 +428,32 @@ isValidSelection :: CoinSelection i o -> Bool
 isValidSelection s = inputBalance s >= outputBalance s + changeBalance s
 
 -- | Data for running fee calculation properties
-data FeeProp i o u = FeeProp
+data FeeProp i o = FeeProp
     { selection :: CoinSelection i o
      -- ^ inputs from wich largestFirst can be calculated
-    , availableUtxo :: CoinMap u
+    , availableUtxo :: CoinMap i
      -- ^ additional UTxO from which fee calculation will pick needed coins
     , feeDust :: (Word64, Word64)
      -- ^ constant fee and dust threshold
     } deriving Show
 
-instance (Buildable i, Buildable o, Buildable u) =>
-    Buildable (FeeProp i o u) where
+instance (Buildable i, Buildable o) =>
+    Buildable (FeeProp i o) where
         build (FeeProp cc utxo opt) = mempty
             <> nameF "selection" (build cc)
             <> nameF "utxo" (build (coinMapToList utxo))
             <> nameF "options" (tupleF opt)
 
 propDeterministic
-    :: forall i o u .
-        ( i ~ u
+    :: forall i o .
+        ( Buildable i
         , Buildable o
-        , Buildable u
+        , Ord i
         , Ord o
-        , Ord u
+        , Show i
         , Show o
-        , Show u
         )
-    => ShowFmt (FeeProp i o u)
+    => ShowFmt (FeeProp i o)
     -> Property
 propDeterministic (ShowFmt (FeeProp coinSel _ (fee, dust))) =
     monadicIO $ liftIO $ do
@@ -465,9 +464,9 @@ propDeterministic (ShowFmt (FeeProp coinSel _ (fee, dust))) =
         resultOne `shouldBe` resultTwo
 
 propReducedChanges
-    :: forall i o u . (i ~ u, Buildable o, Buildable u, Ord u)
+    :: forall i o . (Buildable i, Buildable o, Ord i)
     => SystemDRG
-    -> ShowFmt (FeeProp i o u)
+    -> ShowFmt (FeeProp i o)
     -> Property
 propReducedChanges drg (ShowFmt (FeeProp coinSel utxo (fee, dust))) = do
     isRight coinSel' ==> let Right s = coinSel' in prop s
@@ -888,12 +887,12 @@ feeUnitTest (FeeFixture inpsF outsF chngsF utxoF feeF dustF) expected =
         fmap sortFeeOutput result `shouldBe` fmap sortFeeOutput expected
   where
     setup
-        :: forall i o u . (i ~ u, Arbitrary o, Arbitrary u, Ord o, Ord u)
-        => IO (CoinMap u, CoinSelection i o)
+        :: forall i o . (Arbitrary i, Arbitrary o, Ord i, Ord o)
+        => IO (CoinMap i, CoinSelection i o)
     setup = do
-        utxo <- generate (genUTxO $ Coin <$> utxoF)
+        utxo <- generate (genInputs $ Coin <$> utxoF)
         inps <- (fmap (uncurry CoinMapEntry) . Map.toList . getCoinMap) <$>
-            generate (genUTxO $ Coin <$> inpsF)
+            generate (genInputs $ Coin <$> inpsF)
         outs <- generate (genOutputs $ Coin <$> outsF)
         let chngs = map Coin chngsF
         pure (utxo, CoinSelection (coinMapFromList inps) outs chngs)
@@ -943,11 +942,8 @@ sortFeeOutput (FeeOutput is os cs) =
 
 deriving newtype instance Arbitrary a => Arbitrary (ShowFmt a)
 
-genUTxO
-    :: (Arbitrary u, Ord u)
-    => [Coin]
-    -> Gen (CoinMap u)
-genUTxO coins = do
+genInputs :: (Arbitrary i, Ord i) => [Coin] -> Gen (CoinMap i)
+genInputs coins = do
     let n = length coins
     inps <- vectorOf n arbitrary
     return $ CoinMap $ Map.fromList $ zip inps coins
@@ -964,7 +960,7 @@ genSelection
     -> Gen (CoinSelection i o)
 genSelection outs = do
     let opts = CS.CoinSelectionOptions (const 100) (const $ pure ())
-    utxo <- vectorOf (length outs * 3) arbitrary >>= genUTxO
+    utxo <- vectorOf (length outs * 3) arbitrary >>= genInputs
     case runIdentity $ runExceptT $ selectCoins largestFirst opts utxo outs of
         Left _ -> genSelection outs
         Right (s,_) -> return s
@@ -987,8 +983,8 @@ instance Arbitrary Fee where
     shrink (Fee c) = Fee <$> filter (> 0) (shrink $ fromIntegral c)
     arbitrary = Fee . getCoin <$> arbitrary
 
-instance (i ~ u, Arbitrary o, Arbitrary u, Ord o, Ord u) =>
-    Arbitrary (FeeProp i o u)
+instance (Arbitrary i, Arbitrary o, Ord i, Ord o) =>
+    Arbitrary (FeeProp i o)
   where
     shrink (FeeProp cs utxo opts) =
         case Map.toList $ getCoinMap utxo of
@@ -1004,7 +1000,7 @@ instance (i ~ u, Arbitrary o, Arbitrary u, Ord o, Ord u) =>
         cs <- arbitrary
         utxo <- choose (0, 50)
             >>= \n -> vectorOf n arbitrary
-            >>= genUTxO
+            >>= genInputs
         fee <- choose (100000, 500000)
         dust <- choose (0, 10000)
         return $ FeeProp cs utxo (fee, dust)

@@ -106,14 +106,14 @@ prop_utxoToListOrderDeterministic u = monadicIO $ QC.run $ do
 --------------------------------------------------------------------------------
 
 -- | Data for running
-data CoinSelProp o u = CoinSelProp
-    { csUtxO :: CoinMap u
+data CoinSelProp i o = CoinSelProp
+    { csUtxO :: CoinMap i
         -- ^ Available UTxO for the selection
     , csOuts :: CoinMap o
         -- ^ Requested outputs for the payment
     } deriving Show
 
-instance (Buildable o, Buildable u) => Buildable (CoinSelProp o u) where
+instance (Buildable i, Buildable o) => Buildable (CoinSelProp i o) where
     build (CoinSelProp utxo outs) = mempty
         <> nameF "utxo" (blockListF $ coinMapToList utxo)
         <> nameF "outs" (blockListF $ coinMapToList outs)
@@ -155,7 +155,7 @@ sortCoinSelectionResult (CoinSelectionResult is cs os) =
 -- | Generate a 'UTxO' and 'TxOut' matching the given 'Fixture', and perform
 -- the given coin selection on it.
 coinSelectionUnitTest
-    :: CoinSelectionAlgorithm TxIn Address TxIn IO ErrValidation
+    :: CoinSelectionAlgorithm TxIn Address IO ErrValidation
     -> String
     -> Either (CoinSelectionError ErrValidation) CoinSelectionResult
     -> CoinSelectionFixture TxIn Address
@@ -216,8 +216,8 @@ instance Arbitrary a => Arbitrary (NonEmpty a) where
         n <- choose (1, 10)
         NE.fromList <$> vectorOf n arbitrary
 
-instance (Arbitrary o, Arbitrary u, Ord o, Ord u) =>
-    Arbitrary (CoinSelProp o u)
+instance (Arbitrary i, Arbitrary o, Ord i, Ord o) =>
+    Arbitrary (CoinSelProp i o)
   where
     shrink (CoinSelProp utxo outs) = uncurry CoinSelProp <$> zip
         (shrink utxo)

@@ -160,12 +160,12 @@ coinMapRandomEntry (CoinMap m)
 -- for all of the outputs, and a /remaining UTxO set/ from which all spent
 -- values have been removed.
 --
-newtype CoinSelectionAlgorithm i o u m e = CoinSelectionAlgorithm
+newtype CoinSelectionAlgorithm i o m e = CoinSelectionAlgorithm
     { selectCoins
         :: CoinSelectionOptions i o e
-        -> CoinMap u
+        -> CoinMap i
         -> CoinMap o
-        -> ExceptT (CoinSelectionError e) m (CoinSelection i o, CoinMap u)
+        -> ExceptT (CoinSelectionError e) m (CoinSelection i o, CoinMap i)
     }
 
 -- | Represents the result of running a /coin selection algorithm/.

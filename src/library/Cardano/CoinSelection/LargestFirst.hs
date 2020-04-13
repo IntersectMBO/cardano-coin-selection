@@ -173,16 +173,16 @@ import qualified Data.List as L
 --      See: __'ErrMaximumInputCountExceeded'__.
 --
 largestFirst
-    :: (i ~ u, Ord u, Ord o, Monad m)
-    => CoinSelectionAlgorithm i o u m e
+    :: (Ord i, Ord o, Monad m)
+    => CoinSelectionAlgorithm i o m e
 largestFirst = CoinSelectionAlgorithm payForOutputs
 
 payForOutputs
-    :: (i ~ u, Ord u, Ord o, Monad m)
+    :: (Ord i, Ord o, Monad m)
     => CoinSelectionOptions i o e
-    -> CoinMap u
+    -> CoinMap i
     -> CoinMap o
-    -> ExceptT (CoinSelectionError e) m (CoinSelection i o, CoinMap u)
+    -> ExceptT (CoinSelectionError e) m (CoinSelection i o, CoinMap i)
 payForOutputs options utxo outputsRequested =
     case foldM payForOutput (utxoDescending, mempty) outputsDescending of
         Just (utxoRemaining, selection) ->
@@ -230,19 +230,19 @@ payForOutputs options utxo outputsRequested =
 -- required output amount, this function will return 'Nothing'.
 --
 payForOutput
-    :: forall i o u . (i ~ u, Ord o, Ord u)
-    => ([CoinMapEntry u], CoinSelection i o)
+    :: forall i o . (Ord i, Ord o)
+    => ([CoinMapEntry i], CoinSelection i o)
     -> CoinMapEntry o
-    -> Maybe ([CoinMapEntry u], CoinSelection i o)
+    -> Maybe ([CoinMapEntry i], CoinSelection i o)
 payForOutput (utxoAvailable, currentSelection) out =
     let target = fromIntegral $ getCoin $ entryValue out in
     coverTarget target utxoAvailable mempty
   where
     coverTarget
         :: Integer
-        -> [CoinMapEntry u]
-        -> [CoinMapEntry u]
-        -> Maybe ([CoinMapEntry u], CoinSelection i o)
+        -> [CoinMapEntry i]
+        -> [CoinMapEntry i]
+        -> Maybe ([CoinMapEntry i], CoinSelection i o)
     coverTarget target utxoRemaining utxoSelected
         | target <= 0 = Just
             -- We've selected enough to cover the target, so stop here.

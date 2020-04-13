@@ -209,16 +209,16 @@ import qualified Data.List as L
 -- total above the upper bound.
 --
 randomImprove
-    :: (i ~ u, Ord o, Ord u, MonadRandom m)
-    => CoinSelectionAlgorithm i o u m e
+    :: (Ord i, Ord o, MonadRandom m)
+    => CoinSelectionAlgorithm i o m e
 randomImprove = CoinSelectionAlgorithm payForOutputs
 
 payForOutputs
-    :: (i ~ u, Ord o, Ord u, MonadRandom m)
+    :: (Ord i, Ord o, MonadRandom m)
     => CoinSelectionOptions i o e
-    -> CoinMap u
+    -> CoinMap i
     -> CoinMap o
-    -> ExceptT (CoinSelectionError e) m (CoinSelection i o, CoinMap u)
+    -> ExceptT (CoinSelectionError e) m (CoinSelection i o, CoinMap i)
 payForOutputs options utxo outputsRequested = do
     mRandomSelections <- lift $ runMaybeT $ foldM makeRandomSelection
         (inputCountMax, utxo, []) outputsDescending
@@ -252,10 +252,10 @@ payForOutputs options utxo outputsRequested = do
 -- the selection in any way.
 --
 makeRandomSelection
-    :: forall i o u m . (i ~ u, MonadRandom m)
-    => (Word64, CoinMap u, [([CoinMapEntry i], CoinMapEntry o)])
+    :: forall i o m . MonadRandom m
+    => (Word64, CoinMap i, [([CoinMapEntry i], CoinMapEntry o)])
     -> CoinMapEntry o
-    -> MaybeT m (Word64, CoinMap u, [([CoinMapEntry i], CoinMapEntry o)])
+    -> MaybeT m (Word64, CoinMap i, [([CoinMapEntry i], CoinMapEntry o)])
 makeRandomSelection
     (inputCountRemaining, utxoRemaining, existingSelections) txout = do
         (utxoSelected, utxoRemaining') <- coverRandomly ([], utxoRemaining)
@@ -266,8 +266,8 @@ makeRandomSelection
             )
   where
     coverRandomly
-        :: ([CoinMapEntry i], CoinMap u)
-        -> MaybeT m ([CoinMapEntry i], CoinMap u)
+        :: ([CoinMapEntry i], CoinMap i)
+        -> MaybeT m ([CoinMapEntry i], CoinMap i)
     coverRandomly (selected, remaining)
         | L.length selected > fromIntegral inputCountRemaining =
             MaybeT $ return Nothing
@@ -279,10 +279,10 @@ makeRandomSelection
 
 -- | Perform an improvement to random selection on a given output.
 improveSelection
-    :: forall i o u m . (i ~ u, MonadRandom m, Ord o, Ord u)
-    => (Word64, CoinSelection i o, CoinMap u)
+    :: forall i o m . (MonadRandom m, Ord i, Ord o)
+    => (Word64, CoinSelection i o, CoinMap i)
     -> ([CoinMapEntry i], CoinMapEntry o)
-    -> m (Word64, CoinSelection i o, CoinMap u)
+    -> m (Word64, CoinSelection i o, CoinMap i)
 improveSelection (maxN0, selection, utxo0) (inps0, txout) = do
     (maxN, inps, utxo) <- improve (maxN0, inps0, utxo0)
     return
@@ -298,8 +298,8 @@ improveSelection (maxN0, selection, utxo0) (inps0, txout) = do
     target = mkTargetRange txout
 
     improve
-        :: (Word64, [CoinMapEntry i], CoinMap u)
-        -> m (Word64, [CoinMapEntry i], CoinMap u)
+        :: (Word64, [CoinMapEntry i], CoinMap i)
+        -> m (Word64, [CoinMapEntry i], CoinMap i)
     improve (maxN, inps, utxo)
         | maxN >= 1 && sumInputs inps < targetAim target = do
             runMaybeT (utxoPickRandomT utxo) >>= \case
@@ -365,9 +365,9 @@ mkTargetRange (CoinMapEntry _ (Coin c)) = TargetRange
 
 -- | Re-wrap 'utxoPickRandom' in a 'MaybeT' monad
 utxoPickRandomT
-    :: (i ~ u, MonadRandom m)
-    => CoinMap u
-    -> MaybeT m (CoinMapEntry i, CoinMap u)
+    :: MonadRandom m
+    => CoinMap i
+    -> MaybeT m (CoinMapEntry i, CoinMap i)
 utxoPickRandomT =
     MaybeT
         . fmap (\(mi, u) -> (, u) <$> mi)

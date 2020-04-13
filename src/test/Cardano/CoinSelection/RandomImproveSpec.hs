@@ -244,9 +244,9 @@ spec = do
 --------------------------------------------------------------------------------
 
 propFragmentation
-    :: (Ord o, Ord u)
+    :: (Ord i, Ord o)
     => SystemDRG
-    -> CoinSelProp o u
+    -> CoinSelProp i o
     -> Property
 propFragmentation drg (CoinSelProp utxo txOuts) = do
     isRight selection1 && isRight selection2 ==>
@@ -263,9 +263,9 @@ propFragmentation drg (CoinSelProp utxo txOuts) = do
     opt = CoinSelectionOptions (const 100) noValidation
 
 propErrors
-    :: (Ord o, Ord u)
+    :: (Ord i, Ord o)
     => SystemDRG
-    -> CoinSelProp o u
+    -> CoinSelProp i o
     -> Property
 propErrors drg (CoinSelProp utxo txOuts) = do
     isLeft selection1 && isLeft selection2 ==>

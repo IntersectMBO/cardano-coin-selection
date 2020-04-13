@@ -170,9 +170,9 @@ newtype ErrAdjustForFee
 -- outputs the algorithm happened to choose).
 --
 adjustForFee
-    :: (i ~ u, Buildable o, Buildable u, Ord u, MonadRandom m)
+    :: (Buildable i, Buildable o, Ord i, MonadRandom m)
     => FeeOptions i o
-    -> CoinMap u
+    -> CoinMap i
     -> CoinSelection i o
     -> ExceptT ErrAdjustForFee m (CoinSelection i o)
 adjustForFee unsafeOpt utxo coinSel = do
@@ -185,9 +185,9 @@ adjustForFee unsafeOpt utxo coinSel = do
 -- | The sender pays fee in this scenario, so fees are removed from the change
 -- outputs, and new inputs are selected if necessary.
 senderPaysFee
-    :: forall i o u m . (i ~ u, Buildable o, Buildable u, Ord u, MonadRandom m)
+    :: forall i o m . (Buildable i, Buildable o, Ord i, MonadRandom m)
     => FeeOptions i o
-    -> CoinMap u
+    -> CoinMap i
     -> CoinSelection i o
     -> ExceptT ErrAdjustForFee m (CoinSelection i o)
 senderPaysFee FeeOptions {feeEstimator, dustThreshold} utxo sel =
@@ -195,7 +195,7 @@ senderPaysFee FeeOptions {feeEstimator, dustThreshold} utxo sel =
   where
     go
         :: CoinSelection i o
-        -> StateT (CoinMap u) (ExceptT ErrAdjustForFee m) (CoinSelection i o)
+        -> StateT (CoinMap i) (ExceptT ErrAdjustForFee m) (CoinSelection i o)
     go coinSel@(CoinSelection inps outs chgs) = do
         -- 1/
         -- We compute fees using all inputs, outputs and changes since all of
@@ -234,9 +234,9 @@ senderPaysFee FeeOptions {feeEstimator, dustThreshold} utxo sel =
 -- | A short / simple version of the 'random' fee policy to cover for fee in
 -- case where existing change were not enough.
 coverRemainingFee
-    :: (i ~ u, MonadRandom m)
+    :: MonadRandom m
     => Fee
-    -> StateT (CoinMap u) (ExceptT ErrAdjustForFee m) [CoinMapEntry i]
+    -> StateT (CoinMap i) (ExceptT ErrAdjustForFee m) [CoinMapEntry i]
 coverRemainingFee (Fee fee) = go [] where
     go acc
         | sumInputs acc >= fee =
