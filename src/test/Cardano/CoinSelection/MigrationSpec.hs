@@ -83,7 +83,7 @@ spec = do
                 let selections = depleteUTxO feeOpts batchSize utxo
                 monitor $ label $ accuracy dust
                     (fromIntegral $ unCoin $ coinMapValue utxo)
-                    (fromIntegral $ sum $ inputBalance <$> selections)
+                    (fromIntegral $ sum $ unCoin . inputBalance <$> selections)
               where
                 title :: String
                 title = "dust=" <> show (round (100 * r) :: Int) <> "%"
@@ -188,7 +188,7 @@ prop_inputsGreaterThanOutputs
     -> Property
 prop_inputsGreaterThanOutputs feeOpts batchSize utxo = do
     let selections  = depleteUTxO feeOpts batchSize utxo
-    let totalChange = sum (changeBalance <$> selections)
+    let totalChange = sum (unCoin . changeBalance <$> selections)
     let balanceUTxO = unCoin $ coinMapValue utxo
     property (balanceUTxO >= fromIntegral totalChange)
         & counterexample ("Total change balance: " <> show totalChange)
@@ -236,8 +236,8 @@ prop_wellBalanced feeOpts batchSize utxo = do
     conjoin
         [ counterexample example (actualFee === expectedFee)
         | s <- selections
-        , let actualFee = inputBalance s - changeBalance s
-        , let (Fee expectedFee) = estimateFee (feeEstimator feeOpts) s
+        , let actualFee = unCoin (inputBalance s) - unCoin (changeBalance s)
+        , let expectedFee = unFee $ estimateFee (feeEstimator feeOpts) s
         , let example = unlines
                 [ "Coin Selection: " <> show s
                 , "Actual fee: " <> show actualFee

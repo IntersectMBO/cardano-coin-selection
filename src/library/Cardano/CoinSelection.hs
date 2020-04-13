@@ -53,8 +53,6 @@ import Crypto.Number.Generate
     ( generateBetween )
 import Crypto.Random.Types
     ( MonadRandom )
-import Data.List
-    ( foldl' )
 import Data.Map.Strict
     ( Map )
 import Data.Word
@@ -232,20 +230,23 @@ data CoinSelectionOptions i o e = CoinSelectionOptions
     } deriving (Generic)
 
 -- | Calculate the total sum of all 'inputs' for the given 'CoinSelection'.
-inputBalance :: CoinSelection i o -> Word64
-inputBalance = unCoin . coinMapValue . inputs
+inputBalance :: CoinSelection i o -> Coin
+inputBalance = coinMapValue . inputs
 
 -- | Calculate the total sum of all 'outputs' for the given 'CoinSelection'.
-outputBalance :: CoinSelection i o -> Word64
-outputBalance =  unCoin . coinMapValue . outputs
+outputBalance :: CoinSelection i o -> Coin
+outputBalance =  coinMapValue . outputs
 
 -- | Calculate the total sum of all 'change' for the given 'CoinSelection'.
-changeBalance :: CoinSelection i o -> Word64
-changeBalance = foldl' addCoin 0 . change
+changeBalance :: CoinSelection i o -> Coin
+changeBalance = mconcat . change
 
 -- | Calculates the fee associated with a given 'CoinSelection'.
-feeBalance :: CoinSelection i o -> Word64
-feeBalance sel = inputBalance sel - outputBalance sel - changeBalance sel
+feeBalance :: CoinSelection i o -> Coin
+feeBalance sel = Coin
+    $ unCoin ( inputBalance sel)
+    - unCoin (outputBalance sel)
+    - unCoin (changeBalance sel)
 
 -- | Represents the set of possible failures that can occur when attempting
 --   to produce a 'CoinSelection'.
@@ -282,10 +283,3 @@ data CoinSelectionError e
     -- validate the selection.
     --
     deriving (Show, Eq)
-
---------------------------------------------------------------------------------
--- Utility Functions
---------------------------------------------------------------------------------
-
-addCoin :: Integral a => a -> Coin -> a
-addCoin total c = total + (fromIntegral (unCoin c))

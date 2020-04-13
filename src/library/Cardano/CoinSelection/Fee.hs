@@ -446,7 +446,7 @@ remainingFee FeeEstimator {estimateFee} s
             ]
   where
     Fee fee = estimateFee s
-    diff = feeBalance s
+    Coin diff = feeBalance s
     Fee feeDangling = estimateFee s { change = [Coin (diff - fee)] }
 
 -- | Splits up the given coin of value __@v@__, distributing its value over the

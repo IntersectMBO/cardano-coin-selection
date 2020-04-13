@@ -425,7 +425,10 @@ spec = do
 
 -- Check whether a selection is valid
 isValidSelection :: CoinSelection i o -> Bool
-isValidSelection s = inputBalance s >= outputBalance s + changeBalance s
+isValidSelection s =
+    unCoin ( inputBalance s) >=
+    unCoin (outputBalance s) +
+    unCoin (changeBalance s)
 
 -- | Data for running fee calculation properties
 data FeeProp i o = FeeProp

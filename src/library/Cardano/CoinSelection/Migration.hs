@@ -140,12 +140,13 @@ depleteUTxO feeOpts batchSize utxo =
             { change = modifyFirst (c :| cs) (+ diff) }
       where
         diff :: Integer
-        diff = actualFee - integer requiredFee
+        diff = actualFee - requiredFee
           where
-            (Fee requiredFee) =
-                estimateFee (feeEstimator feeOpts) coinSel
-            actualFee =
-                integer (inputBalance coinSel) - integer (changeBalance coinSel)
+            requiredFee = integer $
+                unFee $ estimateFee (feeEstimator feeOpts) coinSel
+            actualFee
+                = integer (unCoin $  inputBalance coinSel)
+                - integer (unCoin $ changeBalance coinSel)
 
     -- | Apply the given function to the first coin of the list. If the
     -- operation makes the 'Coin' smaller than the dust threshold, the coin is
