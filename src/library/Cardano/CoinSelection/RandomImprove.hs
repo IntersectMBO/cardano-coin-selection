@@ -18,13 +18,15 @@ import Prelude
 
 import Cardano.CoinSelection
     ( Coin (..)
+    , CoinMap (..)
+    , CoinMapEntry (..)
     , CoinSelection (..)
     , CoinSelectionAlgorithm (..)
     , CoinSelectionError (..)
     , CoinSelectionOptions (..)
-    , Input (..)
-    , Output (..)
     , UTxO (..)
+    , coinMapFromList
+    , coinMapToList
     , utxoPickRandom
     )
 import Cardano.CoinSelection.LargestFirst
@@ -43,8 +45,6 @@ import Crypto.Random.Types
     ( MonadRandom )
 import Data.Functor
     ( ($>) )
-import Data.List.NonEmpty
-    ( NonEmpty (..) )
 import Data.Ord
     ( Down (..) )
 import Data.Word
@@ -53,7 +53,6 @@ import Internal.Invariant
     ( invariant )
 
 import qualified Data.List as L
-import qualified Data.List.NonEmpty as NE
 
 -- | An implementation of the __Random-Improve__ coin selection algorithm.
 --
@@ -211,14 +210,14 @@ import qualified Data.List.NonEmpty as NE
 -- total above the upper bound.
 --
 randomImprove
-    :: (i ~ u, Ord u, MonadRandom m)
+    :: (i ~ u, Ord o, Ord u, MonadRandom m)
     => CoinSelectionAlgorithm i o u m e
 randomImprove = CoinSelectionAlgorithm payForOutputs
 
 payForOutputs
-    :: (i ~ u, Ord u, MonadRandom m)
+    :: (i ~ u, Ord o, Ord u, MonadRandom m)
     => CoinSelectionOptions i o e
-    -> NonEmpty (Output o)
+    -> CoinMap o
     -> UTxO u
     -> ExceptT (CoinSelectionError e) m (CoinSelection i o, UTxO u)
 payForOutputs options outputsRequested utxo = do
@@ -240,9 +239,9 @@ payForOutputs options outputsRequested utxo = do
     inputCountMax =
         fromIntegral $ maximumInputCount options outputCount
     outputCount =
-        fromIntegral $ NE.length outputsRequested
+        fromIntegral $ length $ coinMapToList outputsRequested
     outputsDescending =
-        L.sortOn (Down . outputValue) $ NE.toList outputsRequested
+        L.sortOn (Down . entryValue) $ coinMapToList outputsRequested
     validateSelection =
         except . left ErrInvalidSelection . validate options
 
@@ -255,9 +254,9 @@ payForOutputs options outputsRequested utxo = do
 --
 makeRandomSelection
     :: forall i o u m . (i ~ u, MonadRandom m)
-    => (Word64, UTxO u, [([Input i], Output o)])
-    -> Output o
-    -> MaybeT m (Word64, UTxO u, [([Input i], Output o)])
+    => (Word64, UTxO u, [([CoinMapEntry i], CoinMapEntry o)])
+    -> CoinMapEntry o
+    -> MaybeT m (Word64, UTxO u, [([CoinMapEntry i], CoinMapEntry o)])
 makeRandomSelection
     (inputCountRemaining, utxoRemaining, existingSelections) txout = do
         (utxoSelected, utxoRemaining') <- coverRandomly ([], utxoRemaining)
@@ -268,8 +267,8 @@ makeRandomSelection
             )
   where
     coverRandomly
-        :: ([Input i], UTxO u)
-        -> MaybeT m ([Input i], UTxO u)
+        :: ([CoinMapEntry i], UTxO u)
+        -> MaybeT m ([CoinMapEntry i], UTxO u)
     coverRandomly (selected, remaining)
         | L.length selected > fromIntegral inputCountRemaining =
             MaybeT $ return Nothing
@@ -281,17 +280,17 @@ makeRandomSelection
 
 -- | Perform an improvement to random selection on a given output.
 improveSelection
-    :: forall i o u m . (i ~ u, MonadRandom m)
+    :: forall i o u m . (i ~ u, MonadRandom m, Ord o, Ord u)
     => (Word64, CoinSelection i o, UTxO u)
-    -> ([Input i], Output o)
+    -> ([CoinMapEntry i], CoinMapEntry o)
     -> m (Word64, CoinSelection i o, UTxO u)
 improveSelection (maxN0, selection, utxo0) (inps0, txout) = do
     (maxN, inps, utxo) <- improve (maxN0, inps0, utxo0)
     return
         ( maxN
         , selection <> CoinSelection
-            { inputs = inps
-            , outputs = [txout]
+            { inputs = coinMapFromList inps
+            , outputs = coinMapFromList [txout]
             , change = mkChange txout inps
             }
         , utxo
@@ -300,8 +299,8 @@ improveSelection (maxN0, selection, utxo0) (inps0, txout) = do
     target = mkTargetRange txout
 
     improve
-        :: (Word64, [Input i], UTxO u)
-        -> m (Word64, [Input i], UTxO u)
+        :: (Word64, [CoinMapEntry i], UTxO u)
+        -> m (Word64, [CoinMapEntry i], UTxO u)
     improve (maxN, inps, utxo)
         | maxN >= 1 && sumInputs inps < targetAim target = do
             runMaybeT (utxoPickRandomT utxo) >>= \case
@@ -316,7 +315,7 @@ improveSelection (maxN0, selection, utxo0) (inps0, txout) = do
         | otherwise =
             return (maxN, inps, utxo)
 
-    isImprovement :: Input i -> [Input i] -> Bool
+    isImprovement :: CoinMapEntry i -> [CoinMapEntry i] -> Bool
     isImprovement io selected =
         let
             condA = -- (a) It doesn’t exceed a specified upper limit.
@@ -358,8 +357,8 @@ data TargetRange = TargetRange
 --
 -- See 'TargetRange'.
 --
-mkTargetRange :: Output o -> TargetRange
-mkTargetRange (Output _ (Coin c)) = TargetRange
+mkTargetRange :: CoinMapEntry o -> TargetRange
+mkTargetRange (CoinMapEntry _ (Coin c)) = TargetRange
     { targetMin = c
     , targetAim = 2 * c
     , targetMax = 3 * c
@@ -369,16 +368,18 @@ mkTargetRange (Output _ (Coin c)) = TargetRange
 utxoPickRandomT
     :: (i ~ u, MonadRandom m)
     => UTxO u
-    -> MaybeT m (Input i, UTxO u)
+    -> MaybeT m (CoinMapEntry i, UTxO u)
 utxoPickRandomT =
-    MaybeT . fmap (\(mi, u) -> (, u) . uncurry Input <$> mi) . utxoPickRandom
+    MaybeT
+        . fmap (\(mi, u) -> (, u) . uncurry CoinMapEntry <$> mi)
+        . utxoPickRandom
 
 -- | Compute corresponding change outputs from a target output and a selection
 -- of inputs.
 --
 -- > pre-condition: the output must be smaller (or eq) than the sum of inputs
-mkChange :: Output o -> [Input i] -> [Coin]
-mkChange (Output _ (Coin out)) inps =
+mkChange :: CoinMapEntry o -> [CoinMapEntry i] -> [Coin]
+mkChange (CoinMapEntry _ (Coin out)) inps =
     let
         selected = invariant
             "mkChange: output is smaller than selected inputs!"
@@ -403,5 +404,5 @@ distance :: (Ord a, Num a) => a -> a -> a
 distance a b =
     if a < b then b - a else a - b
 
-sumInputs :: [Input i] -> Word64
-sumInputs = sum . fmap (getCoin . inputValue)
+sumInputs :: [CoinMapEntry i] -> Word64
+sumInputs = sum . fmap (getCoin . entryValue)

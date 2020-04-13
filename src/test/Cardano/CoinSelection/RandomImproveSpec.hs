@@ -40,15 +40,12 @@ import Data.Either
     ( isLeft, isRight )
 import Data.Functor.Identity
     ( Identity (..) )
-import Data.List.NonEmpty
-    ( NonEmpty (..) )
 import Test.Hspec
     ( Spec, before, describe, it, shouldSatisfy )
 import Test.QuickCheck
     ( Property, property, (===), (==>) )
 
 import qualified Data.List as L
-import qualified Data.List.NonEmpty as NE
 
 spec :: Spec
 spec = do
@@ -65,7 +62,7 @@ spec = do
                 { maxNumOfInputs = 100
                 , validateSelection = noValidation
                 , utxoInputs = [1,1,1,1,1,1]
-                , txOutputs = 2 :| []
+                , txOutputs = [2]
                 })
 
         coinSelectionUnitTest randomImprove ""
@@ -78,7 +75,7 @@ spec = do
                 { maxNumOfInputs = 100
                 , validateSelection = noValidation
                 , utxoInputs = [1,1,1,1,1,1]
-                , txOutputs = 2 :| [1]
+                , txOutputs = [2,1]
                 })
 
         coinSelectionUnitTest randomImprove ""
@@ -91,7 +88,7 @@ spec = do
                 { maxNumOfInputs = 100
                 , validateSelection = noValidation
                 , utxoInputs = [1,1,1,1,1]
-                , txOutputs = 2 :| [1]
+                , txOutputs = [2,1]
                 })
 
         coinSelectionUnitTest randomImprove ""
@@ -104,7 +101,7 @@ spec = do
                 { maxNumOfInputs = 100
                 , validateSelection = noValidation
                 , utxoInputs = [1,1,1,1]
-                , txOutputs = 2 :| [1]
+                , txOutputs = [2,1]
                 })
 
         coinSelectionUnitTest randomImprove ""
@@ -117,7 +114,7 @@ spec = do
                 { maxNumOfInputs = 100
                 , validateSelection = noValidation
                 , utxoInputs = [5,5,5]
-                , txOutputs = 2 :| []
+                , txOutputs = [2]
                 })
 
         coinSelectionUnitTest randomImprove ""
@@ -131,7 +128,7 @@ spec = do
                 { maxNumOfInputs = 100
                 , validateSelection = noValidation
                 , utxoInputs = [10,10,10]
-                , txOutputs = 2 :| [2]
+                , txOutputs = [2,2]
                 })
 
         coinSelectionUnitTest randomImprove "cannot cover aim, but only min"
@@ -144,7 +141,7 @@ spec = do
                 { maxNumOfInputs = 4
                 , validateSelection = noValidation
                 , utxoInputs = [1,1,1,1,1,1]
-                , txOutputs = 3 :| []
+                , txOutputs = [3]
                 })
 
         coinSelectionUnitTest randomImprove "REG CO-450: no fallback"
@@ -157,7 +154,7 @@ spec = do
                 { maxNumOfInputs = 4
                 , validateSelection = noValidation
                 , utxoInputs = [oneAda, oneAda, oneAda, oneAda]
-                , txOutputs = 2*oneAda :| [oneAda `div` 2]
+                , txOutputs = [2*oneAda, oneAda `div` 2]
                 })
 
         coinSelectionUnitTest randomImprove
@@ -167,7 +164,7 @@ spec = do
                 { maxNumOfInputs = 100
                 , validateSelection = noValidation
                 , utxoInputs = [10,10,10,10]
-                , txOutputs = 38 :| [1]
+                , txOutputs = [38,1]
                 })
 
         coinSelectionUnitTest randomImprove ""
@@ -176,7 +173,7 @@ spec = do
                 { maxNumOfInputs = 2
                 , validateSelection = noValidation
                 , utxoInputs = [1,1,1,1,1,1]
-                , txOutputs = 3 :| []
+                , txOutputs = [3]
                 })
 
         coinSelectionUnitTest randomImprove "each output needs <maxNumOfInputs"
@@ -185,7 +182,7 @@ spec = do
                 { maxNumOfInputs = 9
                 , validateSelection = noValidation
                 , utxoInputs = replicate 100 1
-                , txOutputs = NE.fromList (replicate 100 1)
+                , txOutputs = replicate 100 1
                 })
 
         coinSelectionUnitTest randomImprove "each output needs >maxNumInputs"
@@ -194,7 +191,7 @@ spec = do
                 { maxNumOfInputs = 9
                 , validateSelection = noValidation
                 , utxoInputs = replicate 100 1
-                , txOutputs = NE.fromList (replicate 10 10)
+                , txOutputs = replicate 10 10
                 })
 
         coinSelectionUnitTest randomImprove ""
@@ -203,7 +200,7 @@ spec = do
                 { maxNumOfInputs = 100
                 , validateSelection = noValidation
                 , utxoInputs = [12,10,17]
-                , txOutputs = 40 :| []
+                , txOutputs = [40]
                 })
 
         coinSelectionUnitTest randomImprove ""
@@ -212,7 +209,7 @@ spec = do
                 { maxNumOfInputs = 100
                 , validateSelection = noValidation
                 , utxoInputs = [12,10,17]
-                , txOutputs = 40 :| [1,1,1]
+                , txOutputs = [40,1,1,1]
                 })
 
         coinSelectionUnitTest randomImprove ""
@@ -221,7 +218,7 @@ spec = do
                 { maxNumOfInputs = 100
                 , validateSelection = noValidation
                 , utxoInputs = [12,20,17]
-                , txOutputs = 40 :| [1,1,1]
+                , txOutputs = [40,1,1,1]
                 })
 
         coinSelectionUnitTest randomImprove "custom validation"
@@ -230,7 +227,7 @@ spec = do
                 { maxNumOfInputs = 100
                 , validateSelection = alwaysFail
                 , utxoInputs = [1,1]
-                , txOutputs = 2 :| []
+                , txOutputs = [2]
                 })
 
     before getSystemDRG $
@@ -247,7 +244,7 @@ spec = do
 --------------------------------------------------------------------------------
 
 propFragmentation
-    :: Ord u
+    :: (Ord o, Ord u)
     => SystemDRG
     -> CoinSelProp o u
     -> Property
@@ -266,7 +263,7 @@ propFragmentation drg (CoinSelProp utxo txOuts) = do
     opt = CoinSelectionOptions (const 100) noValidation
 
 propErrors
-    :: Ord u
+    :: (Ord o, Ord u)
     => SystemDRG
     -> CoinSelProp o u
     -> Property

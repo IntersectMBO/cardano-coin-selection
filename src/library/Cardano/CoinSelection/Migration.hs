@@ -42,11 +42,12 @@ import Prelude
 
 import Cardano.CoinSelection
     ( Coin (..)
+    , CoinMapEntry (..)
     , CoinSelection (..)
     , CoinSelectionOptions (..)
-    , Input (..)
     , UTxO (..)
     , changeBalance
+    , coinMapFromList
     , inputBalance
     )
 import Cardano.CoinSelection.Fee
@@ -73,7 +74,7 @@ import qualified Data.Map.Strict as Map
 -- The fee options are used to balance the coin selections and fix a threshold
 -- for dust that is removed from the selections.
 depleteUTxO
-    :: forall i o u . i ~ u
+    :: forall i o u . (i ~ u, Ord i, Ord o)
     => FeeOptions i o
         -- ^ Fee computation and threshold definition
     -> Word8
@@ -82,9 +83,9 @@ depleteUTxO
         -- ^ UTxO to deplete
     -> [CoinSelection i o]
 depleteUTxO feeOpts batchSize utxo =
-    evalState migrate (uncurry Input <$> Map.toList (getUTxO utxo))
+    evalState migrate (uncurry CoinMapEntry <$> Map.toList (getUTxO utxo))
   where
-    migrate :: State [Input i] [CoinSelection i o]
+    migrate :: State [CoinMapEntry i] [CoinSelection i o]
     migrate = do
         batch <- getNextBatch
         if null batch then
@@ -98,12 +99,12 @@ depleteUTxO feeOpts batchSize utxo =
     -- Construct a provisional 'CoinSelection' from the given selected inputs.
     -- Note that the selection may look a bit weird at first sight as it has
     -- no outputs (we are paying everything to ourselves!).
-    mkCoinSelection :: [Input i] -> CoinSelection i o
+    mkCoinSelection :: [CoinMapEntry i] -> CoinSelection i o
     mkCoinSelection inps = CoinSelection
-        { inputs = inps
-        , outputs = []
+        { inputs = coinMapFromList inps
+        , outputs = mempty
         , change =
-            let chgs = mapMaybe (noDust . inputValue) inps
+            let chgs = mapMaybe (noDust . entryValue) inps
             in if null chgs then [threshold] else chgs
         }
       where

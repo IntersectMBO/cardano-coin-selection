@@ -20,12 +20,17 @@ import Prelude hiding
 
 import Cardano.CoinSelection
     ( Coin (..)
+    , CoinMap (..)
+    , CoinMapEntry (..)
     , CoinSelection (..)
     , CoinSelectionAlgorithm (..)
-    , Input (..)
-    , Output (..)
     , UTxO (..)
+    , changeBalance
     , coinIsValid
+    , coinMapFromList
+    , coinMapToList
+    , inputBalance
+    , outputBalance
     )
 import Cardano.CoinSelection.Fee
     ( DustThreshold (..)
@@ -105,6 +110,7 @@ import Test.QuickCheck.Monadic
 import qualified Cardano.CoinSelection as CS
 import qualified Data.ByteString as BS
 import qualified Data.Foldable as F
+import qualified Data.List as L
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map.Strict as Map
 
@@ -420,13 +426,7 @@ spec = do
 
 -- Check whether a selection is valid
 isValidSelection :: CoinSelection i o -> Bool
-isValidSelection (CoinSelection i o c) =
-    let
-        oAmt = sum $ map (fromIntegral . getCoin . outputValue) o
-        cAmt = sum $ map (fromIntegral . getCoin) c
-        iAmt = sum $ map (fromIntegral . getCoin . inputValue) i
-    in
-        (iAmt :: Integer) >= (oAmt + cAmt)
+isValidSelection s = inputBalance s >= outputBalance s + changeBalance s
 
 -- | Data for running fee calculation properties
 data FeeProp i o u = FeeProp
@@ -466,7 +466,7 @@ propDeterministic (ShowFmt (FeeProp coinSel _ (fee, dust))) =
         resultOne `shouldBe` resultTwo
 
 propReducedChanges
-    :: forall i o u . (i ~ u, Buildable o, Buildable u)
+    :: forall i o u . (i ~ u, Buildable o, Buildable u, Ord u)
     => SystemDRG
     -> ShowFmt (FeeProp i o u)
     -> Property
@@ -882,22 +882,22 @@ feeUnitTest (FeeFixture inpsF outsF chngsF utxoF feeF dustF) expected =
             (CoinSelection inps outs chngs) <-
                 adjustForFee (feeOptions feeF dustF) utxo sel
             return $ FeeOutput
-                { csInps = map (getCoin . inputValue) inps
-                , csOuts = map (getCoin . outputValue) outs
-                , csChngs = map getCoin chngs
+                { csInps = getCoin . entryValue <$> coinMapToList inps
+                , csOuts = getCoin . entryValue <$> coinMapToList outs
+                , csChngs = getCoin <$> chngs
                 }
-        result `shouldBe` expected
+        fmap sortFeeOutput result `shouldBe` fmap sortFeeOutput expected
   where
     setup
-        :: forall i o u . (i ~ u, Arbitrary o, Arbitrary u, Ord u)
+        :: forall i o u . (i ~ u, Arbitrary o, Arbitrary u, Ord o, Ord u)
         => IO (UTxO u, CoinSelection i o)
     setup = do
         utxo <- generate (genUTxO $ Coin <$> utxoF)
-        inps <- (fmap (uncurry Input) . Map.toList . getUTxO) <$>
+        inps <- (fmap (uncurry CoinMapEntry) . Map.toList . getUTxO) <$>
             generate (genUTxO $ Coin <$> inpsF)
         outs <- generate (genOutputs $ Coin <$> outsF)
         let chngs = map Coin chngsF
-        pure (utxo, CoinSelection inps outs chngs)
+        pure (utxo, CoinSelection (coinMapFromList inps) outs chngs)
 
     title :: String
     title = mempty
@@ -934,6 +934,10 @@ data FeeOutput = FeeOutput
         -- ^ Value (in Lovelace) & number of changes
     } deriving (Show, Eq)
 
+sortFeeOutput :: FeeOutput -> FeeOutput
+sortFeeOutput (FeeOutput is os cs) =
+    FeeOutput (L.sort is) (L.sort os) (L.sort cs)
+
 --------------------------------------------------------------------------------
 -- Arbitrary Instances
 --------------------------------------------------------------------------------
@@ -949,19 +953,19 @@ genUTxO coins = do
     inps <- vectorOf n arbitrary
     return $ UTxO $ Map.fromList $ zip inps coins
 
-genOutputs :: Arbitrary o => [Coin] -> Gen [Output o]
+genOutputs :: (Arbitrary o, Ord o) => [Coin] -> Gen (CoinMap o)
 genOutputs coins = do
     let n = length coins
     outs <- vectorOf n arbitrary
-    return $ zipWith Output outs coins
+    return $ coinMapFromList $ zipWith CoinMapEntry outs coins
 
 genSelection
-    :: (Arbitrary i, Ord i)
-    => NonEmpty (Output o)
+    :: (Arbitrary i, Ord i, Ord o)
+    => CoinMap o
     -> Gen (CoinSelection i o)
 genSelection outs = do
     let opts = CS.CoinSelectionOptions (const 100) (const $ pure ())
-    utxo <- vectorOf (NE.length outs * 3) arbitrary >>= genUTxO
+    utxo <- vectorOf (length outs * 3) arbitrary >>= genUTxO
     case runIdentity $ runExceptT $ selectCoins largestFirst opts outs utxo of
         Left _ -> genSelection outs
         Right (s,_) -> return s
@@ -1014,36 +1018,39 @@ instance Arbitrary (Hash "Tx") where
 
 instance Arbitrary Address where
     shrink _ = []
-    arbitrary = elements
-        [ Address "addr-0"
-        , Address "addr-1"
-        , Address "addr-2"
-        , Address "addr-3"
-        ]
+    arbitrary = do
+        bytes <- BS.pack <$> vectorOf 8 arbitraryBoundedIntegral
+        pure $ Address bytes
 
 instance (Arbitrary i, Arbitrary o, Ord i, Ord o) =>
     Arbitrary (CoinSelection i o)
   where
-    shrink sel@(CoinSelection inps outs chgs) = case (inps, outs, chgs) of
+    shrink sel = case unCoinSelection sel of
         ([_], [_], []) ->
             []
-        _ ->
+        (inps, outs, chgs) ->
             let
                 inps' = if length inps > 1 then drop 1 inps else inps
                 outs' = if length outs > 1 then drop 1 outs else outs
-                chgs' = drop 1 chgs
+                chgs' = if not (null chgs) then drop 1 chgs else chgs
             in
-            filter (\s -> s /= sel && isValidSelection s)
-                [ CoinSelection inps' outs' chgs'
-                , CoinSelection inps' outs chgs
-                , CoinSelection inps outs' chgs
-                , CoinSelection inps outs chgs'
-                ]
+            filter (\s -> s /= sel && isValidSelection s) $
+                mkCoinSelection <$>
+                    [ (inps', outs', chgs')
+                    , (inps', outs , chgs )
+                    , (inps , outs', chgs )
+                    , (inps , outs , chgs')
+                    ]
+      where
+        unCoinSelection s =
+            (coinMapToList $ inputs s, coinMapToList $ outputs s, change s)
+        mkCoinSelection (is, os, cs) =
+            CoinSelection (coinMapFromList is) (coinMapFromList os) cs
     arbitrary = do
         outs <- choose (1, 10)
             >>= \n -> vectorOf n arbitrary
             >>= genOutputs
-        genSelection (NE.fromList outs)
+        genSelection outs
 
 data FeeParameters i o = FeeParameters
     { feePerTransaction

@@ -11,12 +11,13 @@ import Prelude
 
 import Cardano.CoinSelection
     ( Coin (..)
+    , CoinMapEntry (..)
     , CoinSelection (..)
     , CoinSelectionAlgorithm (..)
     , CoinSelectionError (..)
     , CoinSelectionOptions (..)
-    , Input (..)
     , UTxO (..)
+    , coinMapToList
     )
 import Cardano.CoinSelection.LargestFirst
     ( largestFirst )
@@ -39,22 +40,14 @@ import Data.Either
     ( isRight )
 import Data.Functor.Identity
     ( Identity (runIdentity) )
-import Data.List.NonEmpty
-    ( NonEmpty (..) )
 import Test.Hspec
     ( Spec, describe, it, shouldSatisfy )
 import Test.QuickCheck
-    ( Property, property, (===), (==>) )
-import Test.QuickCheck.Monadic
-    ( monadicIO )
-import Test.Vector.Shuffle
-    ( shuffleNonEmpty )
+    ( Property, property, (==>) )
 
 import qualified Data.List as L
-import qualified Data.List.NonEmpty as NE
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
-import qualified Test.QuickCheck.Monadic as QC
 
 spec :: Spec
 spec = do
@@ -70,7 +63,7 @@ spec = do
                 { maxNumOfInputs = 100
                 , validateSelection = noValidation
                 , utxoInputs = [10,10,17]
-                , txOutputs = 17 :| []
+                , txOutputs = [17]
                 })
 
         coinSelectionUnitTest largestFirst ""
@@ -83,7 +76,7 @@ spec = do
                 { maxNumOfInputs = 100
                 , validateSelection = noValidation
                 , utxoInputs = [12,10,17]
-                , txOutputs = 1 :| []
+                , txOutputs = [1]
                 })
 
         coinSelectionUnitTest largestFirst ""
@@ -96,7 +89,7 @@ spec = do
                 { maxNumOfInputs = 100
                 , validateSelection = noValidation
                 , utxoInputs = [12,10,17]
-                , txOutputs = 18 :| []
+                , txOutputs = [18]
                 })
 
         coinSelectionUnitTest largestFirst ""
@@ -109,7 +102,7 @@ spec = do
                 { maxNumOfInputs = 100
                 , validateSelection = noValidation
                 , utxoInputs = [12,10,17]
-                , txOutputs = 30 :| []
+                , txOutputs = [30]
                 })
 
         coinSelectionUnitTest largestFirst ""
@@ -122,7 +115,7 @@ spec = do
                 { maxNumOfInputs = 3
                 , validateSelection = noValidation
                 , utxoInputs = [1,2,10,6,5]
-                , txOutputs = 11 :| [1]
+                , txOutputs = [11, 1]
                 })
 
         coinSelectionUnitTest largestFirst
@@ -132,7 +125,7 @@ spec = do
                 { maxNumOfInputs = 100
                 , validateSelection = noValidation
                 , utxoInputs = [12,10,17]
-                , txOutputs = 40 :| []
+                , txOutputs = [40]
                 })
 
         coinSelectionUnitTest largestFirst
@@ -142,7 +135,7 @@ spec = do
                 { maxNumOfInputs = 100
                 , validateSelection = noValidation
                 , utxoInputs = [12,10,17]
-                , txOutputs = 40 :| [1,1,1]
+                , txOutputs = [40,1,1,1]
                 })
 
         coinSelectionUnitTest largestFirst
@@ -152,7 +145,7 @@ spec = do
                 { maxNumOfInputs = 100
                 , validateSelection = noValidation
                 , utxoInputs = [12,20,17]
-                , txOutputs = 40 :| [1,1,1]
+                , txOutputs = [40,1,1,1]
                 })
 
         coinSelectionUnitTest largestFirst
@@ -163,7 +156,7 @@ spec = do
                 { maxNumOfInputs = 100
                 , validateSelection = noValidation
                 , utxoInputs = [12,20,17]
-                , txOutputs = 40 :| [1]
+                , txOutputs = [40, 1]
                 })
 
         coinSelectionUnitTest largestFirst
@@ -174,7 +167,7 @@ spec = do
                 { maxNumOfInputs = 100
                 , validateSelection = noValidation
                 , utxoInputs = [20,20,10,5]
-                , txOutputs = 41 :| [6]
+                , txOutputs = [41, 6]
                 })
 
         coinSelectionUnitTest largestFirst
@@ -185,7 +178,7 @@ spec = do
                 { maxNumOfInputs = 9
                 , validateSelection = noValidation
                 , utxoInputs = replicate 100 1
-                , txOutputs = NE.fromList (replicate 100 1)
+                , txOutputs = replicate 100 1
                 })
 
         coinSelectionUnitTest largestFirst
@@ -196,7 +189,7 @@ spec = do
                 { maxNumOfInputs = 9
                 , validateSelection = noValidation
                 , utxoInputs = replicate 100 1
-                , txOutputs = NE.fromList (replicate 10 10)
+                , txOutputs = replicate 10 10
                 })
 
         coinSelectionUnitTest largestFirst
@@ -207,7 +200,7 @@ spec = do
                 { maxNumOfInputs = 2
                 , validateSelection = noValidation
                 , utxoInputs = [1,2,10,6,5]
-                , txOutputs = 11 :| [1]
+                , txOutputs = [11, 1]
                 })
 
         coinSelectionUnitTest largestFirst
@@ -217,15 +210,11 @@ spec = do
                 { maxNumOfInputs = 100
                 , validateSelection = alwaysFail
                 , utxoInputs = [1,1]
-                , txOutputs = 2 :| []
+                , txOutputs = [2]
                 })
 
     describe "Coin selection: largest-first algorithm: properties" $ do
 
-        it "forall (UTxO, NonEmpty TxOut), running algorithm yields exactly \
-            \the same result regardless of the way in which requested outputs \
-            \are ordered"
-            (property $ propOutputOrderIrrelevant @TxIn @Address)
         it "forall (UTxO, NonEmpty TxOut), there's at least as many selected \
             \inputs as there are requested outputs"
             (property $ propAtLeast @TxIn @Address)
@@ -238,35 +227,20 @@ spec = do
 -- Properties
 --------------------------------------------------------------------------------
 
-propOutputOrderIrrelevant
-    :: (Eq o, Show o, Ord u, Show u)
-    => CoinSelProp o u
-    -> Property
-propOutputOrderIrrelevant (CoinSelProp utxo txOuts) = monadicIO $ QC.run $ do
-    txOutsShuffled <- shuffleNonEmpty txOuts
-    let resultOne = runSelectionFor txOuts
-    let resultTwo = runSelectionFor txOutsShuffled
-    pure (resultOne === resultTwo)
-  where
-    options =
-        CoinSelectionOptions (const 100) noValidation
-    runSelectionFor outs =
-        runIdentity $ runExceptT $ selectCoins largestFirst options outs utxo
-
 propAtLeast
-    :: Ord u
+    :: (Ord o, Ord u)
     => CoinSelProp o u
     -> Property
 propAtLeast (CoinSelProp utxo txOuts) =
     isRight selection ==> let Right (s,_) = selection in prop s
   where
     prop (CoinSelection inps _ _) =
-        L.length inps `shouldSatisfy` (>= NE.length txOuts)
+        length inps `shouldSatisfy` (>= length txOuts)
     selection = runIdentity $ runExceptT $ selectCoins
         largestFirst (CoinSelectionOptions (const 100) noValidation) txOuts utxo
 
 propInputDecreasingOrder
-    :: Ord u
+    :: (Ord o, Ord u)
     => CoinSelProp o u
     -> Property
 propInputDecreasingOrder (CoinSelProp utxo txOuts) =
@@ -274,10 +248,10 @@ propInputDecreasingOrder (CoinSelProp utxo txOuts) =
   where
     prop (CoinSelection inps _ _) =
         let
-            utxo' = (Map.toList . getUTxO) $
-                utxo `excluding` (Set.fromList . map inputId $ inps)
+            utxo' = (Map.toList . getUTxO) $ utxo `excluding`
+                Set.fromList (entryKey <$> coinMapToList inps)
         in unless (L.null utxo') $
-            (getExtremumValue L.minimum (inputValue <$> inps))
+            (getExtremumValue L.minimum (entryValue <$> coinMapToList inps))
             `shouldSatisfy`
             (>= (getExtremumValue L.maximum (snd <$> utxo')))
     getExtremumValue f = f . map getCoin

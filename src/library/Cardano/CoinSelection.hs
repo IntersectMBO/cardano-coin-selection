@@ -23,10 +23,15 @@ module Cardano.CoinSelection
     , utxoBalance
     , utxoPickRandom
 
+      -- * Coin Map
+    , CoinMap (..)
+    , CoinMapEntry (..)
+    , coinMapFromList
+    , coinMapToList
+    , coinMapValue
+
       -- * Coin Selection
     , CoinSelection (..)
-    , Input (..)
-    , Output (..)
 
       -- * Coin Selection Algorithm
     , CoinSelectionAlgorithm (..)
@@ -43,6 +48,8 @@ module Cardano.CoinSelection
 
 import Prelude
 
+import Control.Arrow
+    ( (&&&) )
 import Control.DeepSeq
     ( NFData (..) )
 import Control.Monad.Trans.Except
@@ -53,8 +60,6 @@ import Crypto.Random.Types
     ( MonadRandom )
 import Data.List
     ( foldl' )
-import Data.List.NonEmpty
-    ( NonEmpty (..) )
 import Data.Map.Strict
     ( Map )
 import Data.Word
@@ -68,6 +73,7 @@ import Numeric.Natural
 import Quiet
     ( Quiet (Quiet) )
 
+import qualified Data.Foldable as F
 import qualified Data.Map.Strict as Map
 
 --------------------------------------------------------------------------------
@@ -141,6 +147,39 @@ utxoBalance =
     fn tot out = tot + fromIntegral (getCoin out)
 
 --------------------------------------------------------------------------------
+-- Coin Map
+--------------------------------------------------------------------------------
+
+newtype CoinMap a = CoinMap { getCoinMap :: Map a Coin }
+    deriving (Eq, Generic, Monoid, Semigroup)
+    deriving Show via (Quiet (CoinMap a))
+
+instance Foldable CoinMap where
+    foldMap f = F.fold . fmap (f . entryKey) . coinMapToList
+
+data CoinMapEntry a = CoinMapEntry
+    { entryKey
+        :: a
+    , entryValue
+        :: Coin
+    } deriving (Eq, Generic, Ord, Show)
+
+instance Buildable a => Buildable (CoinMapEntry a) where
+    build a = mempty
+        <> build (entryKey a)
+        <> ":"
+        <> build (entryValue a)
+
+coinMapFromList :: Ord a => [CoinMapEntry a] -> CoinMap a
+coinMapFromList = CoinMap . Map.fromList . fmap (entryKey &&& entryValue)
+
+coinMapToList :: CoinMap a -> [CoinMapEntry a]
+coinMapToList = fmap (uncurry CoinMapEntry) . Map.toList . getCoinMap
+
+coinMapValue :: CoinMap a -> Coin
+coinMapValue = Coin . sum . fmap (getCoin . entryValue) . coinMapToList
+
+--------------------------------------------------------------------------------
 -- Coin Selection
 --------------------------------------------------------------------------------
 
@@ -154,7 +193,7 @@ utxoBalance =
 newtype CoinSelectionAlgorithm i o u m e = CoinSelectionAlgorithm
     { selectCoins
         :: CoinSelectionOptions i o e
-        -> NonEmpty (Output o)
+        -> CoinMap o
         -> UTxO u
         -> ExceptT (CoinSelectionError e) m (CoinSelection i o, UTxO u)
     }
@@ -164,80 +203,37 @@ newtype CoinSelectionAlgorithm i o u m e = CoinSelectionAlgorithm
 -- See 'CoinSelectionAlgorithm'.
 --
 data CoinSelection i o = CoinSelection
-    { inputs :: [Input i]
+    { inputs :: CoinMap i
       -- ^ A /subset/ of the original 'UTxO' that was passed to the coin
       -- selection algorithm, containing only the entries that were /selected/
       -- by the coin selection algorithm.
-    , outputs :: [Output o]
+    , outputs :: CoinMap o
       -- ^ The original set of output payments passed to the coin selection
       -- algorithm, whose total value is covered by the 'inputs'.
     , change :: [Coin]
       -- ^ A set of change values to be paid back to the originator of the
       -- payment.
-    } deriving (Generic, Show, Eq)
+    }
+    deriving (Generic, Show, Eq)
 
--- NOTE:
---
--- We don't check for duplicates when combining selections because we assume
--- they are constructed from independent elements.
---
--- As an alternative to the current implementation, we could 'nub' the list or
--- use a 'Set'.
---
-instance Semigroup (CoinSelection i o) where
+instance (Ord i, Ord o) => Semigroup (CoinSelection i o) where
     a <> b = CoinSelection
         { inputs = inputs a <> inputs b
         , outputs = outputs a <> outputs b
         , change = change a <> change b
         }
 
-instance Monoid (CoinSelection i o) where
-    mempty = CoinSelection [] [] []
+instance (Ord i, Ord o) => Monoid (CoinSelection i o) where
+    mempty = CoinSelection mempty mempty mempty
 
 instance (Buildable i, Buildable o) => Buildable (CoinSelection i o) where
     build s = mempty
         <> nameF "inputs"
-            (blockListF' "-" build $ inputs s)
+            (blockListF $ coinMapToList $ inputs s)
         <> nameF "outputs"
-            (blockListF $ outputs s)
+            (blockListF $ coinMapToList $ outputs s)
         <> nameF "change"
             (listF $ change s)
-
--- | An input for a coin selection.
---
--- See 'CoinSelection'.
---
-data Input i = Input
-    { inputId
-        :: !i
-        -- ^ A unique identifier for this input.
-    , inputValue
-        :: !Coin
-    } deriving (Eq, Generic, Ord, Show)
-
-instance Buildable i => Buildable (Input i) where
-    build i = mempty
-        <> build (inputValue i)
-        <> " @ "
-        <> build (inputId i)
-
--- | An output for a coin selection.
---
--- See 'CoinSelection'.
---
-data Output o = Output
-    { outputId
-        :: !o
-        -- ^ A unique identifier for this output.
-    , outputValue
-        :: !Coin
-    } deriving (Eq, Generic, Ord, Show)
-
-instance Buildable o => Buildable (Output o) where
-    build o = mempty
-        <> build (outputValue o)
-        <> " @ "
-        <> build (outputId o)
 
 -- | Represents a set of options to be passed to a coin selection algorithm.
 --
@@ -254,11 +250,11 @@ data CoinSelectionOptions i o e = CoinSelectionOptions
 
 -- | Calculate the total sum of all 'inputs' for the given 'CoinSelection'.
 inputBalance :: CoinSelection i o -> Word64
-inputBalance =  foldl' (\total -> addCoin total . inputValue) 0 . inputs
+inputBalance = getCoin . coinMapValue . inputs
 
 -- | Calculate the total sum of all 'outputs' for the given 'CoinSelection'.
 outputBalance :: CoinSelection i o -> Word64
-outputBalance =  foldl' (\total -> addCoin total . outputValue) 0 . outputs
+outputBalance =  getCoin . coinMapValue . outputs
 
 -- | Calculate the total sum of all 'change' for the given 'CoinSelection'.
 changeBalance :: CoinSelection i o -> Word64

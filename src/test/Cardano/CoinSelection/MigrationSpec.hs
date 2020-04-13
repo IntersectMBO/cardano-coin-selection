@@ -14,10 +14,11 @@ import Prelude
 
 import Cardano.CoinSelection
     ( Coin (..)
+    , CoinMapEntry (..)
     , CoinSelection (..)
-    , Input (..)
     , UTxO (..)
     , changeBalance
+    , coinMapToList
     , inputBalance
     , utxoBalance
     )
@@ -152,19 +153,19 @@ spec = do
 
 -- | No coin selection has outputs
 prop_onlyChangeOutputs
-    :: forall i o u . (i ~ u, Show o)
+    :: forall i o u . (i ~ u, Ord o, Ord u, Show o)
     => FeeOptions i o
     -> Word8
     -> UTxO u
     -> Property
 prop_onlyChangeOutputs feeOpts batchSize utxo = do
-    let allOutputs = outputs =<<
-            depleteUTxO feeOpts batchSize utxo
+    let allOutputs =
+            coinMapToList . outputs =<< depleteUTxO feeOpts batchSize utxo
     property (allOutputs `shouldSatisfy` null)
 
 -- | Every coin in the selection change >= minimum threshold coin
 prop_noLessThanThreshold
-    :: forall i o u . i ~ u
+    :: forall i o u . (i ~ u, Ord o, Ord u)
     => FeeOptions i o
     -> Word8
     -> UTxO u
@@ -180,7 +181,7 @@ prop_noLessThanThreshold feeOpts batchSize utxo = do
 
 -- | Total input UTxO value >= sum of selection change coins
 prop_inputsGreaterThanOutputs
-    :: forall i o u . (i ~ u, Show o, Show u)
+    :: forall i o u . (i ~ u, Ord o, Ord u, Show o, Show u)
     => FeeOptions i o
     -> Word8
     -> UTxO u
@@ -196,37 +197,36 @@ prop_inputsGreaterThanOutputs feeOpts batchSize utxo = do
 
 -- | Every selected input is unique, i.e. selected only once
 prop_inputsAreUnique
-    :: forall i o u . (i ~ u, Ord u)
+    :: forall i o u . (i ~ u, Ord o, Ord u)
     => FeeOptions i o
     -> Word8
     -> UTxO u
     -> Property
 prop_inputsAreUnique feeOpts batchSize utxo = do
-    let selectionInputList = inputs =<<
-            depleteUTxO feeOpts batchSize utxo
+    let selectionInputList =
+            coinMapToList . inputs =<< depleteUTxO feeOpts batchSize utxo
     let selectionInputSet =
             Set.fromList selectionInputList
     Set.size selectionInputSet === length selectionInputSet
 
 -- | Every selection input is still a member of the UTxO" $
 prop_inputsStillInUTxO
-    :: forall i o u . (i ~ u, Ord u)
+    :: forall i o u . (i ~ u, Ord o, Ord u)
     => FeeOptions i o
     -> Word8
     -> UTxO u
     -> Property
 prop_inputsStillInUTxO feeOpts batchSize utxo = do
-    let selectionInputSet =
-            Set.fromList $ inputs =<<
-                depleteUTxO feeOpts batchSize utxo
-    let utxoSet =
-            Set.fromList $ fmap (uncurry Input) $ Map.toList $ getUTxO utxo
+    let selectionInputSet = Set.fromList $
+            coinMapToList . inputs =<< depleteUTxO feeOpts batchSize utxo
+    let utxoSet = Set.fromList $
+            fmap (uncurry CoinMapEntry) $ Map.toList $ getUTxO utxo
     property (selectionInputSet `Set.isSubsetOf` utxoSet)
 
 -- | Every coin selection is well-balanced (i.e. actual fees are exactly the
 -- expected fees)
 prop_wellBalanced
-    :: forall i o u . (i ~ u, Show o, Show u)
+    :: forall i o u . (i ~ u, Ord o, Ord u, Show o, Show u)
     => FeeOptions i o
     -> Word8
     -> UTxO u
@@ -270,7 +270,7 @@ instance Arbitrary (Wrapped (Hash "Tx")) where
 genBatchSize :: Gen Word8
 genBatchSize = choose (50, 150)
 
-genFeeOptions :: Coin -> Gen (FeeOptions i o)
+genFeeOptions :: Coin -> Gen (FeeOptions TxIn Address)
 genFeeOptions (Coin dust) = do
     pure $ FeeOptions
         { feeEstimator = FeeEstimator $ \s ->

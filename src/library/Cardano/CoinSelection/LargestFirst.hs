@@ -16,13 +16,16 @@ import Prelude
 
 import Cardano.CoinSelection
     ( Coin (..)
+    , CoinMap (..)
+    , CoinMapEntry (..)
     , CoinSelection (..)
     , CoinSelectionAlgorithm (..)
     , CoinSelectionError (..)
     , CoinSelectionOptions (..)
-    , Input (..)
-    , Output (..)
     , UTxO (..)
+    , coinMapFromList
+    , coinMapToList
+    , coinMapValue
     , utxoBalance
     )
 import Control.Arrow
@@ -33,13 +36,10 @@ import Control.Monad.Trans.Except
     ( ExceptT (..), except, throwE )
 import Data.Functor
     ( ($>) )
-import Data.List.NonEmpty
-    ( NonEmpty (..) )
 import Data.Ord
     ( Down (..) )
 
 import qualified Data.List as L
-import qualified Data.List.NonEmpty as NE
 import qualified Data.Map.Strict as Map
 
 -- | An implementation of the __Largest-First__ coin selection algorithm.
@@ -176,14 +176,14 @@ import qualified Data.Map.Strict as Map
 --      See: __'ErrMaximumInputCountExceeded'__.
 --
 largestFirst
-    :: (i ~ u, Ord u, Monad m)
+    :: (i ~ u, Ord u, Ord o, Monad m)
     => CoinSelectionAlgorithm i o u m e
 largestFirst = CoinSelectionAlgorithm payForOutputs
 
 payForOutputs
-    :: (i ~ u, Ord u, Monad m)
+    :: (i ~ u, Ord u, Ord o, Monad m)
     => CoinSelectionOptions i o e
-    -> NonEmpty (Output o)
+    -> CoinMap o
     -> UTxO u
     -> ExceptT (CoinSelectionError e) m (CoinSelection i o, UTxO u)
 payForOutputs options outputsRequested utxo =
@@ -206,13 +206,13 @@ payForOutputs options outputsRequested utxo =
     amountAvailable =
         fromIntegral $ utxoBalance utxo
     amountRequested =
-        sum $ (getCoin . outputValue) <$> outputsRequested
+        getCoin $ coinMapValue outputsRequested
     inputCountMax =
         fromIntegral $ maximumInputCount options $ fromIntegral outputCount
     outputCount =
-        fromIntegral $ NE.length outputsRequested
+        fromIntegral $ length $ coinMapToList outputsRequested
     outputsDescending =
-        L.sortOn (Down . outputValue) $ NE.toList outputsRequested
+        L.sortOn (Down . entryValue) $ coinMapToList outputsRequested
     utxoCount =
         fromIntegral $ L.length $ (Map.toList . getUTxO) utxo
     utxoDescending =
@@ -234,12 +234,12 @@ payForOutputs options outputsRequested utxo =
 -- required output amount, this function will return 'Nothing'.
 --
 payForOutput
-    :: forall i o u . i ~ u
+    :: forall i o u . (i ~ u, Ord o, Ord u)
     => ([(u, Coin)], CoinSelection i o)
-    -> Output o
+    -> CoinMapEntry o
     -> Maybe ([(u, Coin)], CoinSelection i o)
 payForOutput (utxoAvailable, currentSelection) out =
-    let target = fromIntegral $ getCoin $ outputValue out in
+    let target = fromIntegral $ getCoin $ entryValue out in
     coverTarget target utxoAvailable mempty
   where
     coverTarget
@@ -252,9 +252,12 @@ payForOutput (utxoAvailable, currentSelection) out =
             -- We've selected enough to cover the target, so stop here.
             ( utxoRemaining
             , currentSelection <> CoinSelection
-                { inputs  = uncurry Input <$> utxoSelected
-                , outputs = [out]
-                , change  = [Coin $ fromIntegral $ abs target | target < 0]
+                { inputs =
+                    coinMapFromList $ uncurry CoinMapEntry <$> utxoSelected
+                , outputs =
+                    coinMapFromList [out]
+                , change =
+                    [Coin $ fromIntegral $ abs target | target < 0]
                 }
             )
         | otherwise =

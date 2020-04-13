@@ -48,10 +48,11 @@ import Prelude hiding
 
 import Cardano.CoinSelection
     ( Coin (..)
+    , CoinMapEntry (..)
     , CoinSelection (..)
-    , Input (..)
     , UTxO (..)
     , coinIsValid
+    , coinMapFromList
     , feeBalance
     , utxoPickRandom
     )
@@ -169,7 +170,7 @@ newtype ErrAdjustForFee
 -- outputs the algorithm happened to choose).
 --
 adjustForFee
-    :: (i ~ u, Buildable o, Buildable u, MonadRandom m)
+    :: (i ~ u, Buildable o, Buildable u, Ord u, MonadRandom m)
     => FeeOptions i o
     -> UTxO u
     -> CoinSelection i o
@@ -184,7 +185,7 @@ adjustForFee unsafeOpt utxo coinSel = do
 -- | The sender pays fee in this scenario, so fees are removed from the change
 -- outputs, and new inputs are selected if necessary.
 senderPaysFee
-    :: forall i o u m . (i ~ u, Buildable o, Buildable u, MonadRandom m)
+    :: forall i o u m . (i ~ u, Buildable o, Buildable u, Ord u, MonadRandom m)
     => FeeOptions i o
     -> UTxO u
     -> CoinSelection i o
@@ -228,14 +229,14 @@ senderPaysFee FeeOptions {feeEstimator, dustThreshold} utxo sel =
             -- we can now correctly cover fee.
             inps' <- coverRemainingFee remFee
             let extraChange = splitCoin (Coin $ sumInputs inps') chgs
-            go $ CoinSelection (inps <> inps') outs extraChange
+            go $ CoinSelection (inps <> coinMapFromList inps') outs extraChange
 
 -- | A short / simple version of the 'random' fee policy to cover for fee in
 -- case where existing change were not enough.
 coverRemainingFee
     :: (i ~ u, MonadRandom m)
     => Fee
-    -> StateT (UTxO u) (ExceptT ErrAdjustForFee m) [Input i]
+    -> StateT (UTxO u) (ExceptT ErrAdjustForFee m) [CoinMapEntry i]
 coverRemainingFee (Fee fee) = go [] where
     go acc
         | sumInputs acc >= fee =
@@ -244,7 +245,7 @@ coverRemainingFee (Fee fee) = go [] where
             -- We ignore the size of the fee, and just pick randomly
             StateT (lift . utxoPickRandom) >>= \case
                 Just entry ->
-                    go (uncurry Input entry : acc)
+                    go (uncurry CoinMapEntry entry : acc)
                 Nothing -> do
                     lift $ throwE $ ErrCannotCoverFee (fee - sumInputs acc)
 
@@ -557,5 +558,5 @@ fractionalPart = snd . properFraction @_ @Integer
 applyN :: Int -> (a -> a) -> a -> a
 applyN n f = F.foldr (.) id (replicate n f)
 
-sumInputs :: [Input i] -> Word64
-sumInputs = sum . fmap (getCoin . inputValue)
+sumInputs :: [CoinMapEntry i] -> Word64
+sumInputs = sum . fmap (getCoin . entryValue)
