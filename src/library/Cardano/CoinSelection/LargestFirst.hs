@@ -15,15 +15,16 @@ module Cardano.CoinSelection.LargestFirst (
 import Prelude
 
 import Cardano.CoinSelection
-    ( CoinSelection (..)
+    ( Coin (..)
+    , CoinSelection (..)
     , CoinSelectionAlgorithm (..)
     , CoinSelectionError (..)
     , CoinSelectionOptions (..)
     , Input (..)
     , Output (..)
+    , UTxO (..)
+    , utxoBalance
     )
-import Cardano.Types
-    ( Coin (..), UTxO (..), utxoBalance )
 import Control.Arrow
     ( left )
 import Control.Monad

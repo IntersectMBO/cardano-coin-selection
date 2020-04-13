@@ -10,11 +10,13 @@ module Cardano.CoinSelection.LargestFirstSpec
 import Prelude
 
 import Cardano.CoinSelection
-    ( CoinSelection (..)
+    ( Coin (..)
+    , CoinSelection (..)
     , CoinSelectionAlgorithm (..)
     , CoinSelectionError (..)
     , CoinSelectionOptions (..)
     , Input (..)
+    , UTxO (..)
     )
 import Cardano.CoinSelection.LargestFirst
     ( largestFirst )
@@ -29,8 +31,6 @@ import Cardano.CoinSelectionSpec
     )
 import Cardano.Test.Utilities
     ( Address, TxIn, excluding )
-import Cardano.Types
-    ( Coin (..), UTxO (..) )
 import Control.Monad
     ( unless )
 import Control.Monad.Trans.Except

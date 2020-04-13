@@ -47,9 +47,14 @@ import Prelude hiding
     ( round )
 
 import Cardano.CoinSelection
-    ( CoinSelection (..), Input (..), feeBalance )
-import Cardano.Types
-    ( Coin (..), UTxO (..), coinIsValid, utxoPickRandom )
+    ( Coin (..)
+    , CoinSelection (..)
+    , Input (..)
+    , UTxO (..)
+    , coinIsValid
+    , feeBalance
+    , utxoPickRandom
+    )
 import Control.Monad.Trans.Class
     ( lift )
 import Control.Monad.Trans.Except

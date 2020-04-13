@@ -78,7 +78,6 @@ library
       Cardano.CoinSelection.Migration
       Cardano.CoinSelection.RandomImprove
       Cardano.Fee
-      Cardano.Types
 
 test-suite cardano-coin-selection-test
   default-language:
@@ -121,9 +120,9 @@ test-suite cardano-coin-selection-test
       Cardano.CoinSelection.LargestFirstSpec
       Cardano.CoinSelection.MigrationSpec
       Cardano.CoinSelection.RandomImproveSpec
+      Cardano.CoinSelection.TypesSpec
       Cardano.CoinSelectionSpec
       Cardano.FeeSpec
-      Cardano.TypesSpec
       Cardano.Test.Utilities
       Test.Vector.Shuffle
       Test.Vector.ShuffleSpec

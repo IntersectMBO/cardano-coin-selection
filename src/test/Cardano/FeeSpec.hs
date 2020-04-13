@@ -19,10 +19,13 @@ import Prelude hiding
     ( round )
 
 import Cardano.CoinSelection
-    ( CoinSelection (..)
+    ( Coin (..)
+    , CoinSelection (..)
     , CoinSelectionAlgorithm (..)
     , Input (..)
     , Output (..)
+    , UTxO (..)
+    , coinIsValid
     )
 import Cardano.CoinSelection.LargestFirst
     ( largestFirst )
@@ -40,8 +43,6 @@ import Cardano.Fee
     )
 import Cardano.Test.Utilities
     ( Address (..), Hash (..), ShowFmt (..), TxIn (..) )
-import Cardano.Types
-    ( Coin (..), UTxO (..), coinIsValid )
 import Control.Arrow
     ( left )
 import Control.Monad

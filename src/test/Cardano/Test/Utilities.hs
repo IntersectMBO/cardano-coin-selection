@@ -42,7 +42,7 @@ module Cardano.Test.Utilities
 
 import Prelude
 
-import Cardano.Types
+import Cardano.CoinSelection
     ( Coin (..), UTxO (..) )
 import Control.DeepSeq
     ( NFData (..) )

@@ -17,17 +17,18 @@ module Cardano.CoinSelection.RandomImprove
 import Prelude
 
 import Cardano.CoinSelection
-    ( CoinSelection (..)
+    ( Coin (..)
+    , CoinSelection (..)
     , CoinSelectionAlgorithm (..)
     , CoinSelectionError (..)
     , CoinSelectionOptions (..)
     , Input (..)
     , Output (..)
+    , UTxO (..)
+    , utxoPickRandom
     )
 import Cardano.CoinSelection.LargestFirst
     ( largestFirst )
-import Cardano.Types
-    ( Coin (..), UTxO (..), utxoPickRandom )
 import Control.Arrow
     ( left )
 import Control.Monad

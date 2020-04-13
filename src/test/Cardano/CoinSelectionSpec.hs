@@ -28,17 +28,17 @@ module Cardano.CoinSelectionSpec
 import Prelude
 
 import Cardano.CoinSelection
-    ( CoinSelection (..)
+    ( Coin (..)
+    , CoinSelection (..)
     , CoinSelectionAlgorithm (..)
     , CoinSelectionError (..)
     , CoinSelectionOptions (..)
     , Input (..)
     , Output (..)
+    , UTxO (..)
     )
 import Cardano.Test.Utilities
     ( Address (..), Hash (..), ShowFmt (..), TxIn (..) )
-import Cardano.Types
-    ( Coin (..), UTxO (..) )
 import Control.Monad.Trans.Except
     ( runExceptT )
 import Data.List.NonEmpty

@@ -13,7 +13,14 @@ module Cardano.CoinSelection.MigrationSpec
 import Prelude
 
 import Cardano.CoinSelection
-    ( CoinSelection (..), Input (..), changeBalance, inputBalance )
+    ( Coin (..)
+    , CoinSelection (..)
+    , Input (..)
+    , UTxO (..)
+    , changeBalance
+    , inputBalance
+    , utxoBalance
+    )
 import Cardano.CoinSelection.Migration
     ( depleteUTxO, idealBatchSize )
 import Cardano.CoinSelectionSpec
@@ -24,8 +31,6 @@ import Cardano.FeeSpec
     ()
 import Cardano.Test.Utilities
     ( Address, Hash (..), TxIn (..) )
-import Cardano.Types
-    ( Coin (..), UTxO (..), utxoBalance )
 import Data.ByteString
     ( ByteString )
 import Data.Function

@@ -6,12 +6,14 @@
 {-# LANGUAGE TypeApplications #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
-module Cardano.TypesSpec
+module Cardano.CoinSelection.TypesSpec
     ( spec
     ) where
 
 import Prelude
 
+import Cardano.CoinSelection
+    ( Coin (..), UTxO (..), coinIsValid, utxoBalance )
 import Cardano.Test.Utilities
     ( Address (..)
     , Hash (..)
@@ -24,8 +26,6 @@ import Cardano.Test.Utilities
     , restrictedTo
     , unsafeFromHex
     )
-import Cardano.Types
-    ( Coin (..), UTxO (..), coinIsValid, utxoBalance )
 import Data.Set
     ( Set, (\\) )
 import Test.Hspec

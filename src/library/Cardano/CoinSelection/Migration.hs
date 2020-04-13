@@ -41,16 +41,16 @@ module Cardano.CoinSelection.Migration
 import Prelude
 
 import Cardano.CoinSelection
-    ( CoinSelection (..)
+    ( Coin (..)
+    , CoinSelection (..)
     , CoinSelectionOptions (..)
     , Input (..)
+    , UTxO (..)
     , changeBalance
     , inputBalance
     )
 import Cardano.Fee
     ( DustThreshold (..), Fee (..), FeeEstimator (..), FeeOptions (..) )
-import Cardano.Types
-    ( Coin (..), UTxO (..) )
 import Control.Monad.Trans.State
     ( State, evalState, get, put )
 import Data.List.NonEmpty
