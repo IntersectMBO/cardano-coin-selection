@@ -83,6 +83,7 @@ import qualified Data.ByteString as BS
 import qualified Data.List as L
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map.Strict as Map
+import qualified Data.Set as Set
 import qualified Test.QuickCheck.Monadic as QC
 
 spec :: Spec
@@ -99,6 +100,8 @@ spec = do
                 prop_coinMapToList_orderDeterministic @Int
 
     describe "CoinSelection properties" $ do
+        it "monoidal append preserves keys" $
+            checkCoverage $ prop_coinSelection_mappendPreservesKeys @Int @Int
         it "monoidal append preserves value" $
             checkCoverage $ prop_coinSelection_mappendPreservesValue @Int @Int
 
@@ -141,6 +144,23 @@ prop_coinMapToList_orderDeterministic u = monadicIO $ QC.run $ do
     return $
         cover 90 (list0 /= list1) "shuffled" $
         list0 == coinMapToList (coinMapFromList list1)
+
+prop_coinSelection_mappendPreservesKeys
+    :: (Ord i, Ord o, Show i, Show o)
+    => CoinSelection i o
+    -> CoinSelection i o
+    -> Property
+prop_coinSelection_mappendPreservesKeys s1 s2 = property $ do
+    Map.keysSet (unCoinMap $ inputs $ s1 <> s2)
+        `shouldBe`
+        Map.keysSet (unCoinMap $ inputs s1)
+        `Set.union`
+        Map.keysSet (unCoinMap $ inputs s2)
+    Map.keysSet (unCoinMap $ outputs $ s1 <> s2)
+        `shouldBe`
+        Map.keysSet (unCoinMap $ outputs s1)
+        `Set.union`
+        Map.keysSet (unCoinMap $ outputs s2)
 
 prop_coinSelection_mappendPreservesValue
     :: (Ord i, Ord o)
