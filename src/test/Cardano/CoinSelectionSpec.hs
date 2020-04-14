@@ -38,6 +38,9 @@ import Cardano.CoinSelection
     , coinMapFromList
     , coinMapToList
     , coinMapValue
+    , sumChange
+    , sumInputs
+    , sumOutputs
     )
 import Cardano.Test.Utilities
     ( Address (..), Hash (..), ShowFmt (..), TxIn (..) )
@@ -95,6 +98,10 @@ spec = do
             checkCoverageWith lowerConfidence $
                 prop_coinMapToList_orderDeterministic @Int
 
+    describe "CoinSelection properties" $ do
+        it "monoidal append preserves value" $
+            checkCoverage $ prop_coinSelection_mappendPreservesValue @Int @Int
+
   where
     lowerConfidence :: Confidence
     lowerConfidence = Confidence (10^(6 :: Integer)) 0.75
@@ -134,6 +141,17 @@ prop_coinMapToList_orderDeterministic u = monadicIO $ QC.run $ do
     return $
         cover 90 (list0 /= list1) "shuffled" $
         list0 == coinMapToList (coinMapFromList list1)
+
+prop_coinSelection_mappendPreservesValue
+    :: (Ord i, Ord o)
+    => CoinSelection i o
+    -> CoinSelection i o
+    -> Property
+prop_coinSelection_mappendPreservesValue s1 s2 = property $ do
+    sumInputs  s1 <> sumInputs  s2 `shouldBe` sumInputs  (s1 <> s2)
+    sumOutputs s1 <> sumOutputs s2 `shouldBe` sumOutputs (s1 <> s2)
+    sumChange  s1 <> sumChange  s2 `shouldBe` sumChange  (s1 <> s2)
+    change     s1 <> change     s2 `shouldBe` change     (s1 <> s2)
 
 --------------------------------------------------------------------------------
 -- Coin Selection - Unit Tests
