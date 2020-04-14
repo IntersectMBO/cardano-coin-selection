@@ -37,6 +37,7 @@ import Cardano.CoinSelection
     , CoinSelectionOptions (..)
     , coinMapFromList
     , coinMapToList
+    , coinMapValue
     )
 import Cardano.Test.Utilities
     ( Address (..), Hash (..), ShowFmt (..), TxIn (..) )
@@ -59,11 +60,14 @@ import Test.QuickCheck
     , NonEmptyList (..)
     , Property
     , arbitraryBoundedIntegral
+    , checkCoverage
     , checkCoverageWith
     , choose
     , cover
     , elements
     , generate
+    , genericShrink
+    , property
     , scale
     , vectorOf
     )
@@ -80,6 +84,10 @@ import qualified Test.QuickCheck.Monadic as QC
 
 spec :: Spec
 spec = do
+    describe "Coin map properties" $ do
+        it "coinMapFromList preserves total value" $
+            checkCoverage $ prop_coinMapFromList_preservesValue @Int
+
     describe "Coin selection properties" $ do
         it "UTxO toList order deterministic" $
             checkCoverageWith lowerConfidence $
@@ -91,6 +99,14 @@ spec = do
 --------------------------------------------------------------------------------
 -- Properties
 --------------------------------------------------------------------------------
+
+prop_coinMapFromList_preservesValue
+    :: Ord u
+    => [CoinMapEntry u]
+    -> Property
+prop_coinMapFromList_preservesValue entries = property $
+    mconcat (entryValue <$> entries)
+        `shouldBe` coinMapValue (coinMapFromList entries)
 
 prop_utxoToListOrderDeterministic
     :: Ord u => CoinMap u -> Property
@@ -193,6 +209,15 @@ coinSelectionUnitTest alg lbl expected (CoinSelectionFixture n fn utxoF outsF) =
 --------------------------------------------------------------------------------
 
 deriving instance Arbitrary a => Arbitrary (ShowFmt a)
+
+instance (Arbitrary i, Arbitrary o, Ord i, Ord o) =>
+    Arbitrary (CoinSelection i o)
+  where
+    arbitrary = CoinSelection
+        <$> arbitrary
+        <*> arbitrary
+        <*> arbitrary
+    shrink = genericShrink
 
 instance Arbitrary (CoinSelectionOptions i o e) where
     arbitrary = do
