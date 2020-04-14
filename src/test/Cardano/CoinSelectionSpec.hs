@@ -70,6 +70,7 @@ import Test.QuickCheck
     , elements
     , generate
     , genericShrink
+    , oneof
     , property
     , scale
     , vectorOf
@@ -89,6 +90,8 @@ import qualified Test.QuickCheck.Monadic as QC
 spec :: Spec
 spec = do
     describe "CoinMap properties" $ do
+        it "CoinMap coverage is adequate" $
+            checkCoverage $ prop_CoinMap_coverage @Int
         it "coinMapFromList preserves total value" $
             checkCoverage $ prop_coinMapFromList_preservesValue @Int
         it "coinMapToList preserves total value" $
@@ -112,6 +115,22 @@ spec = do
 --------------------------------------------------------------------------------
 -- Properties
 --------------------------------------------------------------------------------
+
+prop_CoinMap_coverage
+    :: CoinMap u
+    -> Property
+prop_CoinMap_coverage m = property
+    $ cover 10 (null m)
+        "coin map is empty"
+    $ cover 10 (length m == 1)
+        "coin map has one entry"
+    $ cover 10 (length m >= 2)
+        "coin map has multiple entries"
+    $ cover 10 (1 == length (Set.fromList $ entryValue <$> coinMapToList m))
+        "coin map has one unique value"
+    $ cover 10 (1 < length (Set.fromList $ entryValue <$> coinMapToList m))
+        "coin map has several unique values"
+    True
 
 prop_coinMapFromList_preservesValue
     :: Ord u
@@ -142,7 +161,7 @@ prop_coinMapToList_orderDeterministic u = monadicIO $ QC.run $ do
     let list0 = coinMapToList u
     list1 <- shuffle list0
     return $
-        cover 90 (list0 /= list1) "shuffled" $
+        cover 10 (list0 /= list1) "shuffled" $
         list0 == coinMapToList (coinMapFromList list1)
 
 prop_coinSelection_mappendPreservesKeys
@@ -339,7 +358,11 @@ instance Arbitrary a => Arbitrary (CoinMapEntry a) where
 instance (Arbitrary a, Ord a) => Arbitrary (CoinMap a) where
     shrink (CoinMap m) = CoinMap <$> shrink m
     arbitrary = do
-        n <- choose (1, 100)
+        n <- oneof
+            [ pure 0
+            , pure 1
+            , choose (2, 100)
+            ]
         entries <- zip
             <$> vectorOf n arbitrary
             <*> vectorOf n arbitrary
