@@ -87,6 +87,8 @@ spec = do
     describe "Coin map properties" $ do
         it "coinMapFromList preserves total value" $
             checkCoverage $ prop_coinMapFromList_preservesValue @Int
+        it "coinMapToList preserves total value" $
+            checkCoverage $ prop_coinMapToList_preservesValue @Int
 
     describe "Coin selection properties" $ do
         it "UTxO toList order deterministic" $
@@ -107,6 +109,13 @@ prop_coinMapFromList_preservesValue
 prop_coinMapFromList_preservesValue entries = property $
     mconcat (entryValue <$> entries)
         `shouldBe` coinMapValue (coinMapFromList entries)
+
+prop_coinMapToList_preservesValue
+    :: CoinMap u
+    -> Property
+prop_coinMapToList_preservesValue m = property $
+    mconcat (entryValue <$> coinMapToList m)
+        `shouldBe` coinMapValue m
 
 prop_utxoToListOrderDeterministic
     :: Ord u => CoinMap u -> Property
