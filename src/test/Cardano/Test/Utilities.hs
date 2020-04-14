@@ -42,8 +42,8 @@ module Cardano.Test.Utilities
 
 import Prelude
 
-import Cardano.Types
-    ( Coin (..), UTxO (..) )
+import Cardano.CoinSelection
+    ( Coin (..), CoinMap (..) )
 import Control.DeepSeq
     ( NFData (..) )
 import Data.ByteArray
@@ -177,21 +177,21 @@ instance Buildable TxOut where
 --------------------------------------------------------------------------------
 
 -- | ins⋪ u
-excluding :: Ord u => UTxO u -> Set u -> UTxO u
-excluding (UTxO utxo) =
-    UTxO . Map.withoutKeys utxo
+excluding :: Ord u => CoinMap u -> Set u -> CoinMap u
+excluding (CoinMap utxo) =
+    CoinMap . Map.withoutKeys utxo
 
 -- | a ⊆ b
-isSubsetOf :: Ord u => UTxO u -> UTxO u -> Bool
-isSubsetOf (UTxO a) (UTxO b) =
+isSubsetOf :: Ord u => CoinMap u -> CoinMap u -> Bool
+isSubsetOf (CoinMap a) (CoinMap b) =
     a `Map.isSubmapOf` b
 
 -- | ins⊲ u
-restrictedBy :: Ord u => UTxO u -> Set u -> UTxO u
-restrictedBy (UTxO utxo) =
-    UTxO . Map.restrictKeys utxo
+restrictedBy :: Ord u => CoinMap u -> Set u -> CoinMap u
+restrictedBy (CoinMap utxo) =
+    CoinMap . Map.restrictKeys utxo
 
 -- | u ⊳ outs
-restrictedTo :: UTxO u -> Set Coin -> UTxO u
-restrictedTo (UTxO utxo) outs =
-    UTxO $ Map.filter (`Set.member` outs) utxo
+restrictedTo :: CoinMap u -> Set Coin -> CoinMap u
+restrictedTo (CoinMap utxo) outs =
+    CoinMap $ Map.filter (`Set.member` outs) utxo

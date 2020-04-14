@@ -17,17 +17,19 @@ module Cardano.CoinSelection.RandomImprove
 import Prelude
 
 import Cardano.CoinSelection
-    ( CoinSelection (..)
+    ( Coin (..)
+    , CoinMap (..)
+    , CoinMapEntry (..)
+    , CoinSelection (..)
     , CoinSelectionAlgorithm (..)
     , CoinSelectionError (..)
     , CoinSelectionOptions (..)
-    , Input (..)
-    , Output (..)
+    , coinMapFromList
+    , coinMapRandomEntry
+    , coinMapToList
     )
 import Cardano.CoinSelection.LargestFirst
     ( largestFirst )
-import Cardano.Types
-    ( Coin (..), UTxO (..), utxoPickRandom )
 import Control.Arrow
     ( left )
 import Control.Monad
@@ -42,8 +44,6 @@ import Crypto.Random.Types
     ( MonadRandom )
 import Data.Functor
     ( ($>) )
-import Data.List.NonEmpty
-    ( NonEmpty (..) )
 import Data.Ord
     ( Down (..) )
 import Data.Word
@@ -52,7 +52,6 @@ import Internal.Invariant
     ( invariant )
 
 import qualified Data.List as L
-import qualified Data.List.NonEmpty as NE
 
 -- | An implementation of the __Random-Improve__ coin selection algorithm.
 --
@@ -210,17 +209,17 @@ import qualified Data.List.NonEmpty as NE
 -- total above the upper bound.
 --
 randomImprove
-    :: (i ~ u, Ord u, MonadRandom m)
-    => CoinSelectionAlgorithm i o u m e
+    :: (Ord i, Ord o, MonadRandom m)
+    => CoinSelectionAlgorithm i o m e
 randomImprove = CoinSelectionAlgorithm payForOutputs
 
 payForOutputs
-    :: (i ~ u, Ord u, MonadRandom m)
+    :: (Ord i, Ord o, MonadRandom m)
     => CoinSelectionOptions i o e
-    -> NonEmpty (Output o)
-    -> UTxO u
-    -> ExceptT (CoinSelectionError e) m (CoinSelection i o, UTxO u)
-payForOutputs options outputsRequested utxo = do
+    -> CoinMap i
+    -> CoinMap o
+    -> ExceptT (CoinSelectionError e) m (CoinSelection i o, CoinMap i)
+payForOutputs options utxo outputsRequested = do
     mRandomSelections <- lift $ runMaybeT $ foldM makeRandomSelection
         (inputCountMax, utxo, []) outputsDescending
     case mRandomSelections of
@@ -234,14 +233,14 @@ payForOutputs options outputsRequested utxo = do
         Nothing ->
             -- In the case that we fail to generate a selection, fall back to
             -- the "Largest-First" algorithm as a backup.
-            selectCoins largestFirst options outputsRequested utxo
+            selectCoins largestFirst options utxo outputsRequested
   where
     inputCountMax =
         fromIntegral $ maximumInputCount options outputCount
     outputCount =
-        fromIntegral $ NE.length outputsRequested
+        fromIntegral $ length $ coinMapToList outputsRequested
     outputsDescending =
-        L.sortOn (Down . outputValue) $ NE.toList outputsRequested
+        L.sortOn (Down . entryValue) $ coinMapToList outputsRequested
     validateSelection =
         except . left ErrInvalidSelection . validate options
 
@@ -253,10 +252,10 @@ payForOutputs options outputsRequested utxo = do
 -- the selection in any way.
 --
 makeRandomSelection
-    :: forall i o u m . (i ~ u, MonadRandom m)
-    => (Word64, UTxO u, [([Input i], Output o)])
-    -> Output o
-    -> MaybeT m (Word64, UTxO u, [([Input i], Output o)])
+    :: forall i o m . MonadRandom m
+    => (Word64, CoinMap i, [([CoinMapEntry i], CoinMapEntry o)])
+    -> CoinMapEntry o
+    -> MaybeT m (Word64, CoinMap i, [([CoinMapEntry i], CoinMapEntry o)])
 makeRandomSelection
     (inputCountRemaining, utxoRemaining, existingSelections) txout = do
         (utxoSelected, utxoRemaining') <- coverRandomly ([], utxoRemaining)
@@ -267,12 +266,12 @@ makeRandomSelection
             )
   where
     coverRandomly
-        :: ([Input i], UTxO u)
-        -> MaybeT m ([Input i], UTxO u)
+        :: ([CoinMapEntry i], CoinMap i)
+        -> MaybeT m ([CoinMapEntry i], CoinMap i)
     coverRandomly (selected, remaining)
         | L.length selected > fromIntegral inputCountRemaining =
             MaybeT $ return Nothing
-        | sumInputs selected >= targetMin (mkTargetRange txout) =
+        | sumEntries selected >= targetMin (mkTargetRange txout) =
             MaybeT $ return $ Just (selected, remaining)
         | otherwise =
             utxoPickRandomT remaining >>= \(picked, remaining') ->
@@ -280,17 +279,17 @@ makeRandomSelection
 
 -- | Perform an improvement to random selection on a given output.
 improveSelection
-    :: forall i o u m . (i ~ u, MonadRandom m)
-    => (Word64, CoinSelection i o, UTxO u)
-    -> ([Input i], Output o)
-    -> m (Word64, CoinSelection i o, UTxO u)
+    :: forall i o m . (MonadRandom m, Ord i, Ord o)
+    => (Word64, CoinSelection i o, CoinMap i)
+    -> ([CoinMapEntry i], CoinMapEntry o)
+    -> m (Word64, CoinSelection i o, CoinMap i)
 improveSelection (maxN0, selection, utxo0) (inps0, txout) = do
     (maxN, inps, utxo) <- improve (maxN0, inps0, utxo0)
     return
         ( maxN
         , selection <> CoinSelection
-            { inputs = inps
-            , outputs = [txout]
+            { inputs = coinMapFromList inps
+            , outputs = coinMapFromList [txout]
             , change = mkChange txout inps
             }
         , utxo
@@ -299,10 +298,10 @@ improveSelection (maxN0, selection, utxo0) (inps0, txout) = do
     target = mkTargetRange txout
 
     improve
-        :: (Word64, [Input i], UTxO u)
-        -> m (Word64, [Input i], UTxO u)
+        :: (Word64, [CoinMapEntry i], CoinMap i)
+        -> m (Word64, [CoinMapEntry i], CoinMap i)
     improve (maxN, inps, utxo)
-        | maxN >= 1 && sumInputs inps < targetAim target = do
+        | maxN >= 1 && sumEntries inps < targetAim target = do
             runMaybeT (utxoPickRandomT utxo) >>= \case
                 Nothing ->
                     return (maxN, inps, utxo)
@@ -315,16 +314,16 @@ improveSelection (maxN0, selection, utxo0) (inps0, txout) = do
         | otherwise =
             return (maxN, inps, utxo)
 
-    isImprovement :: Input i -> [Input i] -> Bool
+    isImprovement :: CoinMapEntry i -> [CoinMapEntry i] -> Bool
     isImprovement io selected =
         let
             condA = -- (a) It doesn’t exceed a specified upper limit.
-                sumInputs (io : selected) < targetMax target
+                sumEntries (io : selected) < targetMax target
 
             condB = -- (b) Addition gets us closer to the ideal change
-                distance (targetAim target) (sumInputs (io : selected))
+                distance (targetAim target) (sumEntries (io : selected))
                 <
-                distance (targetAim target) (sumInputs selected)
+                distance (targetAim target) (sumEntries selected)
 
             -- (c) Doesn't exceed maximum number of inputs
             -- Guaranteed by the precondition on 'improve'.
@@ -357,8 +356,8 @@ data TargetRange = TargetRange
 --
 -- See 'TargetRange'.
 --
-mkTargetRange :: Output o -> TargetRange
-mkTargetRange (Output _ (Coin c)) = TargetRange
+mkTargetRange :: CoinMapEntry o -> TargetRange
+mkTargetRange (CoinMapEntry _ (Coin c)) = TargetRange
     { targetMin = c
     , targetAim = 2 * c
     , targetMax = 3 * c
@@ -366,22 +365,24 @@ mkTargetRange (Output _ (Coin c)) = TargetRange
 
 -- | Re-wrap 'utxoPickRandom' in a 'MaybeT' monad
 utxoPickRandomT
-    :: (i ~ u, MonadRandom m)
-    => UTxO u
-    -> MaybeT m (Input i, UTxO u)
+    :: MonadRandom m
+    => CoinMap i
+    -> MaybeT m (CoinMapEntry i, CoinMap i)
 utxoPickRandomT =
-    MaybeT . fmap (\(mi, u) -> (, u) . uncurry Input <$> mi) . utxoPickRandom
+    MaybeT
+        . fmap (\(mi, u) -> (, u) <$> mi)
+        . coinMapRandomEntry
 
 -- | Compute corresponding change outputs from a target output and a selection
 -- of inputs.
 --
 -- > pre-condition: the output must be smaller (or eq) than the sum of inputs
-mkChange :: Output o -> [Input i] -> [Coin]
-mkChange (Output _ (Coin out)) inps =
+mkChange :: CoinMapEntry o -> [CoinMapEntry i] -> [Coin]
+mkChange (CoinMapEntry _ (Coin out)) inps =
     let
         selected = invariant
             "mkChange: output is smaller than selected inputs!"
-            (sumInputs inps)
+            (sumEntries inps)
             (>= out)
         Coin maxCoinValue = maxBound
     in
@@ -402,5 +403,5 @@ distance :: (Ord a, Num a) => a -> a -> a
 distance a b =
     if a < b then b - a else a - b
 
-sumInputs :: [Input i] -> Word64
-sumInputs = sum . fmap (getCoin . inputValue)
+sumEntries :: [CoinMapEntry i] -> Word64
+sumEntries = sum . fmap (unCoin . entryValue)

@@ -15,15 +15,17 @@ module Cardano.CoinSelection.LargestFirst (
 import Prelude
 
 import Cardano.CoinSelection
-    ( CoinSelection (..)
+    ( Coin (..)
+    , CoinMap (..)
+    , CoinMapEntry (..)
+    , CoinSelection (..)
     , CoinSelectionAlgorithm (..)
     , CoinSelectionError (..)
     , CoinSelectionOptions (..)
-    , Input (..)
-    , Output (..)
+    , coinMapFromList
+    , coinMapToList
+    , coinMapValue
     )
-import Cardano.Types
-    ( Coin (..), UTxO (..), utxoBalance )
 import Control.Arrow
     ( left )
 import Control.Monad
@@ -32,14 +34,10 @@ import Control.Monad.Trans.Except
     ( ExceptT (..), except, throwE )
 import Data.Functor
     ( ($>) )
-import Data.List.NonEmpty
-    ( NonEmpty (..) )
 import Data.Ord
     ( Down (..) )
 
 import qualified Data.List as L
-import qualified Data.List.NonEmpty as NE
-import qualified Data.Map.Strict as Map
 
 -- | An implementation of the __Largest-First__ coin selection algorithm.
 --
@@ -175,21 +173,21 @@ import qualified Data.Map.Strict as Map
 --      See: __'ErrMaximumInputCountExceeded'__.
 --
 largestFirst
-    :: (i ~ u, Ord u, Monad m)
-    => CoinSelectionAlgorithm i o u m e
+    :: (Ord i, Ord o, Monad m)
+    => CoinSelectionAlgorithm i o m e
 largestFirst = CoinSelectionAlgorithm payForOutputs
 
 payForOutputs
-    :: (i ~ u, Ord u, Monad m)
+    :: (Ord i, Ord o, Monad m)
     => CoinSelectionOptions i o e
-    -> NonEmpty (Output o)
-    -> UTxO u
-    -> ExceptT (CoinSelectionError e) m (CoinSelection i o, UTxO u)
-payForOutputs options outputsRequested utxo =
+    -> CoinMap i
+    -> CoinMap o
+    -> ExceptT (CoinSelectionError e) m (CoinSelection i o, CoinMap i)
+payForOutputs options utxo outputsRequested =
     case foldM payForOutput (utxoDescending, mempty) outputsDescending of
         Just (utxoRemaining, selection) ->
             validateSelection selection $>
-                (selection, UTxO $ Map.fromList utxoRemaining)
+                (selection, coinMapFromList utxoRemaining)
         Nothing ->
             throwE errorCondition
   where
@@ -203,22 +201,21 @@ payForOutputs options outputsRequested utxo =
       | otherwise =
           ErrMaximumInputCountExceeded inputCountMax
     amountAvailable =
-        fromIntegral $ utxoBalance utxo
+        fromIntegral $ unCoin $ coinMapValue utxo
     amountRequested =
-        sum $ (getCoin . outputValue) <$> outputsRequested
+        unCoin $ coinMapValue outputsRequested
     inputCountMax =
         fromIntegral $ maximumInputCount options $ fromIntegral outputCount
     outputCount =
-        fromIntegral $ NE.length outputsRequested
+        fromIntegral $ length $ coinMapToList outputsRequested
     outputsDescending =
-        L.sortOn (Down . outputValue) $ NE.toList outputsRequested
+        L.sortOn (Down . entryValue) $ coinMapToList outputsRequested
     utxoCount =
-        fromIntegral $ L.length $ (Map.toList . getUTxO) utxo
+        fromIntegral $ L.length $ coinMapToList utxo
     utxoDescending =
         take (fromIntegral inputCountMax)
-            $ L.sortOn (Down . snd)
-            $ Map.toList
-            $ getUTxO utxo
+            $ L.sortOn (Down . entryValue)
+            $ coinMapToList utxo
     validateSelection =
         except . left ErrInvalidSelection . validate options
 
@@ -233,26 +230,26 @@ payForOutputs options outputsRequested utxo =
 -- required output amount, this function will return 'Nothing'.
 --
 payForOutput
-    :: forall i o u . i ~ u
-    => ([(u, Coin)], CoinSelection i o)
-    -> Output o
-    -> Maybe ([(u, Coin)], CoinSelection i o)
+    :: forall i o . (Ord i, Ord o)
+    => ([CoinMapEntry i], CoinSelection i o)
+    -> CoinMapEntry o
+    -> Maybe ([CoinMapEntry i], CoinSelection i o)
 payForOutput (utxoAvailable, currentSelection) out =
-    let target = fromIntegral $ getCoin $ outputValue out in
+    let target = fromIntegral $ unCoin $ entryValue out in
     coverTarget target utxoAvailable mempty
   where
     coverTarget
         :: Integer
-        -> [(u, Coin)]
-        -> [(u, Coin)]
-        -> Maybe ([(u, Coin)], CoinSelection i o)
+        -> [CoinMapEntry i]
+        -> [CoinMapEntry i]
+        -> Maybe ([CoinMapEntry i], CoinSelection i o)
     coverTarget target utxoRemaining utxoSelected
         | target <= 0 = Just
             -- We've selected enough to cover the target, so stop here.
             ( utxoRemaining
             , currentSelection <> CoinSelection
-                { inputs  = uncurry Input <$> utxoSelected
-                , outputs = [out]
+                { inputs  = coinMapFromList utxoSelected
+                , outputs = coinMapFromList [out]
                 , change  = [Coin $ fromIntegral $ abs target | target < 0]
                 }
             )
@@ -260,9 +257,10 @@ payForOutput (utxoAvailable, currentSelection) out =
             -- We haven't yet selected enough to cover the target, so attempt
             -- to select a little more and then continue.
             case utxoRemaining of
-                (i, o):utxoRemaining' ->
-                    let utxoSelected' = (i, o):utxoSelected
-                        target' = target - fromIntegral (getCoin o)
+                utxoEntry : utxoRemaining' ->
+                    let utxoSelected' = utxoEntry : utxoSelected
+                        target' = target -
+                            fromIntegral (unCoin $ entryValue utxoEntry)
                     in
                     coverTarget target' utxoRemaining' utxoSelected'
                 [] ->

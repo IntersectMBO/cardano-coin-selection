@@ -28,17 +28,22 @@ module Cardano.CoinSelectionSpec
 import Prelude
 
 import Cardano.CoinSelection
-    ( CoinSelection (..)
+    ( Coin (..)
+    , CoinMap (..)
+    , CoinMapEntry (..)
+    , CoinSelection (..)
     , CoinSelectionAlgorithm (..)
     , CoinSelectionError (..)
     , CoinSelectionOptions (..)
-    , Input (..)
-    , Output (..)
+    , coinMapFromList
+    , coinMapToList
+    , coinMapValue
+    , sumChange
+    , sumInputs
+    , sumOutputs
     )
 import Cardano.Test.Utilities
     ( Address (..), Hash (..), ShowFmt (..), TxIn (..) )
-import Cardano.Types
-    ( Coin (..), UTxO (..) )
 import Control.Monad.Trans.Except
     ( runExceptT )
 import Data.List.NonEmpty
@@ -55,13 +60,18 @@ import Test.QuickCheck
     ( Arbitrary (..)
     , Confidence (..)
     , Gen
+    , NonEmptyList (..)
     , Property
+    , arbitraryBoundedIntegral
+    , checkCoverage
     , checkCoverageWith
     , choose
     , cover
     , elements
     , generate
+    , genericShrink
     , oneof
+    , property
     , scale
     , vectorOf
     )
@@ -71,16 +81,33 @@ import Test.Vector.Shuffle
     ( shuffle )
 
 import qualified Data.ByteString as BS
+import qualified Data.List as L
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map.Strict as Map
+import qualified Data.Set as Set
 import qualified Test.QuickCheck.Monadic as QC
 
 spec :: Spec
 spec = do
-    describe "Coin selection properties" $ do
-        it "UTxO toList order deterministic" $
+    describe "CoinMap properties" $ do
+        it "CoinMap coverage is adequate" $
+            checkCoverage $ prop_CoinMap_coverage @Int
+        it "coinMapFromList preserves total value" $
+            checkCoverage $ prop_coinMapFromList_preservesValue @Int
+        it "coinMapToList preserves total value" $
+            checkCoverage $ prop_coinMapToList_preservesValue @Int
+        it "coinMapFromList . coinMapToList = id" $
+            checkCoverage $ prop_coinMapToList_coinMapFromList @Int
+        it "coinMapToList order deterministic" $
             checkCoverageWith lowerConfidence $
-                prop_utxoToListOrderDeterministic @TxIn
+                prop_coinMapToList_orderDeterministic @Int
+
+    describe "CoinSelection properties" $ do
+        it "monoidal append preserves keys" $
+            checkCoverage $ prop_coinSelection_mappendPreservesKeys @Int @Int
+        it "monoidal append preserves value" $
+            checkCoverage $ prop_coinSelection_mappendPreservesValue @Int @Int
+
   where
     lowerConfidence :: Confidence
     lowerConfidence = Confidence (10^(6 :: Integer)) 0.75
@@ -89,31 +116,98 @@ spec = do
 -- Properties
 --------------------------------------------------------------------------------
 
-prop_utxoToListOrderDeterministic
-    :: Ord u => UTxO u -> Property
-prop_utxoToListOrderDeterministic u = monadicIO $ QC.run $ do
-    let list0 = Map.toList $ getUTxO u
+prop_CoinMap_coverage
+    :: CoinMap u
+    -> Property
+prop_CoinMap_coverage m = property
+    $ cover 10 (null m)
+        "coin map is empty"
+    $ cover 10 (length m == 1)
+        "coin map has one entry"
+    $ cover 10 (length m >= 2)
+        "coin map has multiple entries"
+    $ cover 10 (1 == length (Set.fromList $ entryValue <$> coinMapToList m))
+        "coin map has one unique value"
+    $ cover 10 (1 < length (Set.fromList $ entryValue <$> coinMapToList m))
+        "coin map has several unique values"
+    True
+
+prop_coinMapFromList_preservesValue
+    :: Ord u
+    => [CoinMapEntry u]
+    -> Property
+prop_coinMapFromList_preservesValue entries = property $
+    mconcat (entryValue <$> entries)
+        `shouldBe` coinMapValue (coinMapFromList entries)
+
+prop_coinMapToList_preservesValue
+    :: CoinMap u
+    -> Property
+prop_coinMapToList_preservesValue m = property $
+    mconcat (entryValue <$> coinMapToList m)
+        `shouldBe` coinMapValue m
+
+prop_coinMapToList_coinMapFromList
+    :: (Ord u, Show u)
+    => CoinMap u
+    -> Property
+prop_coinMapToList_coinMapFromList m = property $
+    coinMapFromList (coinMapToList m)
+        `shouldBe` m
+
+prop_coinMapToList_orderDeterministic
+    :: Ord u => CoinMap u -> Property
+prop_coinMapToList_orderDeterministic u = monadicIO $ QC.run $ do
+    let list0 = coinMapToList u
     list1 <- shuffle list0
     return $
-        cover 90 (list0 /= list1) "shuffled" $
-        list0 == Map.toList (Map.fromList list1)
+        cover 10 (list0 /= list1) "shuffled" $
+        list0 == coinMapToList (coinMapFromList list1)
+
+prop_coinSelection_mappendPreservesKeys
+    :: (Ord i, Ord o, Show i, Show o)
+    => CoinSelection i o
+    -> CoinSelection i o
+    -> Property
+prop_coinSelection_mappendPreservesKeys s1 s2 = property $ do
+    Map.keysSet (unCoinMap $ inputs $ s1 <> s2)
+        `shouldBe`
+        Map.keysSet (unCoinMap $ inputs s1)
+        `Set.union`
+        Map.keysSet (unCoinMap $ inputs s2)
+    Map.keysSet (unCoinMap $ outputs $ s1 <> s2)
+        `shouldBe`
+        Map.keysSet (unCoinMap $ outputs s1)
+        `Set.union`
+        Map.keysSet (unCoinMap $ outputs s2)
+
+prop_coinSelection_mappendPreservesValue
+    :: (Ord i, Ord o)
+    => CoinSelection i o
+    -> CoinSelection i o
+    -> Property
+prop_coinSelection_mappendPreservesValue s1 s2 = property $ do
+    sumInputs  s1 <> sumInputs  s2 `shouldBe` sumInputs  (s1 <> s2)
+    sumOutputs s1 <> sumOutputs s2 `shouldBe` sumOutputs (s1 <> s2)
+    sumChange  s1 <> sumChange  s2 `shouldBe` sumChange  (s1 <> s2)
+    change     s1 <> change     s2 `shouldBe` change     (s1 <> s2)
 
 --------------------------------------------------------------------------------
 -- Coin Selection - Unit Tests
 --------------------------------------------------------------------------------
 
 -- | Data for running
-data CoinSelProp o u = CoinSelProp
-    { csUtxO :: UTxO u
+data CoinSelProp i o = CoinSelProp
+    { csUtxO :: CoinMap i
         -- ^ Available UTxO for the selection
-    , csOuts :: NonEmpty (Output o)
+    , csOuts :: CoinMap o
         -- ^ Requested outputs for the payment
     } deriving Show
 
-instance (Buildable o, Buildable u) => Buildable (CoinSelProp o u) where
+instance (Buildable i, Buildable o) => Buildable (CoinSelProp i o) where
     build (CoinSelProp utxo outs) = mempty
-        <> build utxo
-        <> nameF "outs" (blockListF outs)
+        <> nameF "utxo" (blockListF $ coinMapToList utxo)
+        <> nameF "outs" (blockListF $ coinMapToList outs)
 
 -- | A fixture for testing the coin selection
 data CoinSelectionFixture i o = CoinSelectionFixture
@@ -123,7 +217,7 @@ data CoinSelectionFixture i o = CoinSelectionFixture
         -- ^ A extra validation function on the resulting selection
     , utxoInputs :: [Word64]
         -- ^ Value (in Lovelace) & number of available coins in the UTxO
-    , txOutputs :: NonEmpty Word64
+    , txOutputs :: [Word64]
         -- ^ Value (in Lovelace) & number of requested outputs
     }
 
@@ -145,10 +239,14 @@ data CoinSelectionResult = CoinSelectionResult
     , rsOutputs :: [Word64]
     } deriving (Eq, Show)
 
+sortCoinSelectionResult :: CoinSelectionResult -> CoinSelectionResult
+sortCoinSelectionResult (CoinSelectionResult is cs os) =
+    CoinSelectionResult (L.sort is) (L.sort cs) (L.sort os)
+
 -- | Generate a 'UTxO' and 'TxOut' matching the given 'Fixture', and perform
 -- the given coin selection on it.
 coinSelectionUnitTest
-    :: CoinSelectionAlgorithm TxIn Address TxIn IO ErrValidation
+    :: CoinSelectionAlgorithm TxIn Address IO ErrValidation
     -> String
     -> Either (CoinSelectionError ErrValidation) CoinSelectionResult
     -> CoinSelectionFixture TxIn Address
@@ -158,33 +256,43 @@ coinSelectionUnitTest alg lbl expected (CoinSelectionFixture n fn utxoF outsF) =
         (utxo,txOuts) <- setup
         result <- runExceptT $ do
             (CoinSelection inps outs chngs, _) <-
-                selectCoins alg (CoinSelectionOptions (const n) fn) txOuts utxo
+                selectCoins alg (CoinSelectionOptions (const n) fn) utxo txOuts
             return $ CoinSelectionResult
-                { rsInputs = map (getCoin . inputValue) inps
-                , rsChange = map getCoin chngs
-                , rsOutputs = map (getCoin . outputValue) outs
+                { rsInputs = unCoin . entryValue <$> coinMapToList inps
+                , rsChange = unCoin <$> chngs
+                , rsOutputs = unCoin . entryValue <$> coinMapToList outs
                 }
-        result `shouldBe` expected
+        fmap sortCoinSelectionResult result
+            `shouldBe` fmap sortCoinSelectionResult expected
   where
     title :: String
     title = mempty
         <> if null lbl then "" else lbl <> ":\n\t"
         <> "max=" <> show n
         <> ", UTxO=" <> show utxoF
-        <> ", Output=" <> show (NE.toList outsF)
+        <> ", Output=" <> show outsF
         <> " --> " <> show (rsInputs <$> expected)
 
-    setup :: IO (UTxO TxIn, NonEmpty (Output Address))
+    setup :: IO (CoinMap TxIn, CoinMap Address)
     setup = do
         utxo <- generate (genUTxO utxoF)
-        outs <- generate (genOutputs $ NE.toList outsF)
-        pure (utxo, NE.fromList outs)
+        outs <- generate (genOutputs outsF)
+        pure (utxo, outs)
 
 --------------------------------------------------------------------------------
 -- Arbitrary Instances
 --------------------------------------------------------------------------------
 
 deriving instance Arbitrary a => Arbitrary (ShowFmt a)
+
+instance (Arbitrary i, Arbitrary o, Ord i, Ord o) =>
+    Arbitrary (CoinSelection i o)
+  where
+    arbitrary = CoinSelection
+        <$> arbitrary
+        <*> arbitrary
+        <*> arbitrary
+    shrink = genericShrink
 
 instance Arbitrary (CoinSelectionOptions i o e) where
     arbitrary = do
@@ -208,20 +316,21 @@ instance Arbitrary a => Arbitrary (NonEmpty a) where
         n <- choose (1, 10)
         NE.fromList <$> vectorOf n arbitrary
 
-instance (Arbitrary o, Arbitrary u, Ord u) => Arbitrary (CoinSelProp o u) where
-    shrink (CoinSelProp utxo outs) = uncurry CoinSelProp
-        <$> zip (shrink utxo) (shrink outs)
+instance (Arbitrary i, Arbitrary o, Ord i, Ord o) =>
+    Arbitrary (CoinSelProp i o)
+  where
+    shrink (CoinSelProp utxo outs) = uncurry CoinSelProp <$> zip
+        (shrink utxo)
+        (coinMapFromList <$> filter (not . null) (shrink (coinMapToList outs)))
     arbitrary = CoinSelProp
-        <$> arbitrary
-        <*> arbitrary
+        <$> (coinMapFromList . getNonEmpty <$> arbitrary)
+        <*> (coinMapFromList . getNonEmpty <$> arbitrary)
 
 instance Arbitrary Address where
-    -- No Shrinking
-    arbitrary = oneof
-        [ pure $ Address "ADDR01"
-        , pure $ Address "ADDR02"
-        , pure $ Address "ADDR03"
-        ]
+    shrink _ = []
+    arbitrary = do
+        bytes <- BS.pack <$> vectorOf 8 arbitraryBoundedIntegral
+        pure $ Address bytes
 
 instance Arbitrary Coin where
     -- No Shrinking
@@ -240,29 +349,33 @@ instance Arbitrary (Hash "Tx") where
         let bs = BS.pack wds
         pure $ Hash bs
 
-instance Arbitrary o => Arbitrary (Output o) where
+instance Arbitrary a => Arbitrary (CoinMapEntry a) where
     -- No Shrinking
-    arbitrary = Output
+    arbitrary = CoinMapEntry
         <$> arbitrary
         <*> arbitrary
 
-instance (Arbitrary u, Ord u) => Arbitrary (UTxO u) where
-    shrink (UTxO utxo) = UTxO <$> shrink utxo
+instance (Arbitrary a, Ord a) => Arbitrary (CoinMap a) where
+    shrink (CoinMap m) = CoinMap <$> shrink m
     arbitrary = do
-        n <- choose (1, 100)
-        utxo <- zip
+        n <- oneof
+            [ pure 0
+            , pure 1
+            , choose (2, 100)
+            ]
+        entries <- zip
             <$> vectorOf n arbitrary
             <*> vectorOf n arbitrary
-        return $ UTxO $ Map.fromList utxo
+        return $ CoinMap $ Map.fromList entries
 
-genUTxO :: (Arbitrary u, Ord u) => [Word64] -> Gen (UTxO u)
+genUTxO :: [Word64] -> Gen (CoinMap TxIn)
 genUTxO coins = do
     let n = length coins
     inps <- vectorOf n arbitrary
-    return $ UTxO $ Map.fromList $ zip inps (Coin <$> coins)
+    return $ CoinMap $ Map.fromList $ zip inps (Coin <$> coins)
 
-genOutputs :: [Word64] -> Gen [Output Address]
+genOutputs :: [Word64] -> Gen (CoinMap Address)
 genOutputs coins = do
     let n = length coins
     outs <- vectorOf n arbitrary
-    return $ zipWith Output outs (map Coin coins)
+    return $ coinMapFromList $ zipWith CoinMapEntry outs (map Coin coins)

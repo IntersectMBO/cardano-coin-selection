@@ -6,12 +6,14 @@
 {-# LANGUAGE TypeApplications #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
-module Cardano.TypesSpec
+module Cardano.CoinSelection.TypesSpec
     ( spec
     ) where
 
 import Prelude
 
+import Cardano.CoinSelection
+    ( Coin (..), CoinMap (..), coinIsValid, coinMapValue )
 import Cardano.Test.Utilities
     ( Address (..)
     , Hash (..)
@@ -24,8 +26,6 @@ import Cardano.Test.Utilities
     , restrictedTo
     , unsafeFromHex
     )
-import Cardano.Types
-    ( Coin (..), UTxO (..), coinIsValid, utxoBalance )
 import Data.Set
     ( Set, (\\) )
 import Test.Hspec
@@ -81,29 +81,29 @@ spec = do
 -- Wallet Specification - Lemma 2.1 - Properties of UTxO operations
 --------------------------------------------------------------------------------
 
-prop_2_1_1 :: Ord u => (Set u, UTxO u) -> Property
+prop_2_1_1 :: Ord u => (Set u, CoinMap u) -> Property
 prop_2_1_1 (ins, u) =
     cover 50 cond "dom u ⋂ ins ≠ ∅" (property prop)
   where
     cond = not $ Set.null $ dom u `Set.intersection` ins
     prop = (u `restrictedBy` ins) `isSubsetOf` u
 
-prop_2_1_2 :: Ord u => (Set u, UTxO u) -> Property
+prop_2_1_2 :: Ord u => (Set u, CoinMap u) -> Property
 prop_2_1_2 (ins, u) =
     cover 50 cond "dom u ⋂ ins ≠ ∅" (property prop)
   where
     cond = not $ Set.null $ dom u `Set.intersection` ins
     prop = (u `excluding` ins) `isSubsetOf` u
 
-prop_2_1_3 :: Ord u => (Set Coin, UTxO u) -> Property
+prop_2_1_3 :: Ord u => (Set Coin, CoinMap u) -> Property
 prop_2_1_3 (outs, u) =
     cover 50 cond "u ⋂ outs ≠ ∅" (property prop)
   where
     cond = not $ Set.null $
-        Set.fromList (Map.elems (getUTxO u)) `Set.intersection` outs
+        Set.fromList (Map.elems (unCoinMap u)) `Set.intersection` outs
     prop = (u `restrictedTo` outs) `isSubsetOf` u
 
-prop_2_1_4 :: (Ord u, Show u) => (Set u, UTxO u, UTxO u) -> Property
+prop_2_1_4 :: (Ord u, Show u) => (Set u, CoinMap u, CoinMap u) -> Property
 prop_2_1_4 (ins, u, v) =
     cover 50 cond "(dom u ⋃ dom v) ⋂ ins ≠ ∅" (property prop)
   where
@@ -113,7 +113,7 @@ prop_2_1_4 (ins, u, v) =
             ===
         (u `restrictedBy` ins) <> (v `restrictedBy` ins)
 
-prop_2_1_5 :: (Ord u, Show u) => (Set u, UTxO u, UTxO u) -> Property
+prop_2_1_5 :: (Ord u, Show u) => (Set u, CoinMap u, CoinMap u) -> Property
 prop_2_1_5 (ins, u, v) =
     cover 50 cond "(dom u ⋃ dom v) ⋂ ins ≠ ∅" (property prop)
   where
@@ -123,7 +123,7 @@ prop_2_1_5 (ins, u, v) =
             ===
         (u `excluding` ins) <> (v `excluding` ins)
 
-prop_2_1_6 :: (Ord u, Show u) => (Set u, UTxO u) -> Property
+prop_2_1_6 :: (Ord u, Show u) => (Set u, CoinMap u) -> Property
 prop_2_1_6 (ins, u) =
     cover 50 cond "dom u ⋂ ins ≠ ∅" (property prop)
   where
@@ -133,7 +133,7 @@ prop_2_1_6 (ins, u) =
             ===
         (u `restrictedBy` ins)
 
-prop_2_1_7 :: (Ord u, Show u) => (Set u, UTxO u) -> Property
+prop_2_1_7 :: (Ord u, Show u) => (Set u, CoinMap u) -> Property
 prop_2_1_7 (ins, u) =
     cover 50 cond "dom u ⋂ ins ≠ ∅" (property prop)
   where
@@ -143,7 +143,7 @@ prop_2_1_7 (ins, u) =
             ===
         (u `excluding` ins)
 
-prop_2_1_8 :: (Ord u, Show u) => (Set u, UTxO u, UTxO u) -> Property
+prop_2_1_8 :: (Ord u, Show u) => (Set u, CoinMap u, CoinMap u) -> Property
 prop_2_1_8 (ins, u, v) =
     cover 50 cond "dom u ⋂ ins ≠ ∅" (property prop)
   where
@@ -153,7 +153,7 @@ prop_2_1_8 (ins, u, v) =
             ===
         v `excluding` (ins <> dom u)
 
-prop_2_1_9 :: (Ord u, Show u) => (Set u, UTxO u) -> Property
+prop_2_1_9 :: (Ord u, Show u) => (Set u, CoinMap u) -> Property
 prop_2_1_9 (ins, u) =
     cover 50 cond "dom u ⋂ ins ≠ ∅" (property prop)
   where
@@ -164,7 +164,7 @@ prop_2_1_9 (ins, u) =
 -- Wallet Specification - Lemma 2.6 - Properties of Balance
 --------------------------------------------------------------------------------
 
-prop_2_6_1 :: Ord u => (UTxO u, UTxO u) -> Property
+prop_2_6_1 :: Ord u => (CoinMap u, CoinMap u) -> Property
 prop_2_6_1 (u, v) =
     cover 50 cond "u ≠ ∅ , v ≠ ∅" (property prop)
   where
@@ -174,17 +174,18 @@ prop_2_6_1 (u, v) =
     -- a v' that has no overlap with u.
     v' = v `excluding` dom u
     cond = not (u `isSubsetOf` mempty || v' `isSubsetOf` mempty)
-    prop = utxoBalance (u <> v') === utxoBalance u + utxoBalance v'
+    prop = unCoin (coinMapValue (u <> v'))
+        === unCoin (coinMapValue u) + unCoin (coinMapValue v')
 
-prop_2_6_2 :: Ord u => (Set u, UTxO u) -> Property
+prop_2_6_2 :: Ord u => (Set u, CoinMap u) -> Property
 prop_2_6_2 (ins, u) =
     cover 50 cond "dom u ⋂ ins ≠ ∅" (property prop)
   where
     cond = not $ Set.null $ dom u `Set.intersection` ins
     prop =
-        utxoBalance (u `excluding` ins)
+        unCoin (coinMapValue (u `excluding` ins))
             ===
-        utxoBalance u - utxoBalance (u `restrictedBy` ins)
+        unCoin (coinMapValue u) - unCoin (coinMapValue (u `restrictedBy` ins))
 
 --------------------------------------------------------------------------------
 -- UTxO Utilities
@@ -192,8 +193,8 @@ prop_2_6_2 (ins, u) =
 
 -- | Extracts the domain of a UTxO: the set of references to unspent transaction
 --   ouputs.
-dom :: UTxO u -> Set u
-dom (UTxO utxo) = Map.keysSet utxo
+dom :: CoinMap u -> Set u
+dom (CoinMap utxo) = Map.keysSet utxo
 
 --------------------------------------------------------------------------------
 -- Arbitrary Instances
@@ -241,11 +242,11 @@ instance Arbitrary TxIn where
         <$> arbitrary
         <*> scale (`mod` 3) arbitrary -- No need for a crazy high indexes
 
-instance (Arbitrary u, Ord u) => Arbitrary (UTxO u) where
-    shrink (UTxO utxo) = UTxO <$> shrink utxo
+instance (Arbitrary u, Ord u) => Arbitrary (CoinMap u) where
+    shrink (CoinMap utxo) = CoinMap <$> shrink utxo
     arbitrary = do
         n <- choose (0, 10)
         utxo <- zip
             <$> vectorOf n arbitrary
             <*> vectorOf n arbitrary
-        return $ UTxO $ Map.fromList utxo
+        return $ CoinMap $ Map.fromList utxo

@@ -1,5 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingVia #-}
+{-# LANGUAGE NumericUnderscores #-}
 {-# LANGUAGE RankNTypes #-}
 
 -- |
@@ -11,38 +13,149 @@
 --
 module Cardano.CoinSelection
     (
-      -- * Types
-      CoinSelection (..)
+      -- * Coin
+      Coin (..)
+    , coinIsValid
+
+      -- * Coin Map
+    , CoinMap (..)
+    , CoinMapEntry (..)
+    , coinMapFromList
+    , coinMapToList
+    , coinMapValue
+    , coinMapRandomEntry
+
+      -- * Coin Selection
+    , CoinSelection (..)
+    , sumInputs
+    , sumOutputs
+    , sumChange
+
+      -- * Coin Selection Algorithm
     , CoinSelectionAlgorithm (..)
     , CoinSelectionOptions (..)
     , CoinSelectionError (..)
-    , Input (..)
-    , Output (..)
-
-      -- * Calculating Balances
-    , inputBalance
-    , outputBalance
-    , changeBalance
-    , feeBalance
 
     ) where
 
 import Prelude
 
-import Cardano.Types
-    ( Coin (..), UTxO (..) )
+import Control.Arrow
+    ( (&&&) )
+import Control.DeepSeq
+    ( NFData (..) )
 import Control.Monad.Trans.Except
     ( ExceptT (..) )
-import Data.List
-    ( foldl' )
-import Data.List.NonEmpty
-    ( NonEmpty (..) )
+import Crypto.Number.Generate
+    ( generateBetween )
+import Crypto.Random.Types
+    ( MonadRandom )
+import Data.Map.Strict
+    ( Map )
 import Data.Word
     ( Word64, Word8 )
 import Fmt
-    ( Buildable (..), blockListF, blockListF', listF, nameF )
+    ( Buildable (..), blockListF, listF, nameF )
 import GHC.Generics
     ( Generic )
+import Quiet
+    ( Quiet (Quiet) )
+
+import qualified Data.Foldable as F
+import qualified Data.Map.Strict as Map
+
+--------------------------------------------------------------------------------
+-- Coin
+--------------------------------------------------------------------------------
+
+-- | A non-negative integer value that represents a number of Lovelace.
+--
+-- One Ada is equal to 1,000,000 Lovelace.
+--
+newtype Coin = Coin
+    { unCoin :: Word64 }
+    deriving stock (Eq, Generic, Ord)
+    deriving Show via (Quiet Coin)
+
+instance Monoid Coin where
+    mempty = minBound
+
+instance Semigroup Coin where
+    Coin a <> Coin b = Coin (a + b)
+
+instance NFData Coin
+
+instance Bounded Coin where
+    minBound =
+        Coin 0
+    maxBound =
+        Coin 45_000_000_000_000_000
+        -- = 45 billion Ada × 1 million Lovelace/Ada:
+
+instance Buildable Coin where
+    build = build . unCoin
+
+coinIsValid :: Coin -> Bool
+coinIsValid c = c >= minBound && c <= maxBound
+
+--------------------------------------------------------------------------------
+-- Coin Map
+--------------------------------------------------------------------------------
+
+newtype CoinMap a = CoinMap { unCoinMap :: Map a Coin }
+    deriving (Eq, Generic)
+    deriving Show via (Quiet (CoinMap a))
+
+instance Foldable CoinMap where
+    foldMap f = F.fold . fmap (f . entryKey) . coinMapToList
+
+instance Ord a => Monoid (CoinMap a) where
+    mempty = CoinMap mempty
+
+instance Ord a => Semigroup (CoinMap a) where
+    CoinMap a <> CoinMap b = CoinMap $ Map.unionWith (<>) a b
+
+data CoinMapEntry a = CoinMapEntry
+    { entryKey
+        :: a
+    , entryValue
+        :: Coin
+    } deriving (Eq, Generic, Ord, Show)
+
+instance Buildable a => Buildable (CoinMapEntry a) where
+    build a = mempty
+        <> build (entryKey a)
+        <> ":"
+        <> build (entryValue a)
+
+coinMapFromList :: Ord a => [CoinMapEntry a] -> CoinMap a
+coinMapFromList = CoinMap
+    . Map.fromListWith (<>)
+    . fmap (entryKey &&& entryValue)
+
+coinMapToList :: CoinMap a -> [CoinMapEntry a]
+coinMapToList = fmap (uncurry CoinMapEntry) . Map.toList . unCoinMap
+
+coinMapValue :: CoinMap a -> Coin
+coinMapValue = mconcat . fmap entryValue . coinMapToList
+
+-- | Selects an entry at random from a 'CoinMap', returning both the selected
+--   entry and the map with the entry removed.
+--
+-- If the given map is empty, this function returns 'Nothing'.
+--
+coinMapRandomEntry
+    :: MonadRandom m
+    => CoinMap a
+    -> m (Maybe (CoinMapEntry a), CoinMap a)
+coinMapRandomEntry (CoinMap m)
+    | Map.null m =
+        return (Nothing, CoinMap m)
+    | otherwise = do
+        ix <- fromEnum <$> generateBetween 0 (toEnum (Map.size m - 1))
+        let entry = uncurry CoinMapEntry $ Map.elemAt ix m
+        let remainder = CoinMap $ Map.deleteAt ix m
+        return (Just entry, remainder)
 
 --------------------------------------------------------------------------------
 -- Coin Selection
@@ -55,12 +168,12 @@ import GHC.Generics
 -- for all of the outputs, and a /remaining UTxO set/ from which all spent
 -- values have been removed.
 --
-newtype CoinSelectionAlgorithm i o u m e = CoinSelectionAlgorithm
+newtype CoinSelectionAlgorithm i o m e = CoinSelectionAlgorithm
     { selectCoins
         :: CoinSelectionOptions i o e
-        -> NonEmpty (Output o)
-        -> UTxO u
-        -> ExceptT (CoinSelectionError e) m (CoinSelection i o, UTxO u)
+        -> CoinMap i
+        -> CoinMap o
+        -> ExceptT (CoinSelectionError e) m (CoinSelection i o, CoinMap i)
     }
 
 -- | Represents the result of running a /coin selection algorithm/.
@@ -68,80 +181,49 @@ newtype CoinSelectionAlgorithm i o u m e = CoinSelectionAlgorithm
 -- See 'CoinSelectionAlgorithm'.
 --
 data CoinSelection i o = CoinSelection
-    { inputs :: [Input i]
+    { inputs :: CoinMap i
       -- ^ A /subset/ of the original 'UTxO' that was passed to the coin
       -- selection algorithm, containing only the entries that were /selected/
       -- by the coin selection algorithm.
-    , outputs :: [Output o]
+    , outputs :: CoinMap o
       -- ^ The original set of output payments passed to the coin selection
       -- algorithm, whose total value is covered by the 'inputs'.
     , change :: [Coin]
       -- ^ A set of change values to be paid back to the originator of the
       -- payment.
-    } deriving (Generic, Show, Eq)
+    }
+    deriving (Generic, Show, Eq)
 
--- NOTE:
---
--- We don't check for duplicates when combining selections because we assume
--- they are constructed from independent elements.
---
--- As an alternative to the current implementation, we could 'nub' the list or
--- use a 'Set'.
---
-instance Semigroup (CoinSelection i o) where
+instance (Ord i, Ord o) => Semigroup (CoinSelection i o) where
     a <> b = CoinSelection
         { inputs = inputs a <> inputs b
         , outputs = outputs a <> outputs b
         , change = change a <> change b
         }
 
-instance Monoid (CoinSelection i o) where
-    mempty = CoinSelection [] [] []
+instance (Ord i, Ord o) => Monoid (CoinSelection i o) where
+    mempty = CoinSelection mempty mempty mempty
 
 instance (Buildable i, Buildable o) => Buildable (CoinSelection i o) where
     build s = mempty
         <> nameF "inputs"
-            (blockListF' "-" build $ inputs s)
+            (blockListF $ coinMapToList $ inputs s)
         <> nameF "outputs"
-            (blockListF $ outputs s)
+            (blockListF $ coinMapToList $ outputs s)
         <> nameF "change"
             (listF $ change s)
 
--- | An input for a coin selection.
---
--- See 'CoinSelection'.
---
-data Input i = Input
-    { inputId
-        :: !i
-        -- ^ A unique identifier for this input.
-    , inputValue
-        :: !Coin
-    } deriving (Eq, Generic, Ord, Show)
+-- | Calculate the total sum of all 'inputs' for the given 'CoinSelection'.
+sumInputs :: CoinSelection i o -> Coin
+sumInputs = coinMapValue . inputs
 
-instance Buildable i => Buildable (Input i) where
-    build i = mempty
-        <> build (inputValue i)
-        <> " @ "
-        <> build (inputId i)
+-- | Calculate the total sum of all 'outputs' for the given 'CoinSelection'.
+sumOutputs :: CoinSelection i o -> Coin
+sumOutputs =  coinMapValue . outputs
 
--- | An output for a coin selection.
---
--- See 'CoinSelection'.
---
-data Output o = Output
-    { outputId
-        :: !o
-        -- ^ A unique identifier for this output.
-    , outputValue
-        :: !Coin
-    } deriving (Eq, Generic, Ord, Show)
-
-instance Buildable o => Buildable (Output o) where
-    build o = mempty
-        <> build (outputValue o)
-        <> " @ "
-        <> build (outputId o)
+-- | Calculate the total sum of all 'change' for the given 'CoinSelection'.
+sumChange :: CoinSelection i o -> Coin
+sumChange = mconcat . change
 
 -- | Represents a set of options to be passed to a coin selection algorithm.
 --
@@ -155,22 +237,6 @@ data CoinSelectionOptions i o e = CoinSelectionOptions
             -- ^ Validate the given coin selection, returning a backend-specific
             -- error.
     } deriving (Generic)
-
--- | Calculate the total sum of all 'inputs' for the given 'CoinSelection'.
-inputBalance :: CoinSelection i o -> Word64
-inputBalance =  foldl' (\total -> addCoin total . inputValue) 0 . inputs
-
--- | Calculate the total sum of all 'outputs' for the given 'CoinSelection'.
-outputBalance :: CoinSelection i o -> Word64
-outputBalance =  foldl' (\total -> addCoin total . outputValue) 0 . outputs
-
--- | Calculate the total sum of all 'change' for the given 'CoinSelection'.
-changeBalance :: CoinSelection i o -> Word64
-changeBalance = foldl' addCoin 0 . change
-
--- | Calculates the fee associated with a given 'CoinSelection'.
-feeBalance :: CoinSelection i o -> Word64
-feeBalance sel = inputBalance sel - outputBalance sel - changeBalance sel
 
 -- | Represents the set of possible failures that can occur when attempting
 --   to produce a 'CoinSelection'.
@@ -207,10 +273,3 @@ data CoinSelectionError e
     -- validate the selection.
     --
     deriving (Show, Eq)
-
---------------------------------------------------------------------------------
--- Utility Functions
---------------------------------------------------------------------------------
-
-addCoin :: Integral a => a -> Coin -> a
-addCoin total c = total + (fromIntegral (getCoin c))

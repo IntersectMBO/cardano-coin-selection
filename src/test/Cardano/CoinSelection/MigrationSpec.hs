@@ -13,19 +13,25 @@ module Cardano.CoinSelection.MigrationSpec
 import Prelude
 
 import Cardano.CoinSelection
-    ( CoinSelection (..), Input (..), changeBalance, inputBalance )
+    ( Coin (..)
+    , CoinMap (..)
+    , CoinMapEntry (..)
+    , CoinSelection (..)
+    , coinMapToList
+    , coinMapValue
+    , sumChange
+    , sumInputs
+    )
+import Cardano.CoinSelection.Fee
+    ( DustThreshold (..), Fee (..), FeeEstimator (..), FeeOptions (..) )
+import Cardano.CoinSelection.FeeSpec
+    ()
 import Cardano.CoinSelection.Migration
     ( depleteUTxO, idealBatchSize )
 import Cardano.CoinSelectionSpec
     ()
-import Cardano.Fee
-    ( DustThreshold (..), Fee (..), FeeEstimator (..), FeeOptions (..) )
-import Cardano.FeeSpec
-    ()
 import Cardano.Test.Utilities
     ( Address, Hash (..), TxIn (..) )
-import Cardano.Types
-    ( Coin (..), UTxO (..), utxoBalance )
 import Data.ByteString
     ( ByteString )
 import Data.Function
@@ -76,8 +82,8 @@ spec = do
                 feeOpts <- pick (genFeeOptions dust)
                 let selections = depleteUTxO feeOpts batchSize utxo
                 monitor $ label $ accuracy dust
-                    (utxoBalance utxo)
-                    (fromIntegral $ sum $ inputBalance <$> selections)
+                    (fromIntegral $ unCoin $ coinMapValue utxo)
+                    (fromIntegral $ sum $ unCoin . sumInputs <$> selections)
               where
                 title :: String
                 title = "dust=" <> show (round (100 * r) :: Int) <> "%"
@@ -130,7 +136,7 @@ spec = do
                         $ 5 * (length (inputs s) + length (outputs s))
                     }
             let batchSize = 1
-            let utxo = UTxO $ Map.fromList
+            let utxo = CoinMap $ Map.fromList
                     [ ( TxIn
                         { txinId = Hash "|\243^\SUBg\242\231\&1\213\203"
                         , txinIx = 2
@@ -147,22 +153,22 @@ spec = do
 
 -- | No coin selection has outputs
 prop_onlyChangeOutputs
-    :: forall i o u . (i ~ u, Show o)
+    :: forall i o . (Ord i, Ord o, Show o)
     => FeeOptions i o
     -> Word8
-    -> UTxO u
+    -> CoinMap i
     -> Property
 prop_onlyChangeOutputs feeOpts batchSize utxo = do
-    let allOutputs = outputs =<<
-            depleteUTxO feeOpts batchSize utxo
+    let allOutputs =
+            coinMapToList . outputs =<< depleteUTxO feeOpts batchSize utxo
     property (allOutputs `shouldSatisfy` null)
 
 -- | Every coin in the selection change >= minimum threshold coin
 prop_noLessThanThreshold
-    :: forall i o u . i ~ u
+    :: forall i o . (Ord i, Ord o)
     => FeeOptions i o
     -> Word8
-    -> UTxO u
+    -> CoinMap i
     -> Property
 prop_noLessThanThreshold feeOpts batchSize utxo = do
     let allChange = change
@@ -171,19 +177,19 @@ prop_noLessThanThreshold feeOpts batchSize utxo = do
             filter (< threshold) allChange
     property (undersizedCoins `shouldSatisfy` null)
   where
-    threshold = Coin $ getDustThreshold $ dustThreshold feeOpts
+    threshold = Coin $ unDustThreshold $ dustThreshold feeOpts
 
 -- | Total input UTxO value >= sum of selection change coins
 prop_inputsGreaterThanOutputs
-    :: forall i o u . (i ~ u, Show o, Show u)
+    :: forall i o . (Ord i, Ord o, Show i, Show o)
     => FeeOptions i o
     -> Word8
-    -> UTxO u
+    -> CoinMap i
     -> Property
 prop_inputsGreaterThanOutputs feeOpts batchSize utxo = do
     let selections  = depleteUTxO feeOpts batchSize utxo
-    let totalChange = sum (changeBalance <$> selections)
-    let balanceUTxO = utxoBalance utxo
+    let totalChange = sum (unCoin . sumChange <$> selections)
+    let balanceUTxO = unCoin $ coinMapValue utxo
     property (balanceUTxO >= fromIntegral totalChange)
         & counterexample ("Total change balance: " <> show totalChange)
         & counterexample ("Total UTxO balance: " <> show balanceUTxO)
@@ -191,48 +197,47 @@ prop_inputsGreaterThanOutputs feeOpts batchSize utxo = do
 
 -- | Every selected input is unique, i.e. selected only once
 prop_inputsAreUnique
-    :: forall i o u . (i ~ u, Ord u)
+    :: forall i o . (Ord i, Ord o)
     => FeeOptions i o
     -> Word8
-    -> UTxO u
+    -> CoinMap i
     -> Property
 prop_inputsAreUnique feeOpts batchSize utxo = do
-    let selectionInputList = inputs =<<
-            depleteUTxO feeOpts batchSize utxo
+    let selectionInputList =
+            coinMapToList . inputs =<< depleteUTxO feeOpts batchSize utxo
     let selectionInputSet =
             Set.fromList selectionInputList
     Set.size selectionInputSet === length selectionInputSet
 
 -- | Every selection input is still a member of the UTxO" $
 prop_inputsStillInUTxO
-    :: forall i o u . (i ~ u, Ord u)
+    :: forall i o . (Ord i, Ord o)
     => FeeOptions i o
     -> Word8
-    -> UTxO u
+    -> CoinMap i
     -> Property
 prop_inputsStillInUTxO feeOpts batchSize utxo = do
-    let selectionInputSet =
-            Set.fromList $ inputs =<<
-                depleteUTxO feeOpts batchSize utxo
-    let utxoSet =
-            Set.fromList $ fmap (uncurry Input) $ Map.toList $ getUTxO utxo
+    let selectionInputSet = Set.fromList $
+            coinMapToList . inputs =<< depleteUTxO feeOpts batchSize utxo
+    let utxoSet = Set.fromList $
+            fmap (uncurry CoinMapEntry) $ Map.toList $ unCoinMap utxo
     property (selectionInputSet `Set.isSubsetOf` utxoSet)
 
 -- | Every coin selection is well-balanced (i.e. actual fees are exactly the
 -- expected fees)
 prop_wellBalanced
-    :: forall i o u . (i ~ u, Show o, Show u)
+    :: forall i o . (Ord i, Ord o, Show i, Show o)
     => FeeOptions i o
     -> Word8
-    -> UTxO u
+    -> CoinMap i
     -> Property
 prop_wellBalanced feeOpts batchSize utxo = do
     let selections = depleteUTxO feeOpts batchSize utxo
     conjoin
         [ counterexample example (actualFee === expectedFee)
         | s <- selections
-        , let actualFee = inputBalance s - changeBalance s
-        , let (Fee expectedFee) = estimateFee (feeEstimator feeOpts) s
+        , let actualFee = unCoin (sumInputs s) - unCoin (sumChange s)
+        , let expectedFee = unFee $ estimateFee (feeEstimator feeOpts) s
         , let example = unlines
                 [ "Coin Selection: " <> show s
                 , "Actual fee: " <> show actualFee
@@ -265,7 +270,7 @@ instance Arbitrary (Wrapped (Hash "Tx")) where
 genBatchSize :: Gen Word8
 genBatchSize = choose (50, 150)
 
-genFeeOptions :: Coin -> Gen (FeeOptions i o)
+genFeeOptions :: Coin -> Gen (FeeOptions TxIn Address)
 genFeeOptions (Coin dust) = do
     pure $ FeeOptions
         { feeEstimator = FeeEstimator $ \s ->
@@ -275,12 +280,12 @@ genFeeOptions (Coin dust) = do
         }
 
 -- | Generate a given UTxO with a particular percentage of dust
-genUTxO :: Double -> Coin -> Gen (UTxO TxIn)
+genUTxO :: Double -> Coin -> Gen (CoinMap TxIn)
 genUTxO r (Coin dust) = do
     n <- choose (10, 1000)
     inps <- genTxIn n
     coins <- vectorOf n genCoin
-    pure $ UTxO $ Map.fromList $ zip inps coins
+    pure $ CoinMap $ Map.fromList $ zip inps coins
   where
     genTxIn :: Int -> Gen [TxIn]
     genTxIn n = do

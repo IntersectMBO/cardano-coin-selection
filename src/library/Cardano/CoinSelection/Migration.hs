@@ -41,16 +41,17 @@ module Cardano.CoinSelection.Migration
 import Prelude
 
 import Cardano.CoinSelection
-    ( CoinSelection (..)
+    ( Coin (..)
+    , CoinMap (..)
+    , CoinMapEntry (..)
+    , CoinSelection (..)
     , CoinSelectionOptions (..)
-    , Input (..)
-    , changeBalance
-    , inputBalance
+    , coinMapFromList
+    , sumChange
+    , sumInputs
     )
-import Cardano.Fee
+import Cardano.CoinSelection.Fee
     ( DustThreshold (..), Fee (..), FeeEstimator (..), FeeOptions (..) )
-import Cardano.Types
-    ( Coin (..), UTxO (..) )
 import Control.Monad.Trans.State
     ( State, evalState, get, put )
 import Data.List.NonEmpty
@@ -73,18 +74,18 @@ import qualified Data.Map.Strict as Map
 -- The fee options are used to balance the coin selections and fix a threshold
 -- for dust that is removed from the selections.
 depleteUTxO
-    :: forall i o u . i ~ u
+    :: forall i o . (Ord i, Ord o)
     => FeeOptions i o
         -- ^ Fee computation and threshold definition
     -> Word8
         -- ^ Maximum number of inputs we can select per transaction
-    -> UTxO u
+    -> CoinMap i
         -- ^ UTxO to deplete
     -> [CoinSelection i o]
 depleteUTxO feeOpts batchSize utxo =
-    evalState migrate (uncurry Input <$> Map.toList (getUTxO utxo))
+    evalState migrate (uncurry CoinMapEntry <$> Map.toList (unCoinMap utxo))
   where
-    migrate :: State [Input i] [CoinSelection i o]
+    migrate :: State [CoinMapEntry i] [CoinSelection i o]
     migrate = do
         batch <- getNextBatch
         if null batch then
@@ -98,16 +99,16 @@ depleteUTxO feeOpts batchSize utxo =
     -- Construct a provisional 'CoinSelection' from the given selected inputs.
     -- Note that the selection may look a bit weird at first sight as it has
     -- no outputs (we are paying everything to ourselves!).
-    mkCoinSelection :: [Input i] -> CoinSelection i o
+    mkCoinSelection :: [CoinMapEntry i] -> CoinSelection i o
     mkCoinSelection inps = CoinSelection
-        { inputs = inps
-        , outputs = []
+        { inputs = coinMapFromList inps
+        , outputs = mempty
         , change =
-            let chgs = mapMaybe (noDust . inputValue) inps
+            let chgs = mapMaybe (noDust . entryValue) inps
             in if null chgs then [threshold] else chgs
         }
       where
-        threshold = Coin $ getDustThreshold $ dustThreshold feeOpts
+        threshold = Coin $ unDustThreshold $ dustThreshold feeOpts
         noDust :: Coin -> Maybe Coin
         noDust c
             | c < threshold = Nothing
@@ -139,12 +140,13 @@ depleteUTxO feeOpts batchSize utxo =
             { change = modifyFirst (c :| cs) (+ diff) }
       where
         diff :: Integer
-        diff = actualFee - integer requiredFee
+        diff = actualFee - requiredFee
           where
-            (Fee requiredFee) =
-                estimateFee (feeEstimator feeOpts) coinSel
-            actualFee =
-                integer (inputBalance coinSel) - integer (changeBalance coinSel)
+            requiredFee = integer $
+                unFee $ estimateFee (feeEstimator feeOpts) coinSel
+            actualFee
+                = integer (unCoin $ sumInputs coinSel)
+                - integer (unCoin $ sumChange coinSel)
 
     -- | Apply the given function to the first coin of the list. If the
     -- operation makes the 'Coin' smaller than the dust threshold, the coin is
@@ -158,7 +160,7 @@ depleteUTxO feeOpts batchSize utxo =
         c' = op (integer c)
 
         threshold :: Integer
-        threshold = integer (getDustThreshold (dustThreshold feeOpts))
+        threshold = integer (unDustThreshold (dustThreshold feeOpts))
 
     getNextBatch :: State [a] [a]
     getNextBatch = do
