@@ -84,18 +84,17 @@ import qualified Test.QuickCheck.Monadic as QC
 
 spec :: Spec
 spec = do
-    describe "Coin map properties" $ do
+    describe "CoinMap properties" $ do
         it "coinMapFromList preserves total value" $
             checkCoverage $ prop_coinMapFromList_preservesValue @Int
         it "coinMapToList preserves total value" $
             checkCoverage $ prop_coinMapToList_preservesValue @Int
         it "coinMapFromList . coinMapToList = id" $
             checkCoverage $ prop_coinMapToList_coinMapFromList @Int
-
-    describe "Coin selection properties" $ do
-        it "UTxO toList order deterministic" $
+        it "coinMapToList order deterministic" $
             checkCoverageWith lowerConfidence $
-                prop_utxoToListOrderDeterministic @TxIn
+                prop_coinMapToList_orderDeterministic @Int
+
   where
     lowerConfidence :: Confidence
     lowerConfidence = Confidence (10^(6 :: Integer)) 0.75
@@ -127,14 +126,14 @@ prop_coinMapToList_coinMapFromList m = property $
     coinMapFromList (coinMapToList m)
         `shouldBe` m
 
-prop_utxoToListOrderDeterministic
+prop_coinMapToList_orderDeterministic
     :: Ord u => CoinMap u -> Property
-prop_utxoToListOrderDeterministic u = monadicIO $ QC.run $ do
-    let list0 = Map.toList $ unCoinMap u
+prop_coinMapToList_orderDeterministic u = monadicIO $ QC.run $ do
+    let list0 = coinMapToList u
     list1 <- shuffle list0
     return $
         cover 90 (list0 /= list1) "shuffled" $
-        list0 == Map.toList (Map.fromList list1)
+        list0 == coinMapToList (coinMapFromList list1)
 
 --------------------------------------------------------------------------------
 -- Coin Selection - Unit Tests
