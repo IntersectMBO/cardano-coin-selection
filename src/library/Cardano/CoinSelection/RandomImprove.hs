@@ -170,7 +170,7 @@ import qualified Data.List as L
 --      set, the algorithm depletes all entries from the UTxO set /before/ it
 --      is able to pay for all requested outputs.
 --
---      See: __'ErrUxtoFullyDepleted'__.
+--      See: __'ErrUtxoFullyDepleted'__.
 --
 --  4.  The /number/ of UTxO entries needed to pay for the requested outputs
 --      would /exceed/ the upper limit specified by 'maximumInputCount'.
