@@ -44,12 +44,18 @@ import Cardano.CoinSelection
     )
 import Cardano.Test.Utilities
     ( Address (..), Hash (..), ShowFmt (..), TxIn (..) )
+import Control.Arrow
+    ( (&&&) )
 import Control.Monad.Trans.Except
     ( runExceptT )
+import Data.Function
+    ( (&) )
 import Data.List.NonEmpty
     ( NonEmpty (..) )
 import Data.Maybe
     ( catMaybes )
+import Data.Set
+    ( Set )
 import Data.Word
     ( Word64, Word8 )
 import Fmt
@@ -92,12 +98,19 @@ spec = do
     describe "CoinMap properties" $ do
         it "CoinMap coverage is adequate" $
             checkCoverage $ prop_CoinMap_coverage @Int
+        it "CoinMapEntry coverage is adequate" $
+            checkCoverage $ prop_CoinMapEntry_coverage @Int
+        it "coinMapFromList preserves total value for each unique key" $
+            checkCoverage $
+                prop_coinMapFromList_preservesTotalValueForEachUniqueKey @Int
         it "coinMapFromList preserves total value" $
-            checkCoverage $ prop_coinMapFromList_preservesValue @Int
+            checkCoverage $ prop_coinMapFromList_preservesTotalValue @Int
         it "coinMapToList preserves total value" $
-            checkCoverage $ prop_coinMapToList_preservesValue @Int
+            checkCoverage $ prop_coinMapToList_preservesTotalValue @Int
         it "coinMapFromList . coinMapToList = id" $
             checkCoverage $ prop_coinMapToList_coinMapFromList @Int
+        it "coinMapToList . coinMapFromList = id (when no keys duplicated)" $
+            checkCoverage $ prop_coinMapFromList_coinMapToList @Int
         it "coinMapToList order deterministic" $
             checkCoverageWith lowerConfidence $
                 prop_coinMapToList_orderDeterministic @Int
@@ -106,7 +119,8 @@ spec = do
         it "monoidal append preserves keys" $
             checkCoverage $ prop_coinSelection_mappendPreservesKeys @Int @Int
         it "monoidal append preserves value" $
-            checkCoverage $ prop_coinSelection_mappendPreservesValue @Int @Int
+            checkCoverage $
+                prop_coinSelection_mappendPreservesTotalValue @Int @Int
 
   where
     lowerConfidence :: Confidence
@@ -132,18 +146,68 @@ prop_CoinMap_coverage m = property
         "coin map has several unique values"
     True
 
-prop_coinMapFromList_preservesValue
+prop_CoinMapEntry_coverage :: forall u . Ord u => [CoinMapEntry u] -> Property
+prop_CoinMapEntry_coverage entries = property
+    $ cover 2 (null entries)
+        "coin map entry list is empty"
+    $ cover 2 (length entries == 1)
+        "coin map entry list has one entry"
+    $ cover 2 (length entries == 2)
+        "coin map entry list has two entries"
+    $ cover 2 (length entries >= 3)
+        "coin map entry list has multiple entries"
+    $ cover 2 (not (null entries) && length uniqueKeys == 1)
+        "coin map entry list has one unique key"
+    $ cover 2 (not (null entries) && length uniqueKeys == 2)
+        "coin map entry list has two unique keys"
+    $ cover 2 (not (null entries) && length uniqueKeys >= 3)
+        "coin map entry list has multiple unique keys"
+    $ cover 2 (not (null entries) && null duplicateKeys)
+        "coin map entry list has no duplicate keys"
+    $ cover 2 (not (null entries) && length duplicateKeys == 1)
+        "coin map entry list has one duplicate key"
+    $ cover 2 (not (null entries) && length duplicateKeys == 2)
+        "coin map entry list has two duplicate keys"
+    $ cover 2 (not (null entries) && length duplicateKeys >= 3)
+        "coin map entry list has multiple duplicate keys"
+    True
+  where
+    uniqueKeys :: Set u
+    uniqueKeys = entries
+        & fmap entryKey
+        & Set.fromList
+    duplicateKeys :: Set u
+    duplicateKeys = entries
+        & fmap (entryKey &&& const (1 :: Int))
+        & Map.fromListWith (+)
+        & Map.filter (> 1)
+        & Map.keysSet
+
+prop_coinMapFromList_preservesTotalValueForEachUniqueKey
+    :: (Ord u, Show u)
+    => [CoinMapEntry u]
+    -> Property
+prop_coinMapFromList_preservesTotalValueForEachUniqueKey entries = property $
+    mkEntryMap entries
+        `shouldBe`
+        mkEntryMap (coinMapToList (coinMapFromList entries))
+  where
+    mkEntryMap
+        = Map.fromListWith (\c1 c2 -> Coin $ unCoin c1 + unCoin c2)
+        . fmap (entryKey &&& entryValue)
+
+prop_coinMapFromList_preservesTotalValue
     :: Ord u
     => [CoinMapEntry u]
     -> Property
-prop_coinMapFromList_preservesValue entries = property $
+prop_coinMapFromList_preservesTotalValue entries = property $
     mconcat (entryValue <$> entries)
         `shouldBe` coinMapValue (coinMapFromList entries)
 
-prop_coinMapToList_preservesValue
+prop_coinMapToList_preservesTotalValue
     :: CoinMap u
     -> Property
-prop_coinMapToList_preservesValue m = property $
+prop_coinMapToList_preservesTotalValue m = property $
     mconcat (entryValue <$> coinMapToList m)
         `shouldBe` coinMapValue m
 
@@ -154,6 +218,27 @@ prop_coinMapToList_coinMapFromList
 prop_coinMapToList_coinMapFromList m = property $
     coinMapFromList (coinMapToList m)
         `shouldBe` m
+
+prop_coinMapFromList_coinMapToList
+    :: (Ord u, Show u)
+    => [CoinMapEntry u]
+    -> Property
+prop_coinMapFromList_coinMapToList entries
+    | duplicateKeyCount == 0 =
+        property $ x `shouldBe` y
+    | otherwise =
+        property $ length x > length y
+  where
+    x = L.sort entries
+    y = L.sort $ coinMapToList $ coinMapFromList entries
+
+    duplicateKeyCount :: Int
+    duplicateKeyCount = entries
+        & fmap (entryKey &&& const (1 :: Int))
+        & Map.fromListWith (+)
+        & Map.filter (> 1)
+        & Map.keysSet
+        & length
 
 prop_coinMapToList_orderDeterministic
     :: Ord u => CoinMap u -> Property
@@ -181,12 +266,12 @@ prop_coinSelection_mappendPreservesKeys s1 s2 = property $ do
         `Set.union`
         Map.keysSet (unCoinMap $ outputs s2)
 
-prop_coinSelection_mappendPreservesValue
+prop_coinSelection_mappendPreservesTotalValue
     :: (Ord i, Ord o)
     => CoinSelection i o
     -> CoinSelection i o
     -> Property
-prop_coinSelection_mappendPreservesValue s1 s2 = property $ do
+prop_coinSelection_mappendPreservesTotalValue s1 s2 = property $ do
     sumInputs  s1 <> sumInputs  s2 `shouldBe` sumInputs  (s1 <> s2)
     sumOutputs s1 <> sumOutputs s2 `shouldBe` sumOutputs (s1 <> s2)
     sumChange  s1 <> sumChange  s2 `shouldBe` sumChange  (s1 <> s2)
