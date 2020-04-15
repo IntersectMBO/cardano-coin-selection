@@ -57,7 +57,7 @@ import Data.Set
 import Data.Word
     ( Word32 )
 import Fmt
-    ( Buildable (..), fmt, ordinalF, prefixF, suffixF )
+    ( Buildable (..), fmt, prefixF, suffixF )
 import GHC.Generics
     ( Generic )
 import GHC.Stack
@@ -85,8 +85,6 @@ instance NFData Address
 instance Buildable Address where
     build addr = mempty
         <> prefixF 8 addrF
-        <> "..."
-        <> suffixF 8 addrF
       where
         addrF = build (toText addr)
         toText = T.decodeUtf8
@@ -109,7 +107,9 @@ unsafeFromHex =
 newtype Hash (tag :: Symbol) = Hash { getHash :: ByteString }
     deriving stock (Eq, Generic, Ord)
     deriving newtype (ByteArrayAccess)
-    deriving Show via (Quiet (Hash tag))
+
+instance Show (Hash (tag :: Symbol)) where
+    show = fmt . build
 
 instance NFData (Hash tag)
 
@@ -143,15 +143,18 @@ data TxIn = TxIn
         :: !(Hash "Tx")
     , txinIx
         :: !Word32
-    } deriving (Show, Generic, Eq, Ord)
+    } deriving (Generic, Eq, Ord)
+
+instance Show TxIn where
+    show t = show (txinId t) <> ":" <> show (txinIx t)
 
 instance NFData TxIn
 
 instance Buildable TxIn where
     build txin = mempty
-        <> ordinalF (txinIx txin + 1)
-        <> " "
         <> build (txinId txin)
+        <> ":"
+        <> build (txinIx txin)
 
 data TxOut = TxOut
     { address

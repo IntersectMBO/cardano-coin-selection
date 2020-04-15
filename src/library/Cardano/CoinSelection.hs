@@ -206,11 +206,11 @@ instance (Ord i, Ord o) => Monoid (CoinSelection i o) where
 
 instance (Buildable i, Buildable o) => Buildable (CoinSelection i o) where
     build s = mempty
-        <> nameF "inputs"
+        <> nameF "\ninputs"
             (blockListF $ coinMapToList $ inputs s)
-        <> nameF "outputs"
+        <> nameF "\noutputs"
             (blockListF $ coinMapToList $ outputs s)
-        <> nameF "change"
+        <> nameF "\nchange"
             (listF $ change s)
 
 -- | Calculate the total sum of all 'inputs' for the given 'CoinSelection'.
