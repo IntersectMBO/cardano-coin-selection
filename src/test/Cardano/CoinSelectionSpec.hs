@@ -101,9 +101,9 @@ spec = do
         it "CoinMapEntry coverage is adequate" $
             checkCoverage $ prop_CoinMapEntry_coverage @Int
         it "coinMapFromList preserves total value" $
-            checkCoverage $ prop_coinMapFromList_preservesValue @Int
+            checkCoverage $ prop_coinMapFromList_preservesTotalValue @Int
         it "coinMapToList preserves total value" $
-            checkCoverage $ prop_coinMapToList_preservesValue @Int
+            checkCoverage $ prop_coinMapToList_preservesTotalValue @Int
         it "coinMapFromList . coinMapToList = id" $
             checkCoverage $ prop_coinMapToList_coinMapFromList @Int
         it "coinMapToList order deterministic" $
@@ -114,7 +114,8 @@ spec = do
         it "monoidal append preserves keys" $
             checkCoverage $ prop_coinSelection_mappendPreservesKeys @Int @Int
         it "monoidal append preserves value" $
-            checkCoverage $ prop_coinSelection_mappendPreservesValue @Int @Int
+            checkCoverage $
+                prop_coinSelection_mappendPreservesTotalValue @Int @Int
 
   where
     lowerConfidence :: Confidence
@@ -177,18 +178,18 @@ prop_CoinMapEntry_coverage entries = property
         & Map.filter (> 1)
         & Map.keysSet
 
-prop_coinMapFromList_preservesValue
+prop_coinMapFromList_preservesTotalValue
     :: Ord u
     => [CoinMapEntry u]
     -> Property
-prop_coinMapFromList_preservesValue entries = property $
+prop_coinMapFromList_preservesTotalValue entries = property $
     mconcat (entryValue <$> entries)
         `shouldBe` coinMapValue (coinMapFromList entries)
 
-prop_coinMapToList_preservesValue
+prop_coinMapToList_preservesTotalValue
     :: CoinMap u
     -> Property
-prop_coinMapToList_preservesValue m = property $
+prop_coinMapToList_preservesTotalValue m = property $
     mconcat (entryValue <$> coinMapToList m)
         `shouldBe` coinMapValue m
 
@@ -226,12 +227,12 @@ prop_coinSelection_mappendPreservesKeys s1 s2 = property $ do
         `Set.union`
         Map.keysSet (unCoinMap $ outputs s2)
 
-prop_coinSelection_mappendPreservesValue
+prop_coinSelection_mappendPreservesTotalValue
     :: (Ord i, Ord o)
     => CoinSelection i o
     -> CoinSelection i o
     -> Property
-prop_coinSelection_mappendPreservesValue s1 s2 = property $ do
+prop_coinSelection_mappendPreservesTotalValue s1 s2 = property $ do
     sumInputs  s1 <> sumInputs  s2 `shouldBe` sumInputs  (s1 <> s2)
     sumOutputs s1 <> sumOutputs s2 `shouldBe` sumOutputs (s1 <> s2)
     sumChange  s1 <> sumChange  s2 `shouldBe` sumChange  (s1 <> s2)
