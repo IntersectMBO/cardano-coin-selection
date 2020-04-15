@@ -1,5 +1,11 @@
-resolver: lts-13.24
+resolver: https://raw.githubusercontent.com/input-output-hk/cardano-haskell/master/snapshots/cardano-1.9.3.yaml
+
+# Generate files required by Weeder.
+# See https://github.com/ndmitchell/weeder/issues/53
+ghc-options: {"$locals": -ddump-to-file -ddump-hi}
+
 packages:
 - .
+
 extra-deps:
 - quiet-0.2
