@@ -109,6 +109,8 @@ spec = do
             checkCoverage $ prop_coinMapToList_preservesTotalValue @Int
         it "coinMapFromList . coinMapToList = id" $
             checkCoverage $ prop_coinMapToList_coinMapFromList @Int
+        it "coinMapToList . coinMapFromList = id (when no keys duplicated)" $
+            checkCoverage $ prop_coinMapFromList_coinMapToList @Int
         it "coinMapToList order deterministic" $
             checkCoverageWith lowerConfidence $
                 prop_coinMapToList_orderDeterministic @Int
@@ -216,6 +218,27 @@ prop_coinMapToList_coinMapFromList
 prop_coinMapToList_coinMapFromList m = property $
     coinMapFromList (coinMapToList m)
         `shouldBe` m
+
+prop_coinMapFromList_coinMapToList
+    :: (Ord u, Show u)
+    => [CoinMapEntry u]
+    -> Property
+prop_coinMapFromList_coinMapToList entries
+    | duplicateKeyCount == 0 =
+        property $ x `shouldBe` y
+    | otherwise =
+        property $ length x > length y
+  where
+    x = L.sort entries
+    y = L.sort $ coinMapToList $ coinMapFromList entries
+
+    duplicateKeyCount :: Int
+    duplicateKeyCount = entries
+        & fmap (entryKey &&& const (1 :: Int))
+        & Map.fromListWith (+)
+        & Map.filter (> 1)
+        & Map.keysSet
+        & length
 
 prop_coinMapToList_orderDeterministic
     :: Ord u => CoinMap u -> Property
