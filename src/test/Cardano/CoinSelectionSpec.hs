@@ -44,12 +44,18 @@ import Cardano.CoinSelection
     )
 import Cardano.Test.Utilities
     ( Address (..), Hash (..), ShowFmt (..), TxIn (..) )
+import Control.Arrow
+    ( (&&&) )
 import Control.Monad.Trans.Except
     ( runExceptT )
+import Data.Function
+    ( (&) )
 import Data.List.NonEmpty
     ( NonEmpty (..) )
 import Data.Maybe
     ( catMaybes )
+import Data.Set
+    ( Set )
 import Data.Word
     ( Word64, Word8 )
 import Fmt
@@ -92,6 +98,8 @@ spec = do
     describe "CoinMap properties" $ do
         it "CoinMap coverage is adequate" $
             checkCoverage $ prop_CoinMap_coverage @Int
+        it "CoinMapEntry coverage is adequate" $
+            checkCoverage $ prop_CoinMapEntry_coverage @Int
         it "coinMapFromList preserves total value" $
             checkCoverage $ prop_coinMapFromList_preservesValue @Int
         it "coinMapToList preserves total value" $
@@ -131,6 +139,43 @@ prop_CoinMap_coverage m = property
     $ cover 10 (1 < length (Set.fromList $ entryValue <$> coinMapToList m))
         "coin map has several unique values"
     True
+
+prop_CoinMapEntry_coverage :: forall u . Ord u => [CoinMapEntry u] -> Property
+prop_CoinMapEntry_coverage entries = property
+    $ cover 2 (null entries)
+        "coin map entry list is empty"
+    $ cover 2 (length entries == 1)
+        "coin map entry list has one entry"
+    $ cover 2 (length entries == 2)
+        "coin map entry list has two entries"
+    $ cover 2 (length entries >= 3)
+        "coin map entry list has multiple entries"
+    $ cover 2 (not (null entries) && length uniqueKeys == 1)
+        "coin map entry list has one unique key"
+    $ cover 2 (not (null entries) && length uniqueKeys == 2)
+        "coin map entry list has two unique keys"
+    $ cover 2 (not (null entries) && length uniqueKeys >= 3)
+        "coin map entry list has multiple unique keys"
+    $ cover 2 (not (null entries) && null duplicateKeys)
+        "coin map entry list has no duplicate keys"
+    $ cover 2 (not (null entries) && length duplicateKeys == 1)
+        "coin map entry list has one duplicate key"
+    $ cover 2 (not (null entries) && length duplicateKeys == 2)
+        "coin map entry list has two duplicate keys"
+    $ cover 2 (not (null entries) && length duplicateKeys >= 3)
+        "coin map entry list has multiple duplicate keys"
+    True
+  where
+    uniqueKeys :: Set u
+    uniqueKeys = entries
+        & fmap entryKey
+        & Set.fromList
+    duplicateKeys :: Set u
+    duplicateKeys = entries
+        & fmap (entryKey &&& const (1 :: Int))
+        & Map.fromListWith (+)
+        & Map.filter (> 1)
+        & Map.keysSet
 
 prop_coinMapFromList_preservesValue
     :: Ord u
