@@ -100,6 +100,9 @@ spec = do
             checkCoverage $ prop_CoinMap_coverage @Int
         it "CoinMapEntry coverage is adequate" $
             checkCoverage $ prop_CoinMapEntry_coverage @Int
+        it "coinMapFromList preserves total value for each unique key" $
+            checkCoverage $
+                prop_coinMapFromList_preservesTotalValueForEachUniqueKey @Int
         it "coinMapFromList preserves total value" $
             checkCoverage $ prop_coinMapFromList_preservesTotalValue @Int
         it "coinMapToList preserves total value" $
@@ -177,6 +180,19 @@ prop_CoinMapEntry_coverage entries = property
         & Map.fromListWith (+)
         & Map.filter (> 1)
         & Map.keysSet
+
+prop_coinMapFromList_preservesTotalValueForEachUniqueKey
+    :: (Ord u, Show u)
+    => [CoinMapEntry u]
+    -> Property
+prop_coinMapFromList_preservesTotalValueForEachUniqueKey entries = property $
+    mkEntryMap entries
+        `shouldBe`
+        mkEntryMap (coinMapToList (coinMapFromList entries))
+  where
+    mkEntryMap
+        = Map.fromListWith (\c1 c2 -> Coin $ unCoin c1 + unCoin c2)
+        . fmap (entryKey &&& entryValue)
 
 prop_coinMapFromList_preservesTotalValue
     :: Ord u
