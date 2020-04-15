@@ -151,7 +151,7 @@ spec = do
         coinSelectionUnitTest largestFirst
             "UTxO balance sufficient, fragmented enough, but single output \
             \depletes all UTxO entries"
-            (Left ErrUxtoFullyDepleted)
+            (Left ErrUtxoFullyDepleted)
             (CoinSelectionFixture
                 { maxNumOfInputs = 100
                 , validateSelection = noValidation
@@ -162,7 +162,7 @@ spec = do
         coinSelectionUnitTest largestFirst
             "UTxO balance sufficient, fragmented enough, but single output \
             \depletes all UTxO entries"
-            (Left ErrUxtoFullyDepleted)
+            (Left ErrUtxoFullyDepleted)
             (CoinSelectionFixture
                 { maxNumOfInputs = 100
                 , validateSelection = noValidation

@@ -255,7 +255,7 @@ data CoinSelectionError e
     -- Records the /number/ of UTxO entries, as well as the /number/ of the
     -- transaction outputs.
     --
-    | ErrUxtoFullyDepleted
+    | ErrUtxoFullyDepleted
     -- ^ Due to the particular distribution of values within the UTxO set, all
     -- available UTxO entries were depleted before all the requested
     -- transaction outputs could be paid for.

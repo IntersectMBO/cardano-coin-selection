@@ -159,7 +159,7 @@ spec = do
 
         coinSelectionUnitTest randomImprove
             "enough funds, proper fragmentation, inputs depleted"
-            (Left ErrUxtoFullyDepleted)
+            (Left ErrUtxoFullyDepleted)
             (CoinSelectionFixture
                 { maxNumOfInputs = 100
                 , validateSelection = noValidation
