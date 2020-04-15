@@ -8,8 +8,9 @@
 {-# LANGUAGE NumericUnderscores #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
--- | Utility functions and types used purely for testing.
+-- | Utility functions, types, and type class instances used purely for testing.
 --
 -- Copyright: © 2018-2020 IOHK
 -- License: Apache-2.0
@@ -43,7 +44,12 @@ module Cardano.Test.Utilities
 import Prelude
 
 import Cardano.CoinSelection
-    ( Coin (..), CoinMap (..) )
+    ( Coin (..)
+    , CoinMap (..)
+    , CoinMapEntry (..)
+    , CoinSelection (..)
+    , coinMapToList
+    )
 import Control.DeepSeq
     ( NFData (..) )
 import Data.ByteArray
@@ -57,7 +63,15 @@ import Data.Set
 import Data.Word
     ( Word32 )
 import Fmt
-    ( Buildable (..), fmt, ordinalF, prefixF, suffixF )
+    ( Buildable (..)
+    , blockListF
+    , fmt
+    , listF
+    , nameF
+    , ordinalF
+    , prefixF
+    , suffixF
+    )
 import GHC.Generics
     ( Generic )
 import GHC.Stack
@@ -195,3 +209,25 @@ restrictedBy (CoinMap utxo) =
 restrictedTo :: CoinMap u -> Set Coin -> CoinMap u
 restrictedTo (CoinMap utxo) outs =
     CoinMap $ Map.filter (`Set.member` outs) utxo
+
+--------------------------------------------------------------------------------
+-- Buildable Instances
+--------------------------------------------------------------------------------
+
+instance Buildable Coin where
+    build = build . unCoin
+
+instance Buildable a => Buildable (CoinMapEntry a) where
+    build a = mempty
+        <> build (entryKey a)
+        <> ":"
+        <> build (entryValue a)
+
+instance (Buildable i, Buildable o) => Buildable (CoinSelection i o) where
+    build s = mempty
+        <> nameF "inputs"
+            (blockListF $ coinMapToList $ inputs s)
+        <> nameF "outputs"
+            (blockListF $ coinMapToList $ outputs s)
+        <> nameF "change"
+            (listF $ change s)

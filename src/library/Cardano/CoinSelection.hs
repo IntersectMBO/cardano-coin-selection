@@ -54,8 +54,6 @@ import Data.Map.Strict
     ( Map )
 import Data.Word
     ( Word64, Word8 )
-import Fmt
-    ( Buildable (..), blockListF, listF, nameF )
 import GHC.Generics
     ( Generic )
 import Quiet
@@ -92,9 +90,6 @@ instance Bounded Coin where
         Coin 45_000_000_000_000_000
         -- = 45 billion Ada × 1 million Lovelace/Ada:
 
-instance Buildable Coin where
-    build = build . unCoin
-
 coinIsValid :: Coin -> Bool
 coinIsValid c = c >= minBound && c <= maxBound
 
@@ -121,12 +116,6 @@ data CoinMapEntry a = CoinMapEntry
     , entryValue
         :: Coin
     } deriving (Eq, Generic, Ord, Show)
-
-instance Buildable a => Buildable (CoinMapEntry a) where
-    build a = mempty
-        <> build (entryKey a)
-        <> ":"
-        <> build (entryValue a)
 
 coinMapFromList :: Ord a => [CoinMapEntry a] -> CoinMap a
 coinMapFromList = CoinMap
@@ -203,15 +192,6 @@ instance (Ord i, Ord o) => Semigroup (CoinSelection i o) where
 
 instance (Ord i, Ord o) => Monoid (CoinSelection i o) where
     mempty = CoinSelection mempty mempty mempty
-
-instance (Buildable i, Buildable o) => Buildable (CoinSelection i o) where
-    build s = mempty
-        <> nameF "inputs"
-            (blockListF $ coinMapToList $ inputs s)
-        <> nameF "outputs"
-            (blockListF $ coinMapToList $ outputs s)
-        <> nameF "change"
-            (listF $ change s)
 
 -- | Calculate the total sum of all 'inputs' for the given 'CoinSelection'.
 sumInputs :: CoinSelection i o -> Coin

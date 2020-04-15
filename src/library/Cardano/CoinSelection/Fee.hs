@@ -77,8 +77,6 @@ import Data.Ratio
     ( (%) )
 import Data.Word
     ( Word64 )
-import Fmt
-    ( Buildable (..), pretty )
 import GHC.Generics
     ( Generic )
 import GHC.Stack
@@ -184,7 +182,7 @@ newtype ErrAdjustForFee
 -- outputs the algorithm happened to choose).
 --
 adjustForFee
-    :: (Buildable i, Buildable o, Ord i, MonadRandom m)
+    :: (Ord i, Show i, Show o, MonadRandom m)
     => FeeOptions i o
     -> CoinMap i
     -> CoinSelection i o
@@ -199,7 +197,7 @@ adjustForFee unsafeOpt utxo coinSel = do
 -- | The sender pays fee in this scenario, so fees are removed from the change
 -- outputs, and new inputs are selected if necessary.
 senderPaysFee
-    :: forall i o m . (Buildable i, Buildable o, Ord i, MonadRandom m)
+    :: forall i o m . (Ord i, Show i, Show o, MonadRandom m)
     => FeeOptions i o
     -> CoinMap i
     -> CoinSelection i o
@@ -436,7 +434,7 @@ coalesceDust (DustThreshold threshold) coins =
 
 -- | Computes how much is left to pay given a particular selection
 remainingFee
-    :: (HasCallStack, Buildable i, Buildable o)
+    :: (HasCallStack, Show i, Show o)
     => FeeEstimator i o
     -> CoinSelection i o
     -> Fee
@@ -456,7 +454,7 @@ remainingFee FeeEstimator {estimateFee} s
             , ": fee (raw) =", show fee
             , ": fee (dangling) =", show feeDangling
             , ", diff =", show diff
-            , "\nselection =", pretty s
+            , "\nselection =", show s
             ]
   where
     Fee fee = estimateFee s

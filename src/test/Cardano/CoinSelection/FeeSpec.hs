@@ -448,14 +448,7 @@ instance (Buildable i, Buildable o) =>
             <> nameF "options" (tupleF opt)
 
 propDeterministic
-    :: forall i o .
-        ( Buildable i
-        , Buildable o
-        , Ord i
-        , Ord o
-        , Show i
-        , Show o
-        )
+    :: forall i o . (Ord i, Ord o, Show i, Show o)
     => ShowFmt (FeeProp i o)
     -> Property
 propDeterministic (ShowFmt (FeeProp coinSel _ (fee, dust))) =
@@ -467,7 +460,7 @@ propDeterministic (ShowFmt (FeeProp coinSel _ (fee, dust))) =
         resultOne `shouldBe` resultTwo
 
 propReducedChanges
-    :: forall i o . (Buildable i, Buildable o, Ord i)
+    :: forall i o . (Show i, Show o, Ord i)
     => SystemDRG
     -> ShowFmt (FeeProp i o)
     -> Property
