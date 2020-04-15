@@ -201,7 +201,7 @@ payForOutputs options utxo outputsRequested =
       | otherwise =
           ErrMaximumInputCountExceeded inputCountMax
     amountAvailable =
-        fromIntegral $ unCoin $ coinMapValue utxo
+        unCoin $ coinMapValue utxo
     amountRequested =
         unCoin $ coinMapValue outputsRequested
     inputCountMax =

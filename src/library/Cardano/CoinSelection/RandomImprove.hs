@@ -27,9 +27,8 @@ import Cardano.CoinSelection
     , coinMapFromList
     , coinMapRandomEntry
     , coinMapToList
+    , coinMapValue
     )
-import Cardano.CoinSelection.LargestFirst
-    ( largestFirst )
 import Control.Arrow
     ( left )
 import Control.Monad
@@ -37,7 +36,7 @@ import Control.Monad
 import Control.Monad.Trans.Class
     ( lift )
 import Control.Monad.Trans.Except
-    ( ExceptT (..), except )
+    ( ExceptT (..), except, throwE )
 import Control.Monad.Trans.Maybe
     ( MaybeT (..), runMaybeT )
 import Crypto.Random.Types
@@ -82,8 +81,7 @@ import qualified Data.List as L
 -- UTxO entries.
 --
 -- However, if the remaining UTxO set is completely exhausted before all
--- outputs can be processed, the algorithm terminates and falls back to the
--- __Largest-First__ algorithm. (See 'largestFirst'.)
+-- outputs can be processed, the algorithm terminates with an error.
 --
 -- === Phase 2: Improvement
 --
@@ -231,16 +229,29 @@ payForOutputs options utxo outputsRequested = do
             validateSelection finalSelection $>
                 (finalSelection, utxoRemaining')
         Nothing ->
-            -- In the case that we fail to generate a selection, fall back to
-            -- the "Largest-First" algorithm as a backup.
-            selectCoins largestFirst options utxo outputsRequested
+            throwE errorCondition
   where
+    errorCondition
+      | amountAvailable < amountRequested =
+          ErrUtxoBalanceInsufficient amountAvailable amountRequested
+      | utxoCount < outputCount =
+          ErrUtxoNotFragmentedEnough utxoCount outputCount
+      | utxoCount <= inputCountMax =
+          ErrUtxoFullyDepleted
+      | otherwise =
+          ErrMaximumInputCountExceeded inputCountMax
+    amountAvailable =
+        unCoin $ coinMapValue utxo
+    amountRequested =
+        unCoin $ coinMapValue outputsRequested
     inputCountMax =
-        fromIntegral $ maximumInputCount options outputCount
+        fromIntegral $ maximumInputCount options $ fromIntegral outputCount
     outputCount =
         fromIntegral $ length $ coinMapToList outputsRequested
     outputsDescending =
         L.sortOn (Down . entryValue) $ coinMapToList outputsRequested
+    utxoCount =
+        fromIntegral $ L.length $ coinMapToList utxo
     validateSelection =
         except . left ErrInvalidSelection . validate options
 
