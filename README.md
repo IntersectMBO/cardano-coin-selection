@@ -3,6 +3,10 @@
 
 A library of algorithms for coin selection and fee balancing.
 
+## Documentation
+
+API documentation is available [here](https://input-output-hk.github.io/cardano-coin-selection/haddock).
+
 ## Contributing
 
 Pull requests are welcome.
