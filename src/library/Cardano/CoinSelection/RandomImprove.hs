@@ -393,11 +393,8 @@ mkChange (CoinMapEntry _ (Coin out)) inps =
             "mkChange: output is smaller than selected inputs!"
             (sumEntries inps)
             (>= out)
-        Coin maxCoinValue = maxBound
     in
         case selected - out of
-            c | c > maxCoinValue ->
-                let h = (c `div` 2) in [Coin h, Coin (c - h)]
             c | c == 0 ->
                 []
             c ->

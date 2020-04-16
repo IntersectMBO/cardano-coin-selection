@@ -5,6 +5,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE NumericUnderscores #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeApplications #-}
@@ -80,6 +81,7 @@ import Test.Hspec
 import Test.QuickCheck
     ( Arbitrary (..)
     , Gen
+    , NonNegative (getNonNegative)
     , Property
     , arbitraryBoundedIntegral
     , checkCoverage
@@ -301,22 +303,6 @@ spec = do
             { csInps = [1,2]
             , csOuts = [1]
             , csChngs = [1]
-            })
-
-        let c = unCoin maxBound
-
-        -- New BIG inputs selected causes change to overflow
-        feeUnitTest (FeeFixture
-            { fInps = [c-1, c-1]
-            , fOuts = [c-1]
-            , fChngs = [c-1]
-            , fUtxo = [c]
-            , fFee = c
-            , fDust = 0
-            }) (Right $ FeeOutput
-            { csInps = [c-1, c-1, c]
-            , csOuts = [c-1]
-            , csChngs = [c `div` 2 - 1, c `div` 2]
             })
 
         feeUnitTest (FeeFixture
@@ -692,7 +678,7 @@ instance Arbitrary ReduceChangeOutputsData where
         let coinSum = sum $ unCoin <$> coins
         fee <- Fee <$> oneof
             [ pure 0
-            , choose (1, coinSum - 1)
+            , choose (1, max 0 (coinSum - 1))
             , pure coinSum
             , choose (coinSum + 1, coinSum * 2)
             ]
@@ -705,13 +691,15 @@ propReduceChangeOutputsDataCoverage
         let coinSum = sum $ unCoin <$> coins in
         property
             -- Test coverage of fee amount, relative to sum of coins:
+            $ cover 100 (fee >= 0)
+                "fee >= 0"
             $ cover 8 (fee == 0)
                 "fee = 0"
-            $ cover 8 (0 < fee && fee < coinSum)
+            $ cover 8 (any (> Coin 0) coins && 0 < fee && fee < coinSum)
                 "0 < fee < sum coins"
-            $ cover 8 (fee == coinSum)
+            $ cover 8 (any (> Coin 0) coins && fee == coinSum)
                 "fee = sum coins"
-            $ cover 8 (fee > coinSum)
+            $ cover 8 (any (> Coin 0) coins && fee > coinSum)
                 "fee > sum coins"
             True
 
@@ -767,14 +755,7 @@ instance Arbitrary SplitCoinData where
         pure $ SplitCoinData coinToSplit coinsToIncrease
       where
         genCoin :: Gen Coin
-        genCoin = oneof
-            [ pure minBound
-            , pure maxBound
-            , Coin <$> choose
-                ( succ . unCoin $ minBound
-                , pred . unCoin $ maxBound
-                )
-            ]
+        genCoin = Coin . getNonNegative <$> arbitrary
     shrink = genericShrink
 
 propSplitCoinDataCoverage :: SplitCoinData -> Property
@@ -786,30 +767,17 @@ propSplitCoinDataCoverage (SplitCoinData coinToSplit coinsToIncrease) =
             "list of coins is singleton"
         $ cover 8 (length coinsToIncrease > 1)
             "list of coins has multiple entries"
-        $ cover 8 (coinToSplit == minBound)
-            "coin to split is minimal"
-        $ cover 8 (coinToSplit == maxBound)
-            "coin to split is maximal"
-        $ cover 8 (coinToSplit > minBound && coinToSplit < maxBound)
-            "coin to split is neither minimal nor maximal"
-        $ cover 8 (maxBound `notElem` coinsToIncrease)
-            "all coins within list are not maximal"
-        $ cover 8 (maxBound `elem` coinsToIncrease)
-            "at least one coin within list is maximal"
-        $ cover 8 (any notMaximalButWouldOverflowIfIncreased coinsToIncrease)
-            "at least one coin is not maximal but would overflow if increased"
+        $ cover 8 (Coin 0 `elem` coinsToIncrease)
+            "list of coins has at least one zero coin"
+        $ cover 8 (any (> Coin 0) coinsToIncrease)
+            "list of coins has at least one non-zero coin"
+        $ cover 4 (coinToSplit == Coin 0)
+            "coin to split is zero"
+        $ cover 8 (coinToSplit > Coin 0)
+            "coin to split is non-zero"
         $ cover 8 (length coinsToIncrease > fromIntegral (unCoin coinToSplit))
             "coin to split is smaller than number of coins to increase"
         True
-  where
-    count = length coinsToIncrease
-    notMaximalButWouldOverflowIfIncreased (Coin v) =
-        Coin v < maxBound &&
-        Coin (v + amountToIncrease) > maxBound
-    amountToIncrease =
-        if count == 0
-        then unCoin coinToSplit
-        else unCoin coinToSplit `div` fromIntegral count
 
 propSplitCoinDataGenerationValid :: SplitCoinData -> Property
 propSplitCoinDataGenerationValid scd = property $
@@ -966,16 +934,16 @@ instance Arbitrary TxIn where
         <*> scale (`mod` 3) arbitrary -- No need for a high indexes
 
 instance Arbitrary Coin where
-    shrink (Coin c) = Coin <$> filter (> 0) (shrink $ fromIntegral c)
-    arbitrary = Coin <$> choose (1, 200000)
+    arbitrary = Coin <$> choose (1, 100_000)
+    shrink = filter (> Coin 0) . genericShrink
 
 instance Arbitrary DustThreshold where
     arbitrary = DustThreshold <$> choose (0, 100)
     shrink = genericShrink
 
 instance Arbitrary Fee where
-    shrink (Fee c) = Fee <$> filter (> 0) (shrink $ fromIntegral c)
-    arbitrary = Fee . unCoin <$> arbitrary
+    arbitrary = Fee <$> choose (1, 100_000)
+    shrink = filter (> Fee 0) . genericShrink
 
 instance (Arbitrary i, Arbitrary o, Ord i, Ord o) =>
     Arbitrary (FeeProp i o)

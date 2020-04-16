@@ -81,22 +81,15 @@ newtype Coin = Coin
     deriving Show via (Quiet Coin)
 
 instance Monoid Coin where
-    mempty = minBound
+    mempty = Coin 0
 
 instance Semigroup Coin where
     Coin a <> Coin b = Coin (a + b)
 
 instance NFData Coin
 
-instance Bounded Coin where
-    minBound =
-        Coin 0
-    maxBound =
-        Coin 45_000_000_000_000_000
-        -- = 45 billion Ada × 1 million Lovelace/Ada:
-
 coinIsValid :: Coin -> Bool
-coinIsValid c = c >= minBound && c <= maxBound
+coinIsValid c = c >= Coin 0
 
 --------------------------------------------------------------------------------
 -- Coin Map

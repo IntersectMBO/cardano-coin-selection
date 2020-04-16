@@ -486,35 +486,13 @@ remainingFee FeeEstimator {estimateFee} s
 -- >>> splitCoin (Coin 10) (Coin <$> [1, 1, 1, 1])
 -- [Coin 3, Coin 3, Coin 4, Coin 4]
 --
--- == Handling Overflow
+-- == Handling Empty Lists
 --
--- While processing the given list, if increasing the value of any given coin
--- __'c'__ would cause its value to exceed 'maxBound', this function will leave
--- coin __'c'__ /unchanged/ in the resulting list, distributing the excess
--- value to coins that occur /later/ in the list:
---
--- >>> splitCoin (Coin 10) (Coin <$> [unCoin maxBound, 1])
--- [Coin 45000000000000000, Coin 11]
---
--- >>> splitCoin (Coin 10) (Coin <$> [unCoin maxBound - 1, 1])
--- [Coin 44999999999999999, Coin 11]
---
--- >>> splitCoin (Coin 10) (Coin <$> [unCoin maxBound - 1, 1, 1])
--- [Coin 44999999999999999, Coin 6, 6]
---
--- == Handling Leftover Remaining Value
---
--- If there is any remaining value left over after processing the list, a /new/
--- coin is appended to the /end/ of the list to hold the excess value:
+-- If the given list is empty, this function returns a list with the original
+-- given coin as its sole element:
 --
 -- >>> splitCoin (Coin 10) []
 -- [Coin 10]
---
--- >>> splitCoin (Coin 10) (Coin <$> [unCoin maxBound])
--- [Coin 45000000000000000, Coin 10]
---
--- >>> splitCoin (Coin 10) (Coin <$> [unCoin maxBound - 1])
--- [Coin 44999999999999999, Coin 10]
 --
 -- == Properties
 --
