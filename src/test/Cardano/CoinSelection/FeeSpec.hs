@@ -678,11 +678,16 @@ instance Arbitrary ReduceChangeOutputsData where
         let coinSum = sum $ unCoin <$> coins
         fee <- Fee <$> oneof
             [ pure 0
-            , choose (1, max 0 (coinSum - 1))
+            , choose (1, safePred coinSum)
             , pure coinSum
             , choose (coinSum + 1, coinSum * 2)
             ]
         pure $ ReduceChangeOutputsData fee threshold coins
+      where
+        safePred :: Integer -> Integer
+        safePred x
+            | x > 0 = x - 1
+            | otherwise = 0
     shrink = genericShrink
 
 propReduceChangeOutputsDataCoverage :: ReduceChangeOutputsData -> Property
