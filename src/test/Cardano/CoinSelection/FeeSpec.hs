@@ -81,7 +81,7 @@ import Test.Hspec
 import Test.QuickCheck
     ( Arbitrary (..)
     , Gen
-    , NonNegative (getNonNegative)
+    , Positive (getPositive)
     , Property
     , arbitraryBoundedIntegral
     , checkCoverage
@@ -761,7 +761,11 @@ instance Arbitrary SplitCoinData where
         pure $ SplitCoinData coinToSplit coinsToIncrease
       where
         genCoin :: Gen Coin
-        genCoin = Coin . getNonNegative <$> arbitrary
+        genCoin = oneof
+            [ pure $ Coin 0
+            , pure $ Coin 1
+            , Coin . (+ 1) . getPositive <$> arbitrary
+            ]
     shrink = genericShrink
 
 propSplitCoinDataCoverage :: SplitCoinData -> Property
@@ -777,7 +781,7 @@ propSplitCoinDataCoverage (SplitCoinData coinToSplit coinsToIncrease) =
             "list of coins has at least one zero coin"
         $ cover 8 (any (> Coin 0) coinsToIncrease)
             "list of coins has at least one non-zero coin"
-        $ cover 4 (coinToSplit == Coin 0)
+        $ cover 8 (coinToSplit == Coin 0)
             "coin to split is zero"
         $ cover 8 (coinToSplit > Coin 0)
             "coin to split is non-zero"
