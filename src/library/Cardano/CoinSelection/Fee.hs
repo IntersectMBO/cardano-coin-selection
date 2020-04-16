@@ -75,8 +75,6 @@ import Data.Ord
     ( Down (..), comparing )
 import Data.Ratio
     ( (%) )
-import Data.Word
-    ( Word64 )
 import GHC.Generics
     ( Generic )
 import GHC.Stack
@@ -100,7 +98,7 @@ import qualified Data.List.NonEmpty as NE
 -- This type is isomorphic to 'Coin'.
 --
 newtype Fee = Fee
-    { unFee :: Word64 }
+    { unFee :: Integer }
     deriving stock (Eq, Generic, Ord)
     deriving Show via (Quiet Fee)
 
@@ -112,7 +110,7 @@ newtype Fee = Fee
 -- This type is isomorphic to 'Coin'.
 --
 newtype DustThreshold = DustThreshold
-    { unDustThreshold :: Word64 }
+    { unDustThreshold :: Integer }
     deriving stock (Eq, Generic, Ord)
     deriving Show via (Quiet DustThreshold)
 
@@ -151,7 +149,7 @@ data FeeOptions i o = FeeOptions
     } deriving Generic
 
 newtype ErrAdjustForFee
-    = ErrCannotCoverFee Word64
+    = ErrCannotCoverFee Integer
     -- ^ UTxO exhausted during fee covering
     -- We record what amount missed to cover the fee
     deriving (Show, Eq)
@@ -310,7 +308,7 @@ reduceChangeOutputs threshold (Fee totalFee) changeOutputs
     positiveChangeOutputs :: [Coin]
     positiveChangeOutputs = filter (> Coin 0) changeOutputs
 
-    totalChange :: Word64
+    totalChange :: Integer
     totalChange = sum (unCoin <$> changeOutputs)
 
 -- | Distribute the given fee over the given list of coins, so that each coin
@@ -570,5 +568,5 @@ fractionalPart = snd . properFraction @_ @Integer
 applyN :: Int -> (a -> a) -> a -> a
 applyN n f = F.foldr (.) id (replicate n f)
 
-sumEntries :: [CoinMapEntry i] -> Word64
+sumEntries :: [CoinMapEntry i] -> Integer
 sumEntries = sum . fmap (unCoin . entryValue)

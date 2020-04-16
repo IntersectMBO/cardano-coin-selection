@@ -45,8 +45,6 @@ import Data.Functor
     ( ($>) )
 import Data.Ord
     ( Down (..) )
-import Data.Word
-    ( Word64 )
 import Internal.Invariant
     ( invariant )
 
@@ -264,9 +262,9 @@ payForOutputs options utxo outputsRequested = do
 --
 makeRandomSelection
     :: forall i o m . MonadRandom m
-    => (Word64, CoinMap i, [([CoinMapEntry i], CoinMapEntry o)])
+    => (Integer, CoinMap i, [([CoinMapEntry i], CoinMapEntry o)])
     -> CoinMapEntry o
-    -> MaybeT m (Word64, CoinMap i, [([CoinMapEntry i], CoinMapEntry o)])
+    -> MaybeT m (Integer, CoinMap i, [([CoinMapEntry i], CoinMapEntry o)])
 makeRandomSelection
     (inputCountRemaining, utxoRemaining, existingSelections) txout = do
         (utxoSelected, utxoRemaining') <- coverRandomly ([], utxoRemaining)
@@ -291,9 +289,9 @@ makeRandomSelection
 -- | Perform an improvement to random selection on a given output.
 improveSelection
     :: forall i o m . (MonadRandom m, Ord i, Ord o)
-    => (Word64, CoinSelection i o, CoinMap i)
+    => (Integer, CoinSelection i o, CoinMap i)
     -> ([CoinMapEntry i], CoinMapEntry o)
-    -> m (Word64, CoinSelection i o, CoinMap i)
+    -> m (Integer, CoinSelection i o, CoinMap i)
 improveSelection (maxN0, selection, utxo0) (inps0, txout) = do
     (maxN, inps, utxo) <- improve (maxN0, inps0, utxo0)
     return
@@ -309,8 +307,8 @@ improveSelection (maxN0, selection, utxo0) (inps0, txout) = do
     target = mkTargetRange txout
 
     improve
-        :: (Word64, [CoinMapEntry i], CoinMap i)
-        -> m (Word64, [CoinMapEntry i], CoinMap i)
+        :: (Integer, [CoinMapEntry i], CoinMap i)
+        -> m (Integer, [CoinMapEntry i], CoinMap i)
     improve (maxN, inps, utxo)
         | maxN >= 1 && sumEntries inps < targetAim target = do
             runMaybeT (utxoPickRandomT utxo) >>= \case
@@ -351,13 +349,13 @@ improveSelection (maxN0, selection, utxo0) (inps0, txout) = do
 -- inputs selected to pay for a given output.
 --
 data TargetRange = TargetRange
-    { targetMin :: Word64
+    { targetMin :: Integer
         -- ^ The minimum value, corresponding to exactly the requested target
         -- amount, and a change amount of zero.
-    , targetAim :: Word64
+    , targetAim :: Integer
         -- ^ The ideal value, corresponding to exactly twice the requested
         -- target amount, and a change amount equal to the requested amount.
-    , targetMax :: Word64
+    , targetMax :: Integer
         -- ^ The maximum value, corresponding to exactly three times the
         -- requested amount, and a change amount equal to twice the requested
         -- amount.
@@ -414,5 +412,5 @@ distance :: (Ord a, Num a) => a -> a -> a
 distance a b =
     if a < b then b - a else a - b
 
-sumEntries :: [CoinMapEntry i] -> Word64
+sumEntries :: [CoinMapEntry i] -> Integer
 sumEntries = sum . fmap (unCoin . entryValue)

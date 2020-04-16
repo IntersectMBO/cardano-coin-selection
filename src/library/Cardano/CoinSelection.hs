@@ -58,7 +58,7 @@ import Crypto.Random.Types
 import Data.Map.Strict
     ( Map )
 import Data.Word
-    ( Word64, Word8 )
+    ( Word8 )
 import GHC.Generics
     ( Generic )
 import Quiet
@@ -76,7 +76,7 @@ import qualified Data.Map.Strict as Map
 -- One Ada is equal to 1,000,000 Lovelace.
 --
 newtype Coin = Coin
-    { unCoin :: Word64 }
+    { unCoin :: Integer }
     deriving stock (Eq, Generic, Ord)
     deriving Show via (Quiet Coin)
 
@@ -271,13 +271,13 @@ data CoinSelectionOptions i o e = CoinSelectionOptions
 --   to produce a 'CoinSelection'.
 --
 data CoinSelectionError e
-    = ErrUtxoBalanceInsufficient Word64 Word64
+    = ErrUtxoBalanceInsufficient Integer Integer
     -- ^ The UTxO balance was insufficient to cover the total payment amount.
     --
     -- Records the /UTxO balance/, as well as the /total value/ of the payment
     -- we tried to make.
     --
-    | ErrUtxoNotFragmentedEnough Word64 Word64
+    | ErrUtxoNotFragmentedEnough Integer Integer
     -- ^ The UTxO was not fragmented enough to support the required number of
     -- transaction outputs.
     --
@@ -289,7 +289,7 @@ data CoinSelectionError e
     -- available UTxO entries were depleted before all the requested
     -- transaction outputs could be paid for.
     --
-    | ErrMaximumInputCountExceeded Word64
+    | ErrMaximumInputCountExceeded Integer
     -- ^ The number of UTxO entries needed to cover the requested payment
     -- exceeded the upper limit specified by 'maximumInputCount'.
     --

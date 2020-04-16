@@ -69,8 +69,6 @@ import Data.Monoid
     ( All (..) )
 import Data.Ratio
     ( (%) )
-import Data.Word
-    ( Word64 )
 import Fmt
     ( Buildable (..), nameF, tupleF )
 import GHC.Generics
@@ -436,7 +434,7 @@ data FeeProp i o = FeeProp
      -- ^ inputs from wich largestFirst can be calculated
     , availableUtxo :: CoinMap i
      -- ^ additional UTxO from which fee calculation will pick needed coins
-    , feeDust :: (Word64, Word64)
+    , feeDust :: (Integer, Integer)
      -- ^ constant fee and dust threshold
     } deriving Show
 
@@ -855,8 +853,8 @@ propSplitCoinFair (coinToSplit, coinsToIncrease) = (.&&.)
 --------------------------------------------------------------------------------
 
 feeOptions
-    :: Word64
-    -> Word64
+    :: Integer
+    -> Integer
     -> FeeOptions i o
 feeOptions fee dust = FeeOptions
     { feeEstimator = FeeEstimator $
@@ -904,27 +902,27 @@ feeUnitTest (FeeFixture inpsF outsF chngsF utxoF feeF dustF) expected =
 
 -- | A fixture for testing the fee calculation
 data FeeFixture = FeeFixture
-    { fInps :: [Word64]
+    { fInps :: [Integer]
         -- ^ Value (in Lovelace) & number of coins in inputs
-    , fOuts :: [Word64]
+    , fOuts :: [Integer]
         -- ^ Value (in Lovelace) & number of requested outputs
-    , fChngs :: [Word64]
+    , fChngs :: [Integer]
         -- ^ Value (in Lovelace) & number of changes
-    , fUtxo :: [Word64]
+    , fUtxo :: [Integer]
         -- ^ Value (in Lovelace) & number of available coins in the UTxO
-    , fFee :: Word64
+    , fFee :: Integer
         -- ^ Value (in Lovelace) of rigid fee
-    , fDust :: Word64
+    , fDust :: Integer
         -- ^ Value (in Lovelace) of dust
     } deriving Show
 
 -- | A fee calculation output
 data FeeOutput = FeeOutput
-    { csInps :: [Word64]
+    { csInps :: [Integer]
         -- ^ Value (in Lovelace) & number of available coins in the UTxO
-    , csOuts :: [Word64]
+    , csOuts :: [Integer]
         -- ^ Value (in Lovelace) & number of requested outputs
-    , csChngs :: [Word64]
+    , csChngs :: [Integer]
         -- ^ Value (in Lovelace) & number of changes
     } deriving (Show, Eq)
 

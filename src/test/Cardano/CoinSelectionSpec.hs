@@ -57,7 +57,7 @@ import Data.Maybe
 import Data.Set
     ( Set )
 import Data.Word
-    ( Word64, Word8 )
+    ( Word8 )
 import Fmt
     ( Buildable (..), blockListF, nameF )
 import Test.Hspec
@@ -300,9 +300,9 @@ data CoinSelectionFixture i o = CoinSelectionFixture
         -- ^ Maximum number of inputs that can be selected
     , validateSelection :: CoinSelection i o -> Either ErrValidation ()
         -- ^ A extra validation function on the resulting selection
-    , utxoInputs :: [Word64]
+    , utxoInputs :: [Integer]
         -- ^ Value (in Lovelace) & number of available coins in the UTxO
-    , txOutputs :: [Word64]
+    , txOutputs :: [Integer]
         -- ^ Value (in Lovelace) & number of requested outputs
     }
 
@@ -319,9 +319,9 @@ alwaysFail = const (Left ErrValidation)
 
 -- | Testing-friendly format for 'CoinSelection' results of unit tests.
 data CoinSelectionResult = CoinSelectionResult
-    { rsInputs :: [Word64]
-    , rsChange :: [Word64]
-    , rsOutputs :: [Word64]
+    { rsInputs :: [Integer]
+    , rsChange :: [Integer]
+    , rsOutputs :: [Integer]
     } deriving (Eq, Show)
 
 sortCoinSelectionResult :: CoinSelectionResult -> CoinSelectionResult
@@ -453,13 +453,13 @@ instance (Arbitrary a, Ord a) => Arbitrary (CoinMap a) where
             <*> vectorOf n arbitrary
         return $ CoinMap $ Map.fromList entries
 
-genUTxO :: [Word64] -> Gen (CoinMap TxIn)
+genUTxO :: [Integer] -> Gen (CoinMap TxIn)
 genUTxO coins = do
     let n = length coins
     inps <- vectorOf n arbitrary
     return $ CoinMap $ Map.fromList $ zip inps (Coin <$> coins)
 
-genOutputs :: [Word64] -> Gen (CoinMap Address)
+genOutputs :: [Integer] -> Gen (CoinMap Address)
 genOutputs coins = do
     let n = length coins
     outs <- vectorOf n arbitrary
