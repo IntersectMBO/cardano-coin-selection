@@ -695,6 +695,12 @@ propReduceChangeOutputsDataCoverage
                 "fee >= 0"
             $ cover 8 (fee == 0)
                 "fee = 0"
+            $ cover 8 (length (filter (> Coin 0) coins) == 1)
+                "one non-empty coin"
+            $ cover 8 (length (filter (> Coin 0) coins) == 2)
+                "two non-empty coins"
+            $ cover 8 (length (filter (> Coin 0) coins) >= 3)
+                "several non-empty coins"
             $ cover 8 (any (> Coin 0) coins && 0 < fee && fee < coinSum)
                 "0 < fee < sum coins"
             $ cover 8 (any (> Coin 0) coins && fee == coinSum)
