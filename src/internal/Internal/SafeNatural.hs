@@ -3,10 +3,16 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
+-- |
+-- Copyright: © 2018-2020 IOHK
+-- License: Apache-2.0
+--
 module Internal.SafeNatural
     (
-      -- * Construction and Deconstruction
+      -- * Types
       SafeNatural
+
+      -- Construction and Deconstruction
     , fromIntegral
     , toIntegral
     , toNatural
@@ -25,7 +31,7 @@ module Internal.SafeNatural
       -- * Calculating Distances
     , distance
 
-      -- * Tests
+      -- * Value Tests
     , isPositive
     , isZero
 
