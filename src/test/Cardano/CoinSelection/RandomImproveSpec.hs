@@ -29,7 +29,7 @@ import Cardano.CoinSelectionSpec
     , noValidation
     )
 import Cardano.Test.Utilities
-    ( Address, TxIn )
+    ( Address, TxIn, unsafeCoin )
 import Control.Monad.Trans.Except
     ( runExceptT )
 import Crypto.Random
@@ -195,7 +195,8 @@ spec = do
                 })
 
         coinSelectionUnitTest randomImprove ""
-            (Left $ ErrUtxoBalanceInsufficient 39 40)
+            (Left $ ErrUtxoBalanceInsufficient
+                (unsafeCoin @Int 39) (unsafeCoin @Int 40))
             (CoinSelectionFixture
                 { maxNumOfInputs = 100
                 , validateSelection = noValidation
@@ -204,7 +205,8 @@ spec = do
                 })
 
         coinSelectionUnitTest randomImprove ""
-            (Left $ ErrUtxoBalanceInsufficient 39 43)
+            (Left $ ErrUtxoBalanceInsufficient
+                (unsafeCoin @Int 39) (unsafeCoin @Int 43))
             (CoinSelectionFixture
                 { maxNumOfInputs = 100
                 , validateSelection = noValidation
