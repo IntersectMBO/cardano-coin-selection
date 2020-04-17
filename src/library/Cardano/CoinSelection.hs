@@ -62,6 +62,8 @@ import GHC.Generics
     ( Generic )
 import Internal.Coin
     ( Coin (..), coin, coinToIntegral )
+import Numeric.Natural
+    ( Natural )
 import Quiet
     ( Quiet (Quiet) )
 
@@ -247,7 +249,7 @@ data CoinSelectionError e
     -- Records the /UTxO balance/, as well as the /total value/ of the payment
     -- we tried to make.
     --
-    | ErrUtxoNotFragmentedEnough Integer Integer
+    | ErrUtxoNotFragmentedEnough Natural Natural
     -- ^ The UTxO was not fragmented enough to support the required number of
     -- transaction outputs.
     --
@@ -259,7 +261,7 @@ data CoinSelectionError e
     -- available UTxO entries were depleted before all the requested
     -- transaction outputs could be paid for.
     --
-    | ErrMaximumInputCountExceeded Integer
+    | ErrMaximumInputCountExceeded Natural
     -- ^ The number of UTxO entries needed to cover the requested payment
     -- exceeded the upper limit specified by 'maximumInputCount'.
     --

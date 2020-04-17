@@ -233,11 +233,12 @@ payForOutputs options utxo outputsRequested = do
       | amountAvailable < amountRequested =
           ErrUtxoBalanceInsufficient amountAvailable amountRequested
       | utxoCount < outputCount =
-          ErrUtxoNotFragmentedEnough utxoCount outputCount
+          ErrUtxoNotFragmentedEnough
+              (fromIntegral utxoCount) (fromIntegral outputCount)
       | utxoCount <= inputCountMax =
           ErrUtxoFullyDepleted
       | otherwise =
-          ErrMaximumInputCountExceeded inputCountMax
+          ErrMaximumInputCountExceeded (fromIntegral inputCountMax)
     amountAvailable =
         coinMapValue utxo
     amountRequested =
