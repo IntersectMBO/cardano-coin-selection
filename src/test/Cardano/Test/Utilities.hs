@@ -41,6 +41,9 @@ module Cardano.Test.Utilities
     , unsafeDustThreshold
     , unsafeFromHex
 
+    -- * Special Values
+    , zeroCoin
+
     ) where
 
 import Prelude
@@ -256,3 +259,11 @@ instance (Buildable i, Buildable o) => Buildable (CoinSelection i o) where
             (blockListF $ coinMapToList $ outputs s)
         <> nameF "change"
             (listF $ change s)
+
+--------------------------------------------------------------------------------
+-- Special Values
+--------------------------------------------------------------------------------
+
+zeroCoin :: Coin
+zeroCoin = Coin SN.zero
+
