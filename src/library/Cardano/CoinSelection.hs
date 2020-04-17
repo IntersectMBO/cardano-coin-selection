@@ -19,8 +19,9 @@
 module Cardano.CoinSelection
     (
       -- * Coin
-      Coin (..)
-    , coinIsValid
+      Coin
+    , coin
+    , coinToIntegral
 
       -- * Coin Map
     , CoinMap (..)
@@ -47,8 +48,6 @@ import Prelude
 
 import Control.Arrow
     ( (&&&) )
-import Control.DeepSeq
-    ( NFData (..) )
 import Control.Monad.Trans.Except
     ( ExceptT (..) )
 import Crypto.Number.Generate
@@ -61,35 +60,13 @@ import Data.Word
     ( Word8 )
 import GHC.Generics
     ( Generic )
+import Internal.Coin
+    ( Coin (..), coin, coinToIntegral )
 import Quiet
     ( Quiet (Quiet) )
 
 import qualified Data.Foldable as F
 import qualified Data.Map.Strict as Map
-
---------------------------------------------------------------------------------
--- Coin
---------------------------------------------------------------------------------
-
--- | A non-negative integer value that represents a number of Lovelace.
---
--- One Ada is equal to 1,000,000 Lovelace.
---
-newtype Coin = Coin
-    { unCoin :: Integer }
-    deriving stock (Eq, Generic, Ord)
-    deriving Show via (Quiet Coin)
-
-instance Monoid Coin where
-    mempty = Coin 0
-
-instance Semigroup Coin where
-    Coin a <> Coin b = Coin (a + b)
-
-instance NFData Coin
-
-coinIsValid :: Coin -> Bool
-coinIsValid c = c >= Coin 0
 
 --------------------------------------------------------------------------------
 -- Coin Map
@@ -264,7 +241,7 @@ data CoinSelectionOptions i o e = CoinSelectionOptions
 --   to produce a 'CoinSelection'.
 --
 data CoinSelectionError e
-    = ErrUtxoBalanceInsufficient Integer Integer
+    = ErrUtxoBalanceInsufficient Coin Coin
     -- ^ The UTxO balance was insufficient to cover the total payment amount.
     --
     -- Records the /UTxO balance/, as well as the /total value/ of the payment

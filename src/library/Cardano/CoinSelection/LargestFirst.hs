@@ -15,8 +15,7 @@ module Cardano.CoinSelection.LargestFirst (
 import Prelude
 
 import Cardano.CoinSelection
-    ( Coin (..)
-    , CoinMap (..)
+    ( CoinMap (..)
     , CoinMapEntry (..)
     , CoinSelection (..)
     , CoinSelectionAlgorithm (..)
@@ -36,8 +35,12 @@ import Data.Functor
     ( ($>) )
 import Data.Ord
     ( Down (..) )
+import Internal.Coin
+    ( Coin (..) )
 
+import qualified Data.Foldable as F
 import qualified Data.List as L
+import qualified Internal.SafeNatural as SN
 
 -- | An implementation of the __Largest-First__ coin selection algorithm.
 --
@@ -201,9 +204,9 @@ payForOutputs options utxo outputsRequested =
       | otherwise =
           ErrMaximumInputCountExceeded inputCountMax
     amountAvailable =
-        unCoin $ coinMapValue utxo
+        coinMapValue utxo
     amountRequested =
-        unCoin $ coinMapValue outputsRequested
+        coinMapValue outputsRequested
     inputCountMax =
         fromIntegral $ maximumInputCount options $ fromIntegral outputCount
     outputCount =
@@ -235,22 +238,21 @@ payForOutput
     -> CoinMapEntry o
     -> Maybe ([CoinMapEntry i], CoinSelection i o)
 payForOutput (utxoAvailable, currentSelection) out =
-    let target = fromIntegral $ unCoin $ entryValue out in
-    coverTarget target utxoAvailable mempty
+    coverTarget utxoAvailable mempty
   where
     coverTarget
-        :: Integer
-        -> [CoinMapEntry i]
+        :: [CoinMapEntry i]
         -> [CoinMapEntry i]
         -> Maybe ([CoinMapEntry i], CoinSelection i o)
-    coverTarget target utxoRemaining utxoSelected
-        | target <= 0 = Just
+    coverTarget utxoRemaining utxoSelected
+        | valueSelected >= valueTarget = Just
             -- We've selected enough to cover the target, so stop here.
             ( utxoRemaining
             , currentSelection <> CoinSelection
                 { inputs  = coinMapFromList utxoSelected
                 , outputs = coinMapFromList [out]
-                , change  = [Coin $ fromIntegral $ abs target | target < 0]
+                , change  = Coin <$> filter SN.isPositive
+                    (F.toList $ valueSelected `SN.sub` valueTarget)
                 }
             )
         | otherwise =
@@ -258,11 +260,15 @@ payForOutput (utxoAvailable, currentSelection) out =
             -- to select a little more and then continue.
             case utxoRemaining of
                 utxoEntry : utxoRemaining' ->
-                    let utxoSelected' = utxoEntry : utxoSelected
-                        target' = target -
-                            fromIntegral (unCoin $ entryValue utxoEntry)
-                    in
-                    coverTarget target' utxoRemaining' utxoSelected'
+                    coverTarget utxoRemaining' (utxoEntry : utxoSelected)
                 [] ->
                     -- The UTxO has been exhausted, so stop here.
                     Nothing
+      where
+        valueTarget
+            = unCoin $ entryValue out
+        valueSelected
+            = unCoin $ sumEntries utxoSelected
+
+sumEntries :: [CoinMapEntry a] -> Coin
+sumEntries entries = mconcat $ entryValue <$> entries

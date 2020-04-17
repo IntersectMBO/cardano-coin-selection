@@ -41,8 +41,7 @@ module Cardano.CoinSelection.Migration
 import Prelude
 
 import Cardano.CoinSelection
-    ( Coin (..)
-    , CoinMap
+    ( CoinMap
     , CoinMapEntry (..)
     , CoinSelection (..)
     , CoinSelectionOptions (..)
@@ -52,15 +51,21 @@ import Cardano.CoinSelection
     , sumInputs
     )
 import Cardano.CoinSelection.Fee
-    ( DustThreshold (..), Fee (..), FeeEstimator (..), FeeOptions (..) )
+    ( Fee (..), FeeEstimator (..), FeeOptions (..) )
 import Control.Monad.Trans.State
     ( State, evalState, get, put )
 import Data.List.NonEmpty
     ( NonEmpty ((:|)) )
 import Data.Maybe
-    ( mapMaybe )
+    ( fromMaybe, mapMaybe )
 import Data.Word
     ( Word8 )
+import Internal.Coin
+    ( Coin (..), coin, coinToIntegral )
+import Internal.DustThreshold
+    ( DustThreshold (..) )
+
+import qualified Internal.SafeNatural as SN
 
 -- | Construct a list of coin selections / transactions to transfer the totality
 -- of a user's wallet. The resulting 'CoinSelection' do not contain any
@@ -136,30 +141,30 @@ depleteUTxO feeOpts batchSize utxo =
         -- We then recursively call ourselves for this might reduce the number
         -- of outputs and change the fee.
         (c : cs) -> adjustForFee $ coinSel
-            { change = modifyFirst (c :| cs) (+ diff) }
+            { change = modifyFirst (c :| cs) (applyDiff diff) }
       where
+        applyDiff :: Integer -> Coin -> Coin
+        applyDiff i c = fromMaybe (Coin SN.zero) $ coin (i + coinToIntegral c)
+
         diff :: Integer
         diff = actualFee - requiredFee
           where
             requiredFee = integer $
                 unFee $ estimateFee (feeEstimator feeOpts) coinSel
             actualFee
-                = integer (unCoin $ sumInputs coinSel)
-                - integer (unCoin $ sumChange coinSel)
+                = coinToIntegral (sumInputs coinSel)
+                - coinToIntegral (sumChange coinSel)
 
     -- | Apply the given function to the first coin of the list. If the
     -- operation makes the 'Coin' smaller than the dust threshold, the coin is
     -- discarded.
-    modifyFirst :: NonEmpty Coin -> (Integer -> Integer) -> [Coin]
-    modifyFirst (Coin c :| cs) op
-        | c' < threshold = cs
-        | otherwise = (Coin (fromIntegral c')):cs
+    modifyFirst :: NonEmpty Coin -> (Coin -> Coin) -> [Coin]
+    modifyFirst (c :| cs) op
+        | c' <= threshold = cs
+        | otherwise = Coin c' : cs
       where
-        c' :: Integer
-        c' = op (integer c)
-
-        threshold :: Integer
-        threshold = integer (unDustThreshold (dustThreshold feeOpts))
+        Coin c' = op c
+        threshold = unDustThreshold (dustThreshold feeOpts)
 
     getNextBatch :: State [a] [a]
     getNextBatch = do

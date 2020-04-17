@@ -17,8 +17,7 @@ module Cardano.CoinSelection.RandomImprove
 import Prelude
 
 import Cardano.CoinSelection
-    ( Coin (..)
-    , CoinMap (..)
+    ( CoinMap (..)
     , CoinMapEntry (..)
     , CoinSelection (..)
     , CoinSelectionAlgorithm (..)
@@ -45,10 +44,11 @@ import Data.Functor
     ( ($>) )
 import Data.Ord
     ( Down (..) )
-import Internal.Invariant
-    ( invariant )
+import Internal.Coin
+    ( Coin (..) )
 
 import qualified Data.List as L
+import qualified Internal.SafeNatural as SN
 
 -- | An implementation of the __Random-Improve__ coin selection algorithm.
 --
@@ -239,9 +239,9 @@ payForOutputs options utxo outputsRequested = do
       | otherwise =
           ErrMaximumInputCountExceeded inputCountMax
     amountAvailable =
-        unCoin $ coinMapValue utxo
+        coinMapValue utxo
     amountRequested =
-        unCoin $ coinMapValue outputsRequested
+        coinMapValue outputsRequested
     inputCountMax =
         fromIntegral $ maximumInputCount options $ fromIntegral outputCount
     outputCount =
@@ -330,9 +330,14 @@ improveSelection (maxN0, selection, utxo0) (inps0, txout) = do
                 sumEntries (io : selected) < targetMax target
 
             condB = -- (b) Addition gets us closer to the ideal change
-                distance (targetAim target) (sumEntries (io : selected))
-                <
-                distance (targetAim target) (sumEntries selected)
+                distanceA < distanceB
+              where
+                distanceA = SN.distance
+                    (unCoin $ targetAim target)
+                    (unCoin $ sumEntries (io : selected))
+                distanceB = SN.distance
+                    (unCoin $ targetAim target)
+                    (unCoin $ sumEntries selected)
 
             -- (c) Doesn't exceed maximum number of inputs
             -- Guaranteed by the precondition on 'improve'.
@@ -349,13 +354,13 @@ improveSelection (maxN0, selection, utxo0) (inps0, txout) = do
 -- inputs selected to pay for a given output.
 --
 data TargetRange = TargetRange
-    { targetMin :: Integer
+    { targetMin :: Coin
         -- ^ The minimum value, corresponding to exactly the requested target
         -- amount, and a change amount of zero.
-    , targetAim :: Integer
+    , targetAim :: Coin
         -- ^ The ideal value, corresponding to exactly twice the requested
         -- target amount, and a change amount equal to the requested amount.
-    , targetMax :: Integer
+    , targetMax :: Coin
         -- ^ The maximum value, corresponding to exactly three times the
         -- requested amount, and a change amount equal to twice the requested
         -- amount.
@@ -367,9 +372,9 @@ data TargetRange = TargetRange
 --
 mkTargetRange :: CoinMapEntry o -> TargetRange
 mkTargetRange (CoinMapEntry _ (Coin c)) = TargetRange
-    { targetMin = c
-    , targetAim = 2 * c
-    , targetMax = 3 * c
+    { targetMin = Coin c
+    , targetAim = Coin $ c `SN.add` c
+    , targetMax = Coin $ c `SN.add` c `SN.add` c
     }
 
 -- | Re-wrap 'utxoPickRandom' in a 'MaybeT' monad
@@ -382,32 +387,30 @@ utxoPickRandomT =
         . fmap (\(mi, u) -> (, u) <$> mi)
         . coinMapRandomEntry
 
--- | Compute corresponding change outputs from a target output and a selection
--- of inputs.
+-- | Compute change outputs from a target output and a selection of inputs.
 --
--- > pre-condition: the output must be smaller (or eq) than the sum of inputs
+-- Pre-condition:
+--
+-- The output must be less than (or equal to) the sum of the inputs.
+--
 mkChange :: CoinMapEntry o -> [CoinMapEntry i] -> [Coin]
-mkChange (CoinMapEntry _ (Coin out)) inps =
-    let
-        selected = invariant
-            "mkChange: output is smaller than selected inputs!"
-            (sumEntries inps)
-            (>= out)
-    in
-        case selected - out of
-            c | c == 0 ->
-                []
-            c ->
-                [ Coin c ]
+mkChange (CoinMapEntry _ out) inps =
+    case difference of
+        Nothing ->
+            error $ mconcat
+                [ "mkChange: "
+                , "output must be less than or equal to sum of inputs"
+                ]
+        Just d | SN.isZero d ->
+            []
+        Just d ->
+            [Coin d]
+  where
+    difference = unCoin (sumEntries inps) `SN.sub` unCoin out
 
 --------------------------------------------------------------------------------
 -- Utilities
 --------------------------------------------------------------------------------
 
--- | Compute distance between two numeric values |a - b|
-distance :: (Ord a, Num a) => a -> a -> a
-distance a b =
-    if a < b then b - a else a - b
-
-sumEntries :: [CoinMapEntry i] -> Integer
-sumEntries = sum . fmap (unCoin . entryValue)
+sumEntries :: [CoinMapEntry i] -> Coin
+sumEntries = mconcat . fmap entryValue
