@@ -20,12 +20,10 @@ import Prelude hiding
     ( round )
 
 import Cardano.CoinSelection
-    ( Coin (..)
-    , CoinMap (..)
+    ( CoinMap (..)
     , CoinMapEntry (..)
     , CoinSelection (..)
     , CoinSelectionAlgorithm (..)
-    , coinIsValid
     , coinMapFromList
     , coinMapToList
     , sumChange
@@ -33,7 +31,7 @@ import Cardano.CoinSelection
     , sumOutputs
     )
 import Cardano.CoinSelection.Fee
-    ( DustThreshold (..)
+    ( DustThreshold
     , ErrAdjustForFee (..)
     , Fee (..)
     , FeeEstimator (..)
@@ -47,7 +45,14 @@ import Cardano.CoinSelection.Fee
 import Cardano.CoinSelection.LargestFirst
     ( largestFirst )
 import Cardano.Test.Utilities
-    ( Address (..), Hash (..), ShowFmt (..), TxIn (..) )
+    ( Address (..)
+    , Hash (..)
+    , ShowFmt (..)
+    , TxIn (..)
+    , unsafeCoin
+    , unsafeDustThreshold
+    , zeroCoin
+    )
 import Control.Arrow
     ( left )
 import Control.Monad
@@ -74,6 +79,10 @@ import Fmt
     ( Buildable (..), nameF, tupleF )
 import GHC.Generics
     ( Generic )
+import Internal.Coin
+    ( Coin (..), coinToIntegral )
+import Internal.DustThreshold
+    ( DustThreshold (..), dustThresholdToIntegral )
 import Internal.Rounding
     ( RoundingDirection (..), round )
 import Test.Hspec
@@ -208,7 +217,7 @@ spec = do
             , fUtxo = []
             , fFee = 4
             , fDust = 0
-            }) (Left $ ErrCannotCoverFee 1)
+            }) (Left $ ErrCannotCoverFee $ Fee 1)
 
         -- Cannot cover fee even with an extra (too small) inputs
         feeUnitTest (FeeFixture
@@ -218,7 +227,7 @@ spec = do
             , fUtxo = [1]
             , fFee = 5
             , fDust = 0
-            }) (Left $ ErrCannotCoverFee 1)
+            }) (Left $ ErrCannotCoverFee $ Fee 1)
 
         -- Can select extra inputs to exactly cover fee, no change back
         feeUnitTest (FeeFixture
@@ -380,26 +389,14 @@ spec = do
     describe "reduceChangeOutputs" $ do
         it "data coverage is adequate"
             (checkCoverage propReduceChangeOutputsDataCoverage)
-        it "data generation is valid"
-            (checkCoverage propReduceChangeOutputsDataGenerationValid)
-        it "data shrinking is valid"
-            (checkCoverage propReduceChangeOutputsDataShrinkingValid)
-        it "produces only valid coins"
-            (checkCoverage propReduceChangeOutputsProducesValidCoins)
         it "preserves sum"
             (checkCoverage propReduceChangeOutputsPreservesSum)
 
     describe "splitCoin" $ do
         it "data coverage is adequate"
             (checkCoverage propSplitCoinDataCoverage)
-        it "data generation is valid"
-            (checkCoverage propSplitCoinDataGenerationValid)
-        it "data shrinking is valid"
-            (checkCoverage propSplitCoinDataShrinkingValid)
         it "preserves the total sum"
             (checkCoverage propSplitCoinPreservesSum)
-        it "produces only valid coins"
-            (checkCoverage propSplitCoinProducesValidCoins)
         it "results are all within unity of ideal unrounded results"
             (checkCoverage propSplitCoinFair)
 
@@ -410,9 +407,9 @@ spec = do
 -- Check whether a selection is valid
 isValidSelection :: CoinSelection i o -> Bool
 isValidSelection s =
-    unCoin ( sumInputs s) >=
-    unCoin (sumOutputs s) +
-    unCoin (sumChange s)
+    coinToIntegral @Integer (sumInputs  s) >=
+    coinToIntegral @Integer (sumOutputs s) +
+    coinToIntegral @Integer (sumChange  s)
 
 -- | Data for running fee calculation properties
 data FeeProp i o = FeeProp
@@ -452,8 +449,8 @@ propReducedChanges drg (ShowFmt (FeeProp coinSel utxo (fee, dust))) = do
     isRight coinSel' ==> let Right s = coinSel' in prop s
   where
     prop s = do
-        let chgs' = sum $ map unCoin $ change s
-        let chgs = sum $ map unCoin $ change coinSel
+        let chgs' = F.fold $ change s
+        let chgs = F.fold $ change coinSel
         let inps' = CS.inputs s
         let inps = CS.inputs coinSel
         disjoin
@@ -504,10 +501,10 @@ propDistributeFeeFair (fee, coins) = (.&&.)
     feeLowerBounds = Fee . floor   . computeIdealFee <$> coins
 
     computeIdealFee :: Coin -> Rational
-    computeIdealFee (Coin c)
-        = fromIntegral c
-        * fromIntegral (unFee fee)
-        % fromIntegral (sum $ unCoin <$> coins)
+    computeIdealFee c
+        = coinToIntegral @Integer c
+        * unFee fee
+        % coinToIntegral @Integer (F.fold coins)
 
 -- | Verify that fees are distributed optimally across coins, such that the
 -- absolute deviation from the ideal (unrounded) fee distribution is minimal.
@@ -552,10 +549,10 @@ propDistributeFeeOptimal fee coins = property $
     idealUnroundedDistribution = computeIdealFee <$> coins
       where
         computeIdealFee :: Coin -> Rational
-        computeIdealFee (Coin c)
-            = fromIntegral c
-            * fromIntegral (unFee fee)
-            % fromIntegral (sum $ unCoin <$> coins)
+        computeIdealFee c
+            = coinToIntegral @Integer c
+            * unFee fee
+            % coinToIntegral @Integer (F.fold coins)
 
 -- | Sum of the fees divvied over each output is the same as the initial total
 -- fee.
@@ -609,25 +606,25 @@ instance Arbitrary CoalesceDustData where
             ]
         pure $ CoalesceDustData threshold coins
       where
-        genCoin = Coin <$> oneof [pure 0, choose (1, 100)]
+        genCoin = unsafeCoin @Int <$> oneof [pure 0, choose (1, 100)]
         genCoinCount = choose (0, 10)
     shrink = genericShrink
 
 propCoalesceDustPreservesSum :: CoalesceDustData -> Property
 propCoalesceDustPreservesSum (CoalesceDustData threshold coins) =
     property $
-    let total = sum (unCoin <$> coins) in
+    let total = sum $ coinToIntegral @Int <$> coins in
     cover 8 (total == 0) "sum coins = 0" $
     cover 8 (total /= 0) "sum coins ≠ 0" $
-    total == F.sum (unCoin <$> coalesceDust threshold coins)
+    total == sum (coinToIntegral <$> coalesceDust threshold coins)
 
 propCoalesceDustLeavesNoZeroCoins :: CoalesceDustData -> Property
 propCoalesceDustLeavesNoZeroCoins (CoalesceDustData threshold coins) =
     property $
-    cover 4 (F.all  (== Coin 0) coins) "∀ coin ∈ coins . coin = 0" $
-    cover 4 (F.elem    (Coin 0) coins) "∃ coin ∈ coins . coin = 0" $
-    cover 8 (F.notElem (Coin 0) coins) "∀ coin ∈ coins . coin > 0" $
-    F.notElem (Coin 0) $ coalesceDust threshold coins
+    cover 4 (F.all  (== zeroCoin) coins) "∀ coin ∈ coins . coin = 0" $
+    cover 4 (F.elem    (zeroCoin) coins) "∃ coin ∈ coins . coin = 0" $
+    cover 8 (F.notElem (zeroCoin) coins) "∀ coin ∈ coins . coin > 0" $
+    F.notElem zeroCoin $ coalesceDust threshold coins
 
 propCoalesceDustLeavesAtMostOneDustCoin :: CoalesceDustData -> Property
 propCoalesceDustLeavesAtMostOneDustCoin (CoalesceDustData threshold coins) =
@@ -650,8 +647,8 @@ propCoalesceDustLeavesAtMostOneDustCoin (CoalesceDustData threshold coins) =
     cover 8 (length result == 1) "length result = 1" $
     cover 8 (length result >= 2) "length result ≥ 2" $
     case result of
-        [ ] -> F.sum (unCoin <$> coins) == 0
-        [x] -> Coin (F.sum (unCoin <$> coins)) == x
+        [ ] -> F.fold coins == zeroCoin
+        [x] -> F.fold coins == x
         cxs -> all (> threshold') cxs
   where
     threshold' = Coin $ unDustThreshold threshold
@@ -675,7 +672,7 @@ instance Arbitrary ReduceChangeOutputsData where
         coalesceDustData <- arbitrary
         let threshold = cddThreshold coalesceDustData
         let coins = F.toList $ cddCoins coalesceDustData
-        let coinSum = sum $ unCoin <$> coins
+        let coinSum = sum $ coinToIntegral <$> coins
         fee <- Fee <$> oneof
             [ pure 0
             , choose (1, safePred coinSum)
@@ -693,43 +690,26 @@ instance Arbitrary ReduceChangeOutputsData where
 propReduceChangeOutputsDataCoverage :: ReduceChangeOutputsData -> Property
 propReduceChangeOutputsDataCoverage
     (ReduceChangeOutputsData (Fee fee) _ coins) =
-        let coinSum = sum $ unCoin <$> coins in
+        let coinSum = sum $ coinToIntegral <$> coins in
         property
             -- Test coverage of fee amount, relative to sum of coins:
             $ cover 100 (fee >= 0)
                 "fee >= 0"
             $ cover 8 (fee == 0)
                 "fee = 0"
-            $ cover 8 (length (filter (> Coin 0) coins) == 1)
+            $ cover 8 (length (filter (> zeroCoin) coins) == 1)
                 "one non-empty coin"
-            $ cover 8 (length (filter (> Coin 0) coins) == 2)
+            $ cover 8 (length (filter (> zeroCoin) coins) == 2)
                 "two non-empty coins"
-            $ cover 8 (length (filter (> Coin 0) coins) >= 3)
+            $ cover 8 (length (filter (> zeroCoin) coins) >= 3)
                 "several non-empty coins"
-            $ cover 8 (any (> Coin 0) coins && 0 < fee && fee < coinSum)
+            $ cover 8 (any (> zeroCoin) coins && 0 < fee && fee < coinSum)
                 "0 < fee < sum coins"
-            $ cover 8 (any (> Coin 0) coins && fee == coinSum)
+            $ cover 8 (any (> zeroCoin) coins && fee == coinSum)
                 "fee = sum coins"
-            $ cover 8 (any (> Coin 0) coins && fee > coinSum)
+            $ cover 8 (any (> zeroCoin) coins && fee > coinSum)
                 "fee > sum coins"
             True
-
-propReduceChangeOutputsDataGenerationValid
-    :: ReduceChangeOutputsData -> Property
-propReduceChangeOutputsDataGenerationValid rcod = property $
-    all coinIsValid (rcodCoins rcod)
-
-propReduceChangeOutputsDataShrinkingValid
-    :: ReduceChangeOutputsData -> Property
-propReduceChangeOutputsDataShrinkingValid rcod = property $
-    all isValidData (shrink rcod)
-  where
-    isValidData d = all coinIsValid (rcodCoins d)
-
-propReduceChangeOutputsProducesValidCoins :: ReduceChangeOutputsData -> Property
-propReduceChangeOutputsProducesValidCoins
-    (ReduceChangeOutputsData fee threshold coins) = property $
-        all coinIsValid (reduceChangeOutputs threshold fee coins)
 
 propReduceChangeOutputsPreservesSum :: ReduceChangeOutputsData -> Property
 propReduceChangeOutputsPreservesSum
@@ -739,9 +719,9 @@ propReduceChangeOutputsPreservesSum
     -- We can only expect the total sum to be preserved if the supplied coins
     -- are enough to pay for the fee:
     check
-        | fee < sum (unCoin <$> coins) =
-            sum (unCoin <$> coins) ==
-            sum (unCoin <$> coinsRemaining) + fee
+        | fee < sum (coinToIntegral <$> coins) =
+            sum (coinToIntegral <$> coins) ==
+            sum (coinToIntegral <$> coinsRemaining) + fee
         | otherwise =
             null coinsRemaining
 
@@ -767,9 +747,9 @@ instance Arbitrary SplitCoinData where
       where
         genCoin :: Gen Coin
         genCoin = oneof
-            [ pure $ Coin 0
-            , pure $ Coin 1
-            , Coin . (+ 1) . getPositive <$> arbitrary
+            [ pure $ unsafeCoin @Integer 0
+            , pure $ unsafeCoin @Integer 1
+            , unsafeCoin @Int . (+ 1) . getPositive <$> arbitrary
             ]
     shrink = genericShrink
 
@@ -782,53 +762,43 @@ propSplitCoinDataCoverage (SplitCoinData coinToSplit coinsToIncrease) =
             "list of coins is singleton"
         $ cover 8 (length coinsToIncrease > 1)
             "list of coins has multiple entries"
-        $ cover 8 (Coin 0 `elem` coinsToIncrease)
+        $ cover 8 (zeroCoin `elem` coinsToIncrease)
             "list of coins has at least one zero coin"
-        $ cover 8 (any (> Coin 0) coinsToIncrease)
+        $ cover 8 (any (> zeroCoin) coinsToIncrease)
             "list of coins has at least one non-zero coin"
-        $ cover 8 (coinToSplit == Coin 0)
+        $ cover 8 (coinToSplit == zeroCoin)
             "coin to split is zero"
-        $ cover 8 (coinToSplit > Coin 0)
+        $ cover 8 (coinToSplit > zeroCoin)
             "coin to split is non-zero"
-        $ cover 8 (length coinsToIncrease > fromIntegral (unCoin coinToSplit))
+        $ cover 8 (length coinsToIncrease > coinToIntegral coinToSplit)
             "coin to split is smaller than number of coins to increase"
         True
-
-propSplitCoinDataGenerationValid :: SplitCoinData -> Property
-propSplitCoinDataGenerationValid scd = property $
-    all coinIsValid (scdCoinToSplit scd : scdCoinsToIncrease scd)
-
-propSplitCoinDataShrinkingValid :: SplitCoinData -> Property
-propSplitCoinDataShrinkingValid scd = property $
-    all isValidData (shrink scd)
-  where
-    isValidData d = all coinIsValid (scdCoinToSplit d : scdCoinsToIncrease d)
 
 propSplitCoinPreservesSum :: SplitCoinData -> Property
 propSplitCoinPreservesSum (SplitCoinData coinToSplit coinsToIncrease) =
     property $ totalBefore `shouldBe` totalAfter
   where
-    totalAfter = sum (unCoin <$> splitCoin coinToSplit coinsToIncrease)
-    totalBefore = unCoin coinToSplit + sum (unCoin <$> coinsToIncrease)
-
-propSplitCoinProducesValidCoins :: SplitCoinData -> Property
-propSplitCoinProducesValidCoins (SplitCoinData coinToSplit coinsToIncrease) =
-    property $ all coinIsValid $ splitCoin coinToSplit coinsToIncrease
+    totalAfter = sum (coinToIntegral <$> splitCoin coinToSplit coinsToIncrease)
+    totalBefore
+        = coinToIntegral @Integer coinToSplit
+        + sum (coinToIntegral <$> coinsToIncrease)
 
 propSplitCoinFair :: (Coin, NonEmpty Coin) -> Property
 propSplitCoinFair (coinToSplit, coinsToIncrease) = (.&&.)
-    (F.all (uncurry (<=)) (NE.zip results resultUpperBounds))
-    (F.all (uncurry (>=)) (NE.zip results resultLowerBounds))
+    (F.all (uncurry (<=)) (NE.zip results upperBounds))
+    (F.all (uncurry (>=)) (NE.zip results lowerBounds))
   where
     results = NE.fromList $ splitCoin coinToSplit $ NE.toList coinsToIncrease
 
-    resultUpperBounds = Coin . ceiling . computeIdealResult <$> coinsToIncrease
-    resultLowerBounds = Coin . floor   . computeIdealResult <$> coinsToIncrease
+    upperBounds = unsafeCoin @Integer . ceiling
+        . computeIdealResult <$> coinsToIncrease
+    lowerBounds = unsafeCoin @Integer . floor
+        . computeIdealResult <$> coinsToIncrease
 
     computeIdealResult :: Coin -> Rational
-    computeIdealResult (Coin c)
-        = fromIntegral c
-        + fromIntegral (unCoin coinToSplit)
+    computeIdealResult c
+        = fromIntegral (coinToIntegral @Integer c)
+        + coinToIntegral @Integer coinToSplit
         % fromIntegral (length coinsToIncrease)
 
 --------------------------------------------------------------------------------
@@ -843,7 +813,7 @@ feeOptions fee dust = FeeOptions
     { feeEstimator = FeeEstimator $
         \_ -> Fee fee
     , dustThreshold =
-        DustThreshold dust
+        unsafeDustThreshold dust
     }
 
 feeUnitTest
@@ -857,9 +827,9 @@ feeUnitTest (FeeFixture inpsF outsF chngsF utxoF feeF dustF) expected =
             (CoinSelection inps outs chngs) <-
                 adjustForFee (feeOptions feeF dustF) utxo sel
             return $ FeeOutput
-                { csInps = unCoin . entryValue <$> coinMapToList inps
-                , csOuts = unCoin . entryValue <$> coinMapToList outs
-                , csChngs = unCoin <$> chngs
+                { csInps = coinToIntegral . entryValue <$> coinMapToList inps
+                , csOuts = coinToIntegral . entryValue <$> coinMapToList outs
+                , csChngs = coinToIntegral <$> chngs
                 }
         fmap sortFeeOutput result `shouldBe` fmap sortFeeOutput expected
   where
@@ -867,11 +837,11 @@ feeUnitTest (FeeFixture inpsF outsF chngsF utxoF feeF dustF) expected =
         :: forall i o . (Arbitrary i, Arbitrary o, Ord i, Ord o)
         => IO (CoinMap i, CoinSelection i o)
     setup = do
-        utxo <- generate (genInputs $ Coin <$> utxoF)
+        utxo <- generate (genInputs $ unsafeCoin <$> utxoF)
         inps <- (fmap (uncurry CoinMapEntry) . Map.toList . unCoinMap) <$>
-            generate (genInputs $ Coin <$> inpsF)
-        outs <- generate (genOutputs $ Coin <$> outsF)
-        let chngs = map Coin chngsF
+            generate (genInputs $ unsafeCoin <$> inpsF)
+        outs <- generate (genOutputs $ unsafeCoin <$> outsF)
+        let chngs = map unsafeCoin chngsF
         pure (utxo, CoinSelection (coinMapFromList inps) outs chngs)
 
     title :: String
@@ -949,12 +919,12 @@ instance Arbitrary TxIn where
         <*> scale (`mod` 3) arbitrary -- No need for a high indexes
 
 instance Arbitrary Coin where
-    arbitrary = Coin <$> choose (1, 100_000)
-    shrink = filter (> Coin 0) . genericShrink
+    arbitrary = unsafeCoin @Int <$> choose (1, 100_000)
+    shrink = fmap unsafeCoin . filter (> 0) . shrink . coinToIntegral @Int
 
 instance Arbitrary DustThreshold where
-    arbitrary = DustThreshold <$> choose (0, 100)
-    shrink = genericShrink
+    arbitrary = unsafeDustThreshold @Int <$> choose (0, 100)
+    shrink = fmap unsafeDustThreshold . shrink . dustThresholdToIntegral @Int
 
 instance Arbitrary Fee where
     arbitrary = Fee <$> choose (1, 100_000)
@@ -1050,7 +1020,7 @@ feeEstimatorFromParameters
 
 instance Arbitrary (FeeOptions i o) where
     arbitrary = do
-        dustThreshold <- DustThreshold <$> choose (0, 10)
+        dustThreshold <- unsafeDustThreshold @Int <$> choose (0, 10)
         feeEstimator <- feeEstimatorFromParameters <$> arbitrary
         return $ FeeOptions {dustThreshold, feeEstimator}
 
