@@ -10,8 +10,7 @@ module Cardano.CoinSelection.LargestFirstSpec
 import Prelude
 
 import Cardano.CoinSelection
-    ( Coin (..)
-    , CoinMap (..)
+    ( CoinMap (..)
     , CoinMapEntry (..)
     , CoinSelection (..)
     , CoinSelectionAlgorithm (..)
@@ -31,7 +30,7 @@ import Cardano.CoinSelectionSpec
     , noValidation
     )
 import Cardano.Test.Utilities
-    ( Address, TxIn, excluding )
+    ( Address, TxIn, excluding, unsafeCoin )
 import Control.Monad
     ( unless )
 import Control.Monad.Trans.Except
@@ -40,6 +39,8 @@ import Data.Either
     ( isRight )
 import Data.Functor.Identity
     ( Identity (runIdentity) )
+import Internal.Coin
+    ( Coin (..) )
 import Test.Hspec
     ( Spec, describe, it, shouldSatisfy )
 import Test.QuickCheck
@@ -120,7 +121,8 @@ spec = do
 
         coinSelectionUnitTest largestFirst
             "UTxO balance not sufficient"
-            (Left $ ErrUtxoBalanceInsufficient 39 40)
+            (Left $ ErrUtxoBalanceInsufficient
+                (unsafeCoin @Int 39) (unsafeCoin @Int 40))
             (CoinSelectionFixture
                 { maxNumOfInputs = 100
                 , validateSelection = noValidation
@@ -130,7 +132,8 @@ spec = do
 
         coinSelectionUnitTest largestFirst
             "UTxO balance not sufficient, and not fragmented enough"
-            (Left $ ErrUtxoBalanceInsufficient 39 43)
+            (Left $ ErrUtxoBalanceInsufficient
+                (unsafeCoin @Int 39) (unsafeCoin @Int 43))
             (CoinSelectionFixture
                 { maxNumOfInputs = 100
                 , validateSelection = noValidation
