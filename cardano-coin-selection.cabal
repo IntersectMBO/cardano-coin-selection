@@ -127,5 +127,6 @@ test-suite cardano-coin-selection-test
       Cardano.CoinSelection.TypesSpec
       Cardano.CoinSelectionSpec
       Cardano.Test.Utilities
+      Internal.SafeNaturalSpec
       Test.Vector.Shuffle
       Test.Vector.ShuffleSpec
