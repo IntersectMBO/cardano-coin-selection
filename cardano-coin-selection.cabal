@@ -48,6 +48,7 @@ library cardano-coin-selection-internal
       Internal.Rounding
       Internal.Coin
       Internal.DustThreshold
+      Internal.Fee
       Internal.SafeNatural
 
 library

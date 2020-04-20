@@ -51,7 +51,7 @@ import Cardano.CoinSelection
     , sumInputs
     )
 import Cardano.CoinSelection.Fee
-    ( Fee (..), FeeEstimator (..), FeeOptions (..) )
+    ( FeeEstimator (..), FeeOptions (..) )
 import Control.Monad.Trans.State
     ( State, evalState, get, put )
 import Data.List.NonEmpty
@@ -64,6 +64,8 @@ import Internal.Coin
     ( Coin (..), coin, coinToIntegral )
 import Internal.DustThreshold
     ( DustThreshold (..) )
+import Internal.Fee
+    ( feeToIntegral )
 
 import qualified Internal.SafeNatural as SN
 
@@ -149,8 +151,8 @@ depleteUTxO feeOpts batchSize utxo =
         diff :: Integer
         diff = actualFee - requiredFee
           where
-            requiredFee = integer $
-                unFee $ estimateFee (feeEstimator feeOpts) coinSel
+            requiredFee =
+                feeToIntegral $ estimateFee (feeEstimator feeOpts) coinSel
             actualFee
                 = coinToIntegral (sumInputs coinSel)
                 - coinToIntegral (sumChange coinSel)
@@ -186,7 +188,3 @@ idealBatchSize coinselOpts = fixPoint 1
       where
         maxN :: Word8 -> Word8
         maxN = maximumInputCount coinselOpts
-
--- | Safe conversion of an integral type to an integer
-integer :: Integral a => a -> Integer
-integer = fromIntegral

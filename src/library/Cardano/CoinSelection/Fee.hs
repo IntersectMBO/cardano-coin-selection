@@ -22,7 +22,8 @@
 module Cardano.CoinSelection.Fee
     (
       -- * Types
-      Fee (..)
+      Fee
+    , feeToIntegral
 
       -- * Fee Calculation
     , calculateFee
@@ -57,8 +58,6 @@ import Cardano.CoinSelection
     , sumInputs
     , sumOutputs
     )
-import Control.Monad
-    ( join )
 import Control.Monad.Trans.Class
     ( lift )
 import Control.Monad.Trans.Except
@@ -82,32 +81,19 @@ import GHC.Generics
 import GHC.Stack
     ( HasCallStack )
 import Internal.Coin
-    ( Coin (..), coinToIntegral )
+    ( Coin (..) )
 import Internal.DustThreshold
     ( DustThreshold (..) )
+import Internal.Fee
+    ( Fee (..), fee, feeToIntegral )
 import Internal.Invariant
     ( invariant )
 import Internal.Rounding
     ( RoundingDirection (..), round )
-import Quiet
-    ( Quiet (Quiet) )
 
 import qualified Data.Foldable as F
 import qualified Data.List.NonEmpty as NE
 import qualified Internal.SafeNatural as SN
-
---------------------------------------------------------------------------------
--- Types
---------------------------------------------------------------------------------
-
--- | Represents a fee to be paid on a transaction.
---
--- This type is isomorphic to 'Coin'.
---
-newtype Fee = Fee
-    { unFee :: Integer }
-    deriving stock (Eq, Generic, Ord)
-    deriving Show via (Quiet Fee)
 
 --------------------------------------------------------------------------------
 -- Fee Calculation
@@ -115,11 +101,12 @@ newtype Fee = Fee
 
 -- | Calculates the current fee associated with a given 'CoinSelection'.
 --
-calculateFee :: CoinSelection i o -> Fee
-calculateFee s = Fee
-    $ coinToIntegral (sumInputs  s)
-    - coinToIntegral (sumOutputs s)
-    - coinToIntegral (sumChange  s)
+calculateFee :: CoinSelection i o -> Maybe Fee
+calculateFee s = Fee <$> is `SN.sub` (os `SN.add` cs)
+  where
+    is = unCoin $ sumInputs  s
+    os = unCoin $ sumOutputs s
+    cs = unCoin $ sumChange  s
 
 --------------------------------------------------------------------------------
 -- Fee Adjustment
@@ -186,7 +173,7 @@ adjustForFee unsafeOpt utxo coinSel = do
             "adjustForFee: fee must be non-null" unsafeOpt (not . nullFee)
     senderPaysFee opt utxo coinSel
   where
-    nullFee opt = estimateFee (feeEstimator opt) coinSel == Fee 0
+    nullFee opt = estimateFee (feeEstimator opt) coinSel == Fee SN.zero
 
 -- | The sender pays fee in this scenario, so fees are removed from the change
 -- outputs, and new inputs are selected if necessary.
@@ -218,7 +205,7 @@ senderPaysFee FeeOptions {feeEstimator, dustThreshold} utxo sel =
         -- transaction, and the fee. Thus, we end up paying slightly more than
         -- the upper bound. We could do some binary search and try to
         -- re-distribute excess across changes until fee becomes bigger.
-        if remFee == Fee 0
+        if remFee == Fee SN.zero
         then pure coinSel'
         else do
             -- 3.2/
@@ -243,9 +230,9 @@ coverRemainingFee
     :: MonadRandom m
     => Fee
     -> StateT (CoinMap i) (ExceptT ErrAdjustForFee m) [CoinMapEntry i]
-coverRemainingFee (Fee fee) = go [] where
+coverRemainingFee (Fee feeRemaining) = go [] where
     go acc
-        | coinToIntegral (sumEntries acc) >= fee =
+        | unCoin (sumEntries acc) >= feeRemaining =
             return acc
         | otherwise = do
             -- We ignore the size of the fee, and just pick randomly
@@ -254,7 +241,7 @@ coverRemainingFee (Fee fee) = go [] where
                     go (entry : acc)
                 Nothing ->
                     lift $ throwE $ ErrCannotCoverFee $ Fee $
-                        fee - coinToIntegral (sumEntries acc)
+                        SN.distance feeRemaining (unCoin $ sumEntries acc)
 
 -- | Pays for the given fee by subtracting it from the given list of change
 --   outputs, so that each change output is reduced by a portion of the fee
@@ -289,7 +276,7 @@ coverRemainingFee (Fee fee) = go [] where
 --
 reduceChangeOutputs :: DustThreshold -> Fee -> [Coin] -> [Coin]
 reduceChangeOutputs threshold (Fee totalFee) changeOutputs
-    | totalFee >= SN.toIntegral totalChange =
+    | totalFee >= totalChange =
         []
     | otherwise =
         case positiveChangeOutputs of
@@ -301,7 +288,7 @@ reduceChangeOutputs threshold (Fee totalFee) changeOutputs
   where
     payFee :: (Fee, Coin) -> Coin
     payFee (Fee f, Coin c) = Coin $
-        fromMaybe SN.zero ((c `SN.sub`) =<< SN.fromIntegral f)
+        fromMaybe SN.zero (c `SN.sub` f)
 
     positiveChangeOutputs :: [Coin]
     positiveChangeOutputs =
@@ -358,7 +345,9 @@ distributeFee (Fee feeTotal) coinsUnsafe =
         -- 5. Restore the original order:
         & NE.sortBy (comparing fst)
         -- 6. Strip away the indices:
-        & fmap (Fee . fromIntegral @Integer . snd)
+        & fmap snd
+        -- 7. Transform results into fees:
+        & fmap (fromMaybe (Fee SN.zero) . fee @Integer)
       where
         indices :: NonEmpty Int
         indices = 0 :| [1 ..]
@@ -393,7 +382,7 @@ distributeFee (Fee feeTotal) coinsUnsafe =
          -- The part of the total fee that we'd lose if we were to take the
          -- simple approach of rounding all ideal fee portions /down/.
         feeShortfall
-            = fromIntegral feeTotal
+            = SN.toIntegral feeTotal
             - fromIntegral @Integer (F.sum $ round RoundDown <$> feesUnrounded)
 
     -- A list of ideal unrounded fee portions, with one fee portion per coin.
@@ -404,9 +393,9 @@ distributeFee (Fee feeTotal) coinsUnsafe =
     feesUnrounded = calculateIdealFee <$> coins
       where
         calculateIdealFee (Coin c)
-            = fromIntegral (SN.toNatural c)
-            * fromIntegral feeTotal
-            % fromIntegral (SN.toNatural $ unCoin totalCoinValue)
+            = SN.toIntegral c
+            * SN.toIntegral feeTotal
+            % SN.toIntegral (unCoin totalCoinValue)
 
     -- The total value of all coins.
     totalCoinValue :: Coin
@@ -436,10 +425,10 @@ remainingFee
     -> CoinSelection i o
     -> Fee
 remainingFee FeeEstimator {estimateFee} s
-    | fee >= diff =
-        Fee (fee - diff)
+    | feeEstimate >= diff =
+        Fee (feeEstimate `SN.distance` diff)
     | feeDangling >= diff =
-        Fee (feeDangling - fee)
+        Fee (feeDangling `SN.distance` feeEstimate)
     | otherwise =
         -- NOTE
         -- The only case where we may end up with an unbalanced transaction is
@@ -448,18 +437,19 @@ remainingFee FeeEstimator {estimateFee} s
         -- left for fees).
         error $ unwords
             [ "Generated an unbalanced tx! Too much left for fees"
-            , ": fee (raw) =", show fee
+            , ": fee (raw) =", show feeEstimate
             , ": fee (dangling) =", show feeDangling
             , ", diff =", show diff
             , "\nselection =", show s
             ]
   where
-    Fee fee = estimateFee s
-    Fee diff = calculateFee s
+    Fee feeEstimate = estimateFee s
+    Fee diff = fromMaybe errorUnderfundedSelection (calculateFee s)
     Fee feeDangling =
         estimateFee s { change = F.toList mDiffMinusFee }
-    mDiffMinusFee = fmap Coin . join $
-        SN.sub <$> SN.fromIntegral diff <*> SN.fromIntegral fee
+    mDiffMinusFee = Coin <$> SN.sub diff feeEstimate
+    errorUnderfundedSelection = error
+        "Cannot calculate remaining fee for an underfunded selection."
 
 -- | Splits up the given coin of value __@v@__, distributing its value over the
 --   given coin list of length __@n@__, so that each coin value is increased by

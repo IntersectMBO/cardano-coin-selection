@@ -39,7 +39,9 @@ module Cardano.Test.Utilities
     -- * Unsafe Operations
     , unsafeCoin
     , unsafeDustThreshold
+    , unsafeFee
     , unsafeFromHex
+    , unsafeNatural
 
     -- * Special Values
     , zeroCoin
@@ -84,6 +86,8 @@ import Internal.Coin
     ( Coin (..), coin )
 import Internal.DustThreshold
     ( DustThreshold (..), dustThreshold )
+import Internal.Fee
+    ( Fee (..), fee )
 import Internal.SafeNatural
     ( SafeNatural )
 import Numeric.Natural
@@ -135,6 +139,22 @@ unsafeDustThreshold i = fromMaybe die $ dustThreshold i
   where
     die = error $ mconcat
         [ "Test suite attempted to create a dust theshold with negative value: "
+        , show i
+        ]
+
+unsafeFee :: (Integral i, Show i) => i -> Fee
+unsafeFee i = fromMaybe die $ fee i
+  where
+    die = error $ mconcat
+        [ "Test suite attempted to create a fee with negative value: "
+        , show i
+        ]
+
+unsafeNatural :: (Integral i, Show i) => i -> SafeNatural
+unsafeNatural i = fromMaybe die $ SN.fromIntegral i
+  where
+    die = error $ mconcat
+        [ "Test suite attempted to create a natural with negative value: "
         , show i
         ]
 

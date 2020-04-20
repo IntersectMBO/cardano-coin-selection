@@ -22,7 +22,7 @@ import Cardano.CoinSelection
     , sumInputs
     )
 import Cardano.CoinSelection.Fee
-    ( Fee (..), FeeEstimator (..), FeeOptions (..) )
+    ( FeeEstimator (..), FeeOptions (..) )
 import Cardano.CoinSelection.FeeSpec
     ()
 import Cardano.CoinSelection.Migration
@@ -30,7 +30,13 @@ import Cardano.CoinSelection.Migration
 import Cardano.CoinSelectionSpec
     ()
 import Cardano.Test.Utilities
-    ( Address, Hash (..), TxIn (..), unsafeCoin, unsafeDustThreshold )
+    ( Address
+    , Hash (..)
+    , TxIn (..)
+    , unsafeCoin
+    , unsafeDustThreshold
+    , unsafeFee
+    )
 import Data.ByteString
     ( ByteString )
 import Data.Function
@@ -41,6 +47,8 @@ import Internal.Coin
     ( Coin (..), coinToIntegral )
 import Internal.DustThreshold
     ( DustThreshold (..) )
+import Internal.Fee
+    ( feeToIntegral )
 import Numeric.Natural
     ( Natural )
 import Test.Hspec
@@ -135,7 +143,7 @@ spec = do
         it "regression #1" $ do
             let feeOpts = FeeOptions
                     { dustThreshold = unsafeDustThreshold @Int 9
-                    , feeEstimator = FeeEstimator $ \s -> Fee
+                    , feeEstimator = FeeEstimator $ \s -> unsafeFee @Int
                         $ fromIntegral
                         $ 5 * (length (inputs s) + length (outputs s))
                     }
@@ -240,9 +248,11 @@ prop_wellBalanced feeOpts batchSize utxo = do
     conjoin
         [ counterexample example (actualFee === expectedFee)
         | s <- selections
-        , let actualFee =
-                  coinToIntegral (sumInputs s) - coinToIntegral (sumChange s)
-        , let expectedFee = unFee $ estimateFee (feeEstimator feeOpts) s
+        , let actualFee
+                = coinToIntegral (sumInputs s)
+                - coinToIntegral (sumChange s)
+        , let expectedFee =
+                  feeToIntegral @Integer $ estimateFee (feeEstimator feeOpts) s
         , let example = unlines
                 [ "Coin Selection: " <> show s
                 , "Actual fee: " <> show actualFee
@@ -279,8 +289,10 @@ genFeeOptions :: Coin -> Gen (FeeOptions TxIn Address)
 genFeeOptions (Coin dust) = do
     pure $ FeeOptions
         { feeEstimator = FeeEstimator $ \s ->
-            let x = fromIntegral (length (inputs s) + length (outputs s))
-            in Fee $ (SN.toIntegral dust `div` 100) * x + SN.toIntegral dust
+            let x = fromIntegral @_ @Integer
+                    (length (inputs s) + length (outputs s))
+            in unsafeFee $
+                  (SN.toIntegral dust `div` 100) * x + SN.toIntegral dust
         , dustThreshold = DustThreshold dust
         }
 

@@ -33,7 +33,6 @@ import Cardano.CoinSelection
 import Cardano.CoinSelection.Fee
     ( DustThreshold
     , ErrAdjustForFee (..)
-    , Fee (..)
     , FeeEstimator (..)
     , FeeOptions (..)
     , adjustForFee
@@ -51,6 +50,8 @@ import Cardano.Test.Utilities
     , TxIn (..)
     , unsafeCoin
     , unsafeDustThreshold
+    , unsafeFee
+    , unsafeNatural
     , zeroCoin
     )
 import Control.Arrow
@@ -83,6 +84,8 @@ import Internal.Coin
     ( Coin (..), coinToIntegral )
 import Internal.DustThreshold
     ( DustThreshold (..), dustThresholdToIntegral )
+import Internal.Fee
+    ( Fee (..), feeToIntegral )
 import Internal.Rounding
     ( RoundingDirection (..), round )
 import Test.Hspec
@@ -121,6 +124,7 @@ import qualified Data.Foldable as F
 import qualified Data.List as L
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map.Strict as Map
+import qualified Internal.SafeNatural as SN
 
 spec :: Spec
 spec = do
@@ -217,7 +221,7 @@ spec = do
             , fUtxo = []
             , fFee = 4
             , fDust = 0
-            }) (Left $ ErrCannotCoverFee $ Fee 1)
+            }) (Left $ ErrCannotCoverFee $ unsafeFee @Int 1)
 
         -- Cannot cover fee even with an extra (too small) inputs
         feeUnitTest (FeeFixture
@@ -227,7 +231,7 @@ spec = do
             , fUtxo = [1]
             , fFee = 5
             , fDust = 0
-            }) (Left $ ErrCannotCoverFee $ Fee 1)
+            }) (Left $ ErrCannotCoverFee $ unsafeFee @Int 1)
 
         -- Can select extra inputs to exactly cover fee, no change back
         feeUnitTest (FeeFixture
@@ -478,7 +482,7 @@ propDistributeFee prop (fee, outs) =
         , ("nOuts=2+", 10)
         ]
         $ tabulate "properties"
-            [ if fee > Fee 0 then "fee > 0" else "fee == 0"
+            [ if fee > Fee SN.zero then "fee > 0" else "fee == 0"
             , "nOuts=" <> case length outs of
                 n | n <= 2 -> show n
                 _ -> "2+"
@@ -497,13 +501,13 @@ propDistributeFeeFair (fee, coins) = (.&&.)
   where
     fees = fst <$> distributeFee fee coins
 
-    feeUpperBounds = Fee . ceiling . computeIdealFee <$> coins
-    feeLowerBounds = Fee . floor   . computeIdealFee <$> coins
+    feeUpperBounds = unsafeFee @Integer . ceiling . computeIdealFee <$> coins
+    feeLowerBounds = unsafeFee @Integer . floor   . computeIdealFee <$> coins
 
     computeIdealFee :: Coin -> Rational
     computeIdealFee c
         = coinToIntegral @Integer c
-        * unFee fee
+        * feeToIntegral fee
         % coinToIntegral @Integer (F.fold coins)
 
 -- | Verify that fees are distributed optimally across coins, such that the
@@ -520,7 +524,7 @@ propDistributeFeeOptimal fee coins = property $
     -- unrounded fee portion distribution.
     computeDeviation :: NonEmpty Fee -> Rational
     computeDeviation feesRounded = F.sum $
-        NE.zipWith (\(Fee f) u -> abs (fromIntegral f - u))
+        NE.zipWith (\f u -> abs (fromIntegral @Integer (feeToIntegral f) - u))
             feesRounded
             idealUnroundedDistribution
 
@@ -533,12 +537,13 @@ propDistributeFeeOptimal fee coins = property $
     -- The set of all possible fee distributions for the given fee and coins.
     allPossibleDistributions :: [NonEmpty Fee]
     allPossibleDistributions = filter isValidDistribution $ NE.zipWith
-        (\f roundDir -> Fee $ fromIntegral @Integer $ round roundDir f)
+        (\f roundDir ->
+            unsafeFee @Integer $ fromIntegral @Integer $ round roundDir f)
         idealUnroundedDistribution <$> allPossibleRoundings
       where
         -- Indicates whether the given distribution has the correct total fee.
         isValidDistribution :: NonEmpty Fee -> Bool
-        isValidDistribution r = sum (unFee <$> r) == unFee fee
+        isValidDistribution r = F.fold r == fee
 
         -- All possible ways to round an unrounded fee distribution.
         allPossibleRoundings :: [NonEmpty RoundingDirection]
@@ -551,7 +556,7 @@ propDistributeFeeOptimal fee coins = property $
         computeIdealFee :: Coin -> Rational
         computeIdealFee c
             = coinToIntegral @Integer c
-            * unFee fee
+            * feeToIntegral fee
             % coinToIntegral @Integer (F.fold coins)
 
 -- | Sum of the fees divvied over each output is the same as the initial total
@@ -560,7 +565,7 @@ propDistributeFeeSame
     :: (Fee, NonEmpty Coin)
     -> Property
 propDistributeFeeSame = propDistributeFee $ \(fee, outs) ->
-    F.sum (unFee . fst <$> distributeFee fee outs) === unFee fee
+    F.fold (fst <$> distributeFee fee outs) === fee
 
 -- | distributeFee doesn't change any of the outputs
 propDistributeFeeOuts
@@ -582,7 +587,7 @@ propDistributeFeeNoNullFee
 propDistributeFeeNoNullFee (fee, outs) =
     not (null outs) ==> withMaxSuccess 100000 prop
   where
-    prop = property $ Fee 0 `F.notElem` (fst <$> distributeFee fee outs)
+    prop = property $ Fee SN.zero `F.notElem` (fst <$> distributeFee fee outs)
 
 --------------------------------------------------------------------------------
 -- coalesceDust - Properties
@@ -673,7 +678,7 @@ instance Arbitrary ReduceChangeOutputsData where
         let threshold = cddThreshold coalesceDustData
         let coins = F.toList $ cddCoins coalesceDustData
         let coinSum = sum $ coinToIntegral <$> coins
-        fee <- Fee <$> oneof
+        fee <- unsafeFee <$> oneof
             [ pure 0
             , choose (1, safePred coinSum)
             , pure coinSum
@@ -690,12 +695,12 @@ instance Arbitrary ReduceChangeOutputsData where
 propReduceChangeOutputsDataCoverage :: ReduceChangeOutputsData -> Property
 propReduceChangeOutputsDataCoverage
     (ReduceChangeOutputsData (Fee fee) _ coins) =
-        let coinSum = sum $ coinToIntegral <$> coins in
+        let coinSum = unCoin $ F.fold coins in
         property
             -- Test coverage of fee amount, relative to sum of coins:
-            $ cover 100 (fee >= 0)
+            $ cover 100 (fee >= SN.zero)
                 "fee >= 0"
-            $ cover 8 (fee == 0)
+            $ cover 8 (fee == SN.zero)
                 "fee = 0"
             $ cover 8 (length (filter (> zeroCoin) coins) == 1)
                 "one non-empty coin"
@@ -703,7 +708,7 @@ propReduceChangeOutputsDataCoverage
                 "two non-empty coins"
             $ cover 8 (length (filter (> zeroCoin) coins) >= 3)
                 "several non-empty coins"
-            $ cover 8 (any (> zeroCoin) coins && 0 < fee && fee < coinSum)
+            $ cover 8 (any (> zeroCoin) coins && SN.zero < fee && fee < coinSum)
                 "0 < fee < sum coins"
             $ cover 8 (any (> zeroCoin) coins && fee == coinSum)
                 "fee = sum coins"
@@ -719,9 +724,9 @@ propReduceChangeOutputsPreservesSum
     -- We can only expect the total sum to be preserved if the supplied coins
     -- are enough to pay for the fee:
     check
-        | fee < sum (coinToIntegral <$> coins) =
-            sum (coinToIntegral <$> coins) ==
-            sum (coinToIntegral <$> coinsRemaining) + fee
+        | fee < unCoin (F.fold coins) =
+            unCoin (F.fold coins) ==
+            unCoin (F.fold coinsRemaining) `SN.add` fee
         | otherwise =
             null coinsRemaining
 
@@ -811,7 +816,7 @@ feeOptions
     -> FeeOptions i o
 feeOptions fee dust = FeeOptions
     { feeEstimator = FeeEstimator $
-        \_ -> Fee fee
+        \_ -> unsafeFee fee
     , dustThreshold =
         unsafeDustThreshold dust
     }
@@ -927,8 +932,8 @@ instance Arbitrary DustThreshold where
     shrink = fmap unsafeDustThreshold . shrink . dustThresholdToIntegral @Int
 
 instance Arbitrary Fee where
-    arbitrary = Fee <$> choose (1, 100_000)
-    shrink = filter (> Fee 0) . genericShrink
+    arbitrary = unsafeFee @Int <$> choose (1, 100_000)
+    shrink = fmap unsafeFee . filter (> 0) . shrink . feeToIntegral @Int
 
 instance (Arbitrary i, Arbitrary o, Ord i, Ord o) =>
     Arbitrary (FeeProp i o)
@@ -1005,18 +1010,19 @@ data FeeParameters i o = FeeParameters
 
 instance Arbitrary (FeeParameters i o) where
     arbitrary = do
-        feePerTransaction <- Fee <$> choose (0, 10)
-        feePerTransactionEntry <- Fee <$> choose (0, 10)
+        feePerTransaction <- unsafeFee @Int <$> choose (0, 10)
+        feePerTransactionEntry <- unsafeFee @Int <$> choose (0, 10)
         pure $ FeeParameters {feePerTransaction, feePerTransactionEntry}
     shrink = genericShrink
 
 feeEstimatorFromParameters :: FeeParameters i o -> FeeEstimator i o
 feeEstimatorFromParameters
     FeeParameters {feePerTransaction, feePerTransactionEntry} =
-        FeeEstimator $ \s -> Fee
-            $ unFee feePerTransaction
-            + unFee feePerTransactionEntry
-            * fromIntegral (length (inputs s) + length (outputs s))
+        FeeEstimator $ \s -> Fee $
+            SN.add (unFee feePerTransaction) $
+            SN.mul
+                (unFee feePerTransactionEntry)
+                (unsafeNatural (length (inputs s) + length (outputs s)))
 
 instance Arbitrary (FeeOptions i o) where
     arbitrary = do
