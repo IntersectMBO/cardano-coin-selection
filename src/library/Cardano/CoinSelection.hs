@@ -209,13 +209,13 @@ newtype CoinSelectionAlgorithm i o m e = CoinSelectionAlgorithm
         -> ExceptT (CoinSelectionError e) m (CoinSelection i o, CoinMap i)
     }
 
--- | Represents the result of running a /coin selection algorithm/.
+-- | Represents the /result/ of running a coin selection algorithm.
 --
 -- See 'CoinSelectionAlgorithm'.
 --
 data CoinSelection i o = CoinSelection
     { inputs :: CoinMap i
-      -- ^ A /subset/ of the original 'UTxO' that was passed to the coin
+      -- ^ A /subset/ of the original UTxO set that was passed to the coin
       -- selection algorithm, containing only the entries that were /selected/
       -- by the coin selection algorithm.
     , outputs :: CoinMap o
