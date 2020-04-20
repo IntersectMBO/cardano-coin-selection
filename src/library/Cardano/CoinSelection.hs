@@ -8,8 +8,13 @@
 -- Copyright: © 2018-2020 IOHK
 -- License: Apache-2.0
 --
--- Provides general functions and types relating to coin selection and fee
--- balancing.
+-- Provides general functions and types relating to coin selection.
+--
+-- The 'CoinSelectionAlgorithm' type provides a /common interface/ to coin
+-- selection algorithms.
+--
+-- The 'CoinSelection' type represents the /result/ of running a coin selection
+-- algorithm.
 --
 module Cardano.CoinSelection
     (
