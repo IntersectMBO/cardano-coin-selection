@@ -292,7 +292,7 @@ reduceChangeOutputs threshold (Fee totalFee) changeOutputs
 
     positiveChangeOutputs :: [Coin]
     positiveChangeOutputs =
-        Coin <$> filter SN.isPositive (unCoin <$> changeOutputs)
+        Coin <$> filter (> SN.zero) (unCoin <$> changeOutputs)
 
     Coin totalChange = F.fold changeOutputs
 
@@ -502,7 +502,7 @@ splitCoin (Coin coinToSplit) coinsToIncrease =
             majorIncrements = repeat increment
             minorIncrements = replicate (SN.toIntegral shortfall) SN.one
                 <> repeat SN.zero
-        _ | SN.isPositive coinToSplit ->
+        _ | coinToSplit > SN.zero ->
             [Coin coinToSplit]
         _ ->
             []

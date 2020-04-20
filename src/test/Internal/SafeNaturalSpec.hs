@@ -103,7 +103,7 @@ prop_div :: SafeNatural -> SafeNatural -> Property
 prop_div x y = property
     $ cover 2 (SN.isZero y)
         "denominator is zero"
-    $ cover 8 (SN.isPositive y)
+    $ cover 8 (y > SN.zero)
         "denominator is positive"
     $ case (x `SN.div` y) of
         Nothing ->
@@ -116,7 +116,7 @@ prop_mod :: SafeNatural -> SafeNatural -> Property
 prop_mod x y = property
     $ cover 2 (SN.isZero y)
         "denominator is zero"
-    $ cover 8 (SN.isPositive y)
+    $ cover 8 (y > SN.zero)
         "denominator is positive"
     $ case (x `SN.mod` y) of
         Nothing ->

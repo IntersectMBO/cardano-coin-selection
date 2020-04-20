@@ -251,7 +251,7 @@ payForOutput (utxoAvailable, currentSelection) out =
             , currentSelection <> CoinSelection
                 { inputs  = coinMapFromList utxoSelected
                 , outputs = coinMapFromList [out]
-                , change  = Coin <$> filter SN.isPositive
+                , change  = Coin <$> filter (> SN.zero)
                     (F.toList $ valueSelected `SN.sub` valueTarget)
                 }
             )

@@ -32,7 +32,6 @@ module Internal.SafeNatural
     , distance
 
       -- * Value Tests
-    , isPositive
     , isZero
 
       -- * Special Values
@@ -102,9 +101,6 @@ pred x = x `sub` one
 
 succ :: SafeNatural -> SafeNatural
 succ x = x `add` one
-
-isPositive :: SafeNatural -> Bool
-isPositive = (> zero)
 
 isZero :: SafeNatural -> Bool
 isZero = (== zero)
