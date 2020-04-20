@@ -97,6 +97,23 @@ coinIsValid c = c >= minBound && c <= maxBound
 -- Coin Map
 --------------------------------------------------------------------------------
 
+-- | A mapping from unique keys to associated 'Coin' values.
+--
+-- A 'CoinMap' can be used to represent:
+--
+--   * a UTxO set, where each key within the map refers to an unspent output
+--     from a previous transaction.
+--
+--   * a set of 'inputs' to a 'CoinSelection', where each input is an entry
+--     selected from a UTxO set by a 'CoinSelectionAlgorithm'.
+--
+--   * a set of 'outputs' for a 'CoinSelection', where each key within the map
+--     refers to the address of a payment recipient.
+--
+-- A 'CoinMap' can be constructed with the 'coinMapFromList' function.
+--
+-- The total value of a 'CoinMap' is given by the 'coinMapValue' function.
+--
 newtype CoinMap a = CoinMap { unCoinMap :: Map a Coin }
     deriving (Eq, Generic)
     deriving Show via (Quiet (CoinMap a))
@@ -110,21 +127,35 @@ instance Ord a => Monoid (CoinMap a) where
 instance Ord a => Semigroup (CoinMap a) where
     CoinMap a <> CoinMap b = CoinMap $ Map.unionWith (<>) a b
 
+-- | An entry for a 'CoinMap'.
+--
 data CoinMapEntry a = CoinMapEntry
     { entryKey
         :: a
+        -- ^ The unique key associated with this entry.
     , entryValue
         :: Coin
+        -- ^ The coin value associated with this entry.
     } deriving (Eq, Generic, Ord, Show)
 
+-- | Constructs a 'CoinMap' from a list of entries.
+--
+-- See 'CoinMapEntry'.
+--
 coinMapFromList :: Ord a => [CoinMapEntry a] -> CoinMap a
 coinMapFromList = CoinMap
     . Map.fromListWith (<>)
     . fmap (entryKey &&& entryValue)
 
+-- | Converts a 'CoinMap' to a list of entries.
+--
+-- See 'CoinMapEntry'.
+--
 coinMapToList :: CoinMap a -> [CoinMapEntry a]
 coinMapToList = fmap (uncurry CoinMapEntry) . Map.toList . unCoinMap
 
+-- | Calculates the total coin value associated with a 'CoinMap'.
+--
 coinMapValue :: CoinMap a -> Coin
 coinMapValue = mconcat . fmap entryValue . coinMapToList
 
