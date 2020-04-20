@@ -42,11 +42,12 @@ import Prelude
 
 import Cardano.CoinSelection
     ( Coin (..)
-    , CoinMap (..)
+    , CoinMap
     , CoinMapEntry (..)
     , CoinSelection (..)
     , CoinSelectionOptions (..)
     , coinMapFromList
+    , coinMapToList
     , sumChange
     , sumInputs
     )
@@ -60,8 +61,6 @@ import Data.Maybe
     ( mapMaybe )
 import Data.Word
     ( Word8 )
-
-import qualified Data.Map.Strict as Map
 
 -- | Construct a list of coin selections / transactions to transfer the totality
 -- of a user's wallet. The resulting 'CoinSelection' do not contain any
@@ -83,7 +82,7 @@ depleteUTxO
         -- ^ UTxO to deplete
     -> [CoinSelection i o]
 depleteUTxO feeOpts batchSize utxo =
-    evalState migrate (uncurry CoinMapEntry <$> Map.toList (unCoinMap utxo))
+    evalState migrate (coinMapToList utxo)
   where
     migrate :: State [CoinMapEntry i] [CoinSelection i o]
     migrate = do
