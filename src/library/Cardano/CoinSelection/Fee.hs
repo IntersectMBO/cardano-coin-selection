@@ -446,8 +446,7 @@ remainingFee FeeEstimator {estimateFee} s
     Fee feeEstimate = estimateFee s
     Fee diff = fromMaybe errorUnderfundedSelection (calculateFee s)
     Fee feeDangling =
-        estimateFee s { change = F.toList mDiffMinusFee }
-    mDiffMinusFee = Coin <$> SN.sub diff feeEstimate
+        estimateFee s { change = [Coin (diff `SN.distance` feeEstimate) ] }
     errorUnderfundedSelection = error
         "Cannot calculate remaining fee for an underfunded selection."
 
