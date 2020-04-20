@@ -101,6 +101,8 @@ import qualified Internal.SafeNatural as SN
 
 -- | Calculates the current fee associated with a given 'CoinSelection'.
 --
+-- If the result would be less than zero, returns 'Nothing'.
+--
 calculateFee :: CoinSelection i o -> Maybe Fee
 calculateFee s = Fee <$> is `SN.sub` (os `SN.add` cs)
   where

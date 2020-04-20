@@ -411,9 +411,9 @@ spec = do
 -- Check whether a selection is valid
 isValidSelection :: CoinSelection i o -> Bool
 isValidSelection s =
-    coinToIntegral @Integer (sumInputs  s) >=
-    coinToIntegral @Integer (sumOutputs s) +
-    coinToIntegral @Integer (sumChange  s)
+    unCoin (sumInputs  s) >=
+    unCoin (sumOutputs s) `SN.add`
+    unCoin (sumChange  s)
 
 -- | Data for running fee calculation properties
 data FeeProp i o = FeeProp
