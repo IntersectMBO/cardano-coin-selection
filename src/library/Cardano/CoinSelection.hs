@@ -181,12 +181,25 @@ coinMapRandomEntry (CoinMap m)
 -- Coin Selection
 --------------------------------------------------------------------------------
 
--- | Represents a /coin selection algorithm/.
+-- | Provides a common interface for coin selection algorithms.
 --
--- The function 'selectCoins', when applied to the given /output list/ and
--- /initial UTxO set/, generates a 'CoinSelection' that is capable of paying
+-- The function 'selectCoins', when applied to the given /initial UTxO set/
+-- and /output set/, generates a 'CoinSelection' that is capable of paying
 -- for all of the outputs, and a /remaining UTxO set/ from which all spent
 -- values have been removed.
+--
+-- Each entry in the /initial UTxO set/ refers to a unique unspent output from
+-- a previous transaction, together with its corresponding value. The algorithm
+-- will select from among the entries in this set to pay for entries in the
+-- output set, placing the selected entries in the 'inputs' field of the
+-- resulting 'CoinSelection'.
+--
+-- Each entry in the /output set/ refers to a unique payment recipient together
+-- with the value to pay to that recipient. The 'outputs' field of the
+-- resulting 'CoinSelection' will be equal to this set.
+--
+-- The total value of the initial UTxO set must be /greater than or equal to/
+-- the total value of the output set, as given by the 'coinMapValue' function.
 --
 newtype CoinSelectionAlgorithm i o m e = CoinSelectionAlgorithm
     { selectCoins
