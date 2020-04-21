@@ -2,6 +2,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# OPTIONS_HADDOCK prune #-}
 
 -- |
 -- Copyright: © 2018-2020 IOHK
@@ -34,8 +35,13 @@
 -- that a wallet is not "fragmented enough").
 
 module Cardano.CoinSelection.Migration
-    ( selectCoins
+    (
+      -- * Coin Selection for Migration
+      selectCoins
+
+      -- # Internal Functions
     , idealBatchSize
+
     ) where
 
 import Prelude
@@ -64,6 +70,10 @@ import Internal.Coin
     ( Coin, coinFromIntegral, coinToIntegral )
 
 import qualified Internal.Coin as C
+
+--------------------------------------------------------------------------------
+-- Coin Selection for Migration
+--------------------------------------------------------------------------------
 
 -- | Construct a list of coin selections / transactions to transfer the totality
 -- of a user's wallet. The resulting 'CoinSelection' do not contain any
@@ -174,8 +184,12 @@ selectCoins feeOpts batchSize utxo =
         put rest
         pure batch
 
--- | Try to find a fix "ideal" number of input transactions that would generate
--- rather balanced transactions.
+--------------------------------------------------------------------------------
+-- Internal Functions
+--------------------------------------------------------------------------------
+
+-- Try to find a fixed "ideal" number of input transactions that would generate
+-- relatively balanced transactions.
 idealBatchSize :: CoinSelectionOptions i o e -> Word8
 idealBatchSize coinselOpts = fixPoint 1
   where
