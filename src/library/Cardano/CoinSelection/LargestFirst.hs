@@ -15,13 +15,13 @@ module Cardano.CoinSelection.LargestFirst (
 import Prelude
 
 import Cardano.CoinSelection
-    ( CoinMap (..)
-    , CoinMapEntry (..)
+    ( CoinMapEntry (..)
     , CoinSelection (..)
     , CoinSelectionAlgorithm (..)
     , CoinSelectionError (..)
     , CoinSelectionInputLimit (..)
     , CoinSelectionParameters (..)
+    , CoinSelectionResult (..)
     , coinMapFromList
     , coinMapToList
     , coinMapValue
@@ -180,11 +180,11 @@ largestFirst = CoinSelectionAlgorithm payForOutputs
 payForOutputs
     :: (Ord i, Ord o, Monad m)
     => CoinSelectionParameters i o
-    -> ExceptT CoinSelectionError m (CoinSelection i o, CoinMap i)
+    -> ExceptT CoinSelectionError m (CoinSelectionResult i o)
 payForOutputs params =
     case foldM payForOutput (utxoDescending, mempty) outputsDescending of
         Just (utxoRemaining, selection) ->
-            pure (selection, coinMapFromList utxoRemaining)
+            pure $ CoinSelectionResult selection $ coinMapFromList utxoRemaining
         Nothing ->
             throwE errorCondition
   where

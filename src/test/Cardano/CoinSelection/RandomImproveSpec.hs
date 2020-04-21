@@ -15,6 +15,7 @@ import Cardano.CoinSelection
     , CoinSelectionError (..)
     , CoinSelectionInputLimit (..)
     , CoinSelectionParameters (..)
+    , CoinSelectionResult (..)
     )
 import Cardano.CoinSelection.LargestFirst
     ( largestFirst )
@@ -23,7 +24,7 @@ import Cardano.CoinSelection.RandomImprove
 import Cardano.CoinSelectionSpec
     ( CoinSelProp (..)
     , CoinSelectionFixture (..)
-    , CoinSelectionResult (..)
+    , CoinSelectionTestResult (..)
     , coinSelectionUnitTest
     )
 import Cardano.Test.Utilities
@@ -51,7 +52,7 @@ spec = do
         let oneAda = 1000000
 
         coinSelectionUnitTest randomImprove ""
-            (Right $ CoinSelectionResult
+            (Right $ CoinSelectionTestResult
                 { rsInputs = [1,1,1,1]
                 , rsChange = [2]
                 , rsOutputs = [2]
@@ -63,7 +64,7 @@ spec = do
                 })
 
         coinSelectionUnitTest randomImprove ""
-            (Right $ CoinSelectionResult
+            (Right $ CoinSelectionTestResult
                 { rsInputs = [1,1,1,1,1,1]
                 , rsChange = [2,1]
                 , rsOutputs = [2,1]
@@ -75,7 +76,7 @@ spec = do
                 })
 
         coinSelectionUnitTest randomImprove ""
-            (Right $ CoinSelectionResult
+            (Right $ CoinSelectionTestResult
                 { rsInputs = [1,1,1,1,1]
                 , rsChange = [2]
                 , rsOutputs = [2,1]
@@ -87,7 +88,7 @@ spec = do
                 })
 
         coinSelectionUnitTest randomImprove ""
-            (Right $ CoinSelectionResult
+            (Right $ CoinSelectionTestResult
                 { rsInputs = [1,1,1,1]
                 , rsChange = [1]
                 , rsOutputs = [2,1]
@@ -99,7 +100,7 @@ spec = do
                 })
 
         coinSelectionUnitTest randomImprove ""
-            (Right $ CoinSelectionResult
+            (Right $ CoinSelectionTestResult
                 { rsInputs = [5]
                 , rsChange = [3]
                 , rsOutputs = [2]
@@ -111,7 +112,7 @@ spec = do
                 })
 
         coinSelectionUnitTest randomImprove ""
-            (Right $ CoinSelectionResult
+            (Right $ CoinSelectionTestResult
                 { rsInputs = [10,10]
                 , rsChange = [8,8]
                 , rsOutputs = [2,2]
@@ -124,7 +125,7 @@ spec = do
                 })
 
         coinSelectionUnitTest randomImprove "cannot cover aim, but only min"
-            (Right $ CoinSelectionResult
+            (Right $ CoinSelectionTestResult
                 { rsInputs = [1,1,1,1]
                 , rsChange = [1]
                 , rsOutputs = [3]
@@ -136,7 +137,7 @@ spec = do
                 })
 
         coinSelectionUnitTest randomImprove "REG CO-450: no fallback"
-            (Right $ CoinSelectionResult
+            (Right $ CoinSelectionTestResult
                 { rsInputs = [oneAda, oneAda, oneAda, oneAda]
                 , rsChange = [oneAda, oneAda `div` 2]
                 , rsOutputs = [2*oneAda,oneAda `div` 2]
@@ -226,9 +227,9 @@ propFragmentation
     -> Property
 propFragmentation drg (CoinSelProp utxo txOuts) = do
     isRight selection1 && isRight selection2 ==>
-        let (Right (s1,_), Right (s2,_)) =
-                (selection1, selection2)
-        in prop (s1, s2)
+        let Right (CoinSelectionResult s1 _) = selection1 in
+        let Right (CoinSelectionResult s2 _) = selection2 in
+        prop (s1, s2)
   where
     prop (CoinSelection inps1 _ _, CoinSelection inps2 _ _) =
         L.length inps1 `shouldSatisfy` (>= L.length inps2)

@@ -24,6 +24,7 @@ import Cardano.CoinSelection
     , CoinMapEntry (..)
     , CoinSelection (..)
     , CoinSelectionAlgorithm (..)
+    , CoinSelectionResult (..)
     , coinMapFromList
     , coinMapToList
     , sumChange
@@ -910,7 +911,7 @@ genSelection outs = do
     let params = CS.CoinSelectionParameters limit utxo outs
     case runIdentity $ runExceptT $ selectCoins largestFirst params of
         Left _ -> genSelection outs
-        Right (s,_) -> return s
+        Right (CoinSelectionResult s _) -> return s
 
 instance Arbitrary TxIn where
     shrink _ = []

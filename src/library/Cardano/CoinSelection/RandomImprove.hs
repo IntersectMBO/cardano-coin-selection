@@ -24,6 +24,7 @@ import Cardano.CoinSelection
     , CoinSelectionError (..)
     , CoinSelectionInputLimit (..)
     , CoinSelectionParameters (..)
+    , CoinSelectionResult (..)
     , coinMapFromList
     , coinMapRandomEntry
     , coinMapToList
@@ -209,7 +210,7 @@ randomImprove = CoinSelectionAlgorithm payForOutputs
 payForOutputs
     :: (Ord i, Ord o, MonadRandom m)
     => CoinSelectionParameters i o
-    -> ExceptT CoinSelectionError m (CoinSelection i o, CoinMap i)
+    -> ExceptT CoinSelectionError m (CoinSelectionResult i o)
 payForOutputs params = do
     mRandomSelections <- lift $ runMaybeT $ foldM makeRandomSelection
         (inputCountMax, inputsAvailable params, []) outputsDescending
@@ -219,7 +220,7 @@ payForOutputs params = do
                 improveSelection
                     (inputCountRemaining, mempty, utxoRemaining)
                     (reverse randomSelections)
-            pure (finalSelection, utxoRemaining')
+            pure $ CoinSelectionResult finalSelection utxoRemaining'
         Nothing ->
             throwE errorCondition
   where

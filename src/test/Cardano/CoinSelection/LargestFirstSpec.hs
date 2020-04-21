@@ -17,6 +17,7 @@ import Cardano.CoinSelection
     , CoinSelectionError (..)
     , CoinSelectionInputLimit (..)
     , CoinSelectionParameters (..)
+    , CoinSelectionResult (..)
     , coinMapToList
     )
 import Cardano.CoinSelection.LargestFirst
@@ -24,7 +25,7 @@ import Cardano.CoinSelection.LargestFirst
 import Cardano.CoinSelectionSpec
     ( CoinSelProp (..)
     , CoinSelectionFixture (..)
-    , CoinSelectionResult (..)
+    , CoinSelectionTestResult (..)
     , coinSelectionUnitTest
     )
 import Cardano.Test.Utilities
@@ -51,7 +52,7 @@ spec = do
     describe "Coin selection: largest-first algorithm: unit tests" $ do
 
         coinSelectionUnitTest largestFirst ""
-            (Right $ CoinSelectionResult
+            (Right $ CoinSelectionTestResult
                 { rsInputs = [17]
                 , rsChange = []
                 , rsOutputs = [17]
@@ -63,7 +64,7 @@ spec = do
                 })
 
         coinSelectionUnitTest largestFirst ""
-            (Right $ CoinSelectionResult
+            (Right $ CoinSelectionTestResult
                 { rsInputs = [17]
                 , rsChange = [16]
                 , rsOutputs = [1]
@@ -75,7 +76,7 @@ spec = do
                 })
 
         coinSelectionUnitTest largestFirst ""
-            (Right $ CoinSelectionResult
+            (Right $ CoinSelectionTestResult
                 { rsInputs = [12, 17]
                 , rsChange = [11]
                 , rsOutputs = [18]
@@ -87,7 +88,7 @@ spec = do
                 })
 
         coinSelectionUnitTest largestFirst ""
-            (Right $ CoinSelectionResult
+            (Right $ CoinSelectionTestResult
                 { rsInputs = [10, 12, 17]
                 , rsChange = [9]
                 , rsOutputs = [30]
@@ -99,7 +100,7 @@ spec = do
                 })
 
         coinSelectionUnitTest largestFirst ""
-            (Right $ CoinSelectionResult
+            (Right $ CoinSelectionTestResult
                 { rsInputs = [6,10,5]
                 , rsChange = [5,4]
                 , rsOutputs = [11,1]
@@ -208,7 +209,9 @@ propAtLeast
     => CoinSelProp i o
     -> Property
 propAtLeast (CoinSelProp utxo txOuts) =
-    isRight selection ==> let Right (s,_) = selection in prop s
+    isRight selection ==>
+        let Right (CoinSelectionResult s _) = selection in
+        prop s
   where
     prop (CoinSelection inps _ _) =
         length inps `shouldSatisfy` (>= length txOuts)
@@ -221,7 +224,9 @@ propInputDecreasingOrder
     => CoinSelProp i o
     -> Property
 propInputDecreasingOrder (CoinSelProp utxo txOuts) =
-    isRight selection ==> let Right (s,_) = selection in prop s
+    isRight selection ==>
+        let Right (CoinSelectionResult s _) = selection in
+        prop s
   where
     prop (CoinSelection inps _ _) =
         let
@@ -231,6 +236,8 @@ propInputDecreasingOrder (CoinSelProp utxo txOuts) =
             (L.minimum (entryValue <$> coinMapToList inps))
             `shouldSatisfy`
             (>= (L.maximum (snd <$> utxo')))
-    selection = runIdentity $ runExceptT $ selectCoins largestFirst
+    selection = runIdentity
+        $ runExceptT
+        $ selectCoins largestFirst
         $ CoinSelectionParameters limit utxo txOuts
     limit = CoinSelectionInputLimit $ const 100

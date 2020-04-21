@@ -11,9 +11,9 @@ module Cardano.CoinSelectionSpec
     ( spec
 
     -- * Export used to test various coin selection implementations
-    , CoinSelectionFixture(..)
-    , CoinSelectionResult(..)
-    , CoinSelProp(..)
+    , CoinSelectionFixture (..)
+    , CoinSelectionTestResult (..)
+    , CoinSelProp (..)
     , coinSelectionUnitTest
     ) where
 
@@ -32,6 +32,7 @@ import Cardano.CoinSelection
     , CoinSelectionError (..)
     , CoinSelectionInputLimit (..)
     , CoinSelectionParameters (..)
+    , CoinSelectionResult (..)
     , coinMapFromList
     , coinMapToList
     , coinMapValue
@@ -308,37 +309,39 @@ data CoinSelectionFixture i o = CoinSelectionFixture
 data ErrValidation = ErrValidation deriving (Eq, Show)
 
 -- | Testing-friendly format for 'CoinSelection' results of unit tests.
-data CoinSelectionResult = CoinSelectionResult
+data CoinSelectionTestResult = CoinSelectionTestResult
     { rsInputs :: [Integer]
     , rsChange :: [Integer]
     , rsOutputs :: [Integer]
     } deriving (Eq, Show)
 
-sortCoinSelectionResult :: CoinSelectionResult -> CoinSelectionResult
-sortCoinSelectionResult (CoinSelectionResult is cs os) =
-    CoinSelectionResult (L.sort is) (L.sort cs) (L.sort os)
+sortCoinSelectionTestResult
+    :: CoinSelectionTestResult -> CoinSelectionTestResult
+sortCoinSelectionTestResult (CoinSelectionTestResult is cs os) =
+    CoinSelectionTestResult (L.sort is) (L.sort cs) (L.sort os)
 
 -- | Generate a 'UTxO' and 'TxOut' matching the given 'Fixture', and perform
 -- the given coin selection on it.
 coinSelectionUnitTest
     :: CoinSelectionAlgorithm TxIn Address IO
     -> String
-    -> Either CoinSelectionError CoinSelectionResult
+    -> Either CoinSelectionError CoinSelectionTestResult
     -> CoinSelectionFixture TxIn Address
     -> SpecWith ()
 coinSelectionUnitTest alg lbl expected (CoinSelectionFixture n utxoF outsF) =
     it title $ do
         (utxo,txOuts) <- setup
         result <- runExceptT $ do
-            (CoinSelection inps outs chngs, _) <- selectCoins alg $
-                CoinSelectionParameters maxInputCount utxo txOuts
-            return $ CoinSelectionResult
+            CoinSelectionResult (CoinSelection inps outs chngs) _ <-
+                selectCoins alg $
+                    CoinSelectionParameters maxInputCount utxo txOuts
+            return $ CoinSelectionTestResult
                 { rsInputs = coinToIntegral . entryValue <$> coinMapToList inps
                 , rsChange = coinToIntegral <$> chngs
                 , rsOutputs = coinToIntegral . entryValue <$> coinMapToList outs
                 }
-        fmap sortCoinSelectionResult result
-            `shouldBe` fmap sortCoinSelectionResult expected
+        fmap sortCoinSelectionTestResult result
+            `shouldBe` fmap sortCoinSelectionTestResult expected
   where
     maxInputCount = CoinSelectionInputLimit $ const n
 
