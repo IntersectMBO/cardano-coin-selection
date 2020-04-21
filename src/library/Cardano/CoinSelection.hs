@@ -11,33 +11,33 @@
 --
 -- Provides general functions and types relating to coin selection.
 --
--- The 'CoinSelectionAlgorithm' type provides a /common interface/ to coin
+-- The 'CoinSelectionAlgorithm' type provides a __common interface__ to coin
 -- selection algorithms.
 --
--- The 'CoinSelection' type represents the /result/ of running a coin selection
--- algorithm.
+-- The 'CoinSelection' type represents the __result__ of running a coin
+-- selection algorithm.
 --
 module Cardano.CoinSelection
     (
-      -- * Coin
+      -- * Coins
       Coin
     , coinFromNatural
     , coinToNatural
 
-      -- * Coin Map
+      -- * Coin Maps
     , CoinMap (..)
     , CoinMapEntry (..)
     , coinMapFromList
     , coinMapToList
     , coinMapValue
 
-      -- * Coin Selection
+      -- * Coin Selections
     , CoinSelection (..)
     , sumInputs
     , sumOutputs
     , sumChange
 
-      -- * Coin Selection Algorithm
+      -- * Coin Selection Algorithms
     , CoinSelectionAlgorithm (..)
     , CoinSelectionOptions (..)
     , CoinSelectionError (..)
@@ -143,7 +143,7 @@ coinMapValue = mconcat . fmap entryValue . coinMapToList
 -- Coin Selection
 --------------------------------------------------------------------------------
 
--- | Provides a common interface for coin selection algorithms.
+-- | Provides a __common interface__ for coin selection algorithms.
 --
 -- The function 'selectCoins', when applied to the given /initial UTxO set/
 -- and /output set/, generates a 'CoinSelection' that is capable of paying
@@ -171,15 +171,15 @@ newtype CoinSelectionAlgorithm i o m e = CoinSelectionAlgorithm
         -> ExceptT (CoinSelectionError e) m (CoinSelection i o, CoinMap i)
     }
 
--- | Represents the /result/ of running a coin selection algorithm.
+-- | Represents the __result__ of running a coin selection algorithm.
 --
 -- See 'CoinSelectionAlgorithm'.
 --
 data CoinSelection i o = CoinSelection
     { inputs :: CoinMap i
-      -- ^ A /subset/ of the original UTxO set that was passed to the coin
-      -- selection algorithm, containing only the entries that were /selected/
-      -- by the coin selection algorithm.
+      -- ^ A __subset__ of the original UTxO set that was passed to the coin
+      -- selection algorithm, containing __only__ the entries that were
+      -- selected by the coin selection algorithm.
     , outputs :: CoinMap o
       -- ^ The original set of output payments passed to the coin selection
       -- algorithm, whose total value is covered by the 'inputs'.
