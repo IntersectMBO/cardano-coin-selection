@@ -101,7 +101,7 @@ newtype Fee = Fee { unFee :: Coin }
 -- | Defines the maximum size of a dust coin.
 --
 -- Change values that are less than or equal to this threshold will not be
--- included in coin selections.
+-- included in coin selections produced by the 'adjustForFee' function.
 --
 newtype DustThreshold = DustThreshold { unDustThreshold :: Coin }
     deriving stock (Eq, Generic, Ord)
