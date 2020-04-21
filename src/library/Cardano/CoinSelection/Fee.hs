@@ -28,7 +28,7 @@ module Cardano.CoinSelection.Fee
       -- * Fee Adjustment
     , adjustForFee
     , FeeOptions (..)
-    , ErrAdjustForFee (..)
+    , FeeAdjustmentError (..)
 
       -- # Internal Functions
     , calculateFee
@@ -130,7 +130,7 @@ data FeeOptions i o = FeeOptions
         :: DustThreshold
     } deriving Generic
 
-newtype ErrAdjustForFee
+newtype FeeAdjustmentError
     = ErrCannotCoverFee Fee
     -- ^ UTxO exhausted during fee covering
     -- We record what amount missed to cover the fee
@@ -166,7 +166,7 @@ adjustForFee
     => FeeOptions i o
     -> CoinMap i
     -> CoinSelection i o
-    -> ExceptT ErrAdjustForFee m (CoinSelection i o)
+    -> ExceptT FeeAdjustmentError m (CoinSelection i o)
 adjustForFee unsafeOpt utxo coinSel = do
     let opt = invariant
             "adjustForFee: fee must be non-null" unsafeOpt (not . nullFee)
@@ -193,13 +193,13 @@ senderPaysFee
     => FeeOptions i o
     -> CoinMap i
     -> CoinSelection i o
-    -> ExceptT ErrAdjustForFee m (CoinSelection i o)
+    -> ExceptT FeeAdjustmentError m (CoinSelection i o)
 senderPaysFee FeeOptions {feeEstimator, dustThreshold} utxo sel =
     evalStateT (go sel) utxo
   where
     go
         :: CoinSelection i o
-        -> StateT (CoinMap i) (ExceptT ErrAdjustForFee m) (CoinSelection i o)
+        -> StateT (CoinMap i) (ExceptT FeeAdjustmentError m) (CoinSelection i o)
     go coinSel@(CoinSelection inps outs chgs) = do
         -- 1/
         -- We compute fees using all inputs, outputs and changes since all of
@@ -241,7 +241,7 @@ senderPaysFee FeeOptions {feeEstimator, dustThreshold} utxo sel =
 coverRemainingFee
     :: MonadRandom m
     => Fee
-    -> StateT (CoinMap i) (ExceptT ErrAdjustForFee m) [CoinMapEntry i]
+    -> StateT (CoinMap i) (ExceptT FeeAdjustmentError m) [CoinMapEntry i]
 coverRemainingFee (Fee fee) = go [] where
     go acc
         | sumEntries acc >= fee =

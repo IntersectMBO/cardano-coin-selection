@@ -32,7 +32,7 @@ import Cardano.CoinSelection
     )
 import Cardano.CoinSelection.Fee
     ( DustThreshold (..)
-    , ErrAdjustForFee (..)
+    , FeeAdjustmentError (..)
     , Fee (..)
     , FeeEstimator (..)
     , FeeOptions (..)
@@ -817,7 +817,7 @@ feeOptions fee dust = FeeOptions
 
 feeUnitTest
     :: FeeFixture
-    -> Either ErrAdjustForFee FeeOutput
+    -> Either FeeAdjustmentError FeeOutput
     -> SpecWith ()
 feeUnitTest (FeeFixture inpsF outsF chngsF utxoF feeF dustF) expected =
     it title $ do
