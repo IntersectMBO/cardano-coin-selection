@@ -34,7 +34,7 @@
 -- that a wallet is not "fragmented enough").
 
 module Cardano.CoinSelection.Migration
-    ( depleteUTxO
+    ( selectCoins
     , idealBatchSize
     ) where
 
@@ -75,7 +75,7 @@ import qualified Internal.Coin as C
 --
 -- The fee options are used to balance the coin selections and fix a threshold
 -- for dust that is removed from the selections.
-depleteUTxO
+selectCoins
     :: forall i o . (Ord i, Ord o)
     => FeeOptions i o
         -- ^ Fee computation and threshold definition
@@ -84,7 +84,7 @@ depleteUTxO
     -> CoinMap i
         -- ^ UTxO to deplete
     -> [CoinSelection i o]
-depleteUTxO feeOpts batchSize utxo =
+selectCoins feeOpts batchSize utxo =
     evalState migrate (coinMapToList utxo)
   where
     migrate :: State [CoinMapEntry i] [CoinSelection i o]
