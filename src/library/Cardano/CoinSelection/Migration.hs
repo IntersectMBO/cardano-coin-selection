@@ -61,7 +61,7 @@ import Data.Maybe
 import Data.Word
     ( Word8 )
 import Internal.Coin
-    ( Coin (..), coin, coinToIntegral )
+    ( Coin (..), coinFromIntegral, coinToIntegral )
 import Internal.DustThreshold
     ( DustThreshold (..) )
 import Internal.Fee
@@ -146,7 +146,9 @@ depleteUTxO feeOpts batchSize utxo =
             { change = modifyFirst (c :| cs) (applyDiff diff) }
       where
         applyDiff :: Integer -> Coin -> Coin
-        applyDiff i c = fromMaybe (Coin SN.zero) $ coin (i + coinToIntegral c)
+        applyDiff i c
+            = fromMaybe (Coin SN.zero)
+            $ coinFromIntegral (i + coinToIntegral c)
 
         diff :: Integer
         diff = actualFee - requiredFee

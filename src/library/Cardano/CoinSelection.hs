@@ -20,8 +20,8 @@ module Cardano.CoinSelection
     (
       -- * Coin
       Coin
-    , coin
-    , coinToIntegral
+    , coinFromNatural
+    , coinToNatural
 
       -- * Coin Map
     , CoinMap (..)
@@ -61,7 +61,7 @@ import Data.Word
 import GHC.Generics
     ( Generic )
 import Internal.Coin
-    ( Coin (..), coin, coinToIntegral )
+    ( Coin (..), coinFromNatural, coinToNatural )
 import Numeric.Natural
     ( Natural )
 import Quiet

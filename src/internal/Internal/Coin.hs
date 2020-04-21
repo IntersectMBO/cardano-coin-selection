@@ -8,8 +8,10 @@
 --
 module Internal.Coin
     ( Coin (..)
-    , coin
+    , coinFromIntegral
+    , coinFromNatural
     , coinToIntegral
+    , coinToNatural
     ) where
 
 import Prelude
@@ -18,12 +20,18 @@ import GHC.Generics
     ( Generic )
 import Internal.SafeNatural
     ( SafeNatural )
+import Numeric.Natural
+    ( Natural )
 import Quiet
     ( Quiet (Quiet) )
 
 import qualified Internal.SafeNatural as SN
 
--- | Represents a non-negative integer amount of currency.
+-- | Represents a non-negative integral amount of currency.
+--
+-- Use 'coinFromNatural' to create a coin from a natural number.
+--
+-- Use 'coinToNatural' to convert a coin into a natural number.
 --
 newtype Coin = Coin { unCoin :: SafeNatural }
     deriving stock (Eq, Generic, Ord)
@@ -35,14 +43,24 @@ instance Monoid Coin where
 instance Semigroup Coin where
     Coin a <> Coin b = Coin $ a `SN.add` b
 
--- | A smart constructor for the 'Coin' type.
+-- | Creates a coin from an integral number.
 --
 -- Returns a coin if (and only if) the given input is not negative.
 --
-coin :: Integral i => i -> Maybe Coin
-coin = fmap Coin . SN.fromIntegral
+coinFromIntegral :: Integral i => i -> Maybe Coin
+coinFromIntegral = fmap Coin . SN.fromIntegral
 
--- | Converts the given coin value to an integral value.
+-- | Creates a coin from a natural number.
+--
+coinFromNatural :: Natural -> Coin
+coinFromNatural = Coin . SN.fromNatural
+
+-- | Converts the given coin into an integral number.
 --
 coinToIntegral :: Integral i => Coin -> i
 coinToIntegral = SN.toIntegral . unCoin
+
+-- | Converts the given coin into a natural number.
+--
+coinToNatural :: Coin -> Natural
+coinToNatural = SN.toNatural . unCoin

@@ -23,7 +23,7 @@ module Cardano.CoinSelection.Fee
     (
       -- * Types
       Fee
-    , feeToIntegral
+    , feeToNatural
 
       -- * Fee Calculation
     , calculateFee
@@ -38,6 +38,7 @@ module Cardano.CoinSelection.Fee
 
       -- * Dust Processing
     , DustThreshold
+    , dustThresholdFromNatural
     , coalesceDust
 
       -- * Coin Splitting
@@ -83,9 +84,9 @@ import GHC.Stack
 import Internal.Coin
     ( Coin (..) )
 import Internal.DustThreshold
-    ( DustThreshold (..) )
+    ( DustThreshold (..), dustThresholdFromNatural )
 import Internal.Fee
-    ( Fee (..), fee, feeToIntegral )
+    ( Fee (..), feeFromIntegral, feeToNatural )
 import Internal.Invariant
     ( invariant )
 import Internal.Rounding
@@ -349,7 +350,7 @@ distributeFee (Fee feeTotal) coinsUnsafe =
         -- 6. Strip away the indices:
         & fmap snd
         -- 7. Transform results into fees:
-        & fmap (fromMaybe (Fee SN.zero) . fee @Integer)
+        & fmap (fromMaybe (Fee SN.zero) . feeFromIntegral @Integer)
       where
         indices :: NonEmpty Int
         indices = 0 :| [1 ..]

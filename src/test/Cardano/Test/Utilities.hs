@@ -83,11 +83,11 @@ import GHC.Stack
 import GHC.TypeLits
     ( Symbol )
 import Internal.Coin
-    ( Coin (..), coin )
+    ( Coin (..), coinFromIntegral )
 import Internal.DustThreshold
-    ( DustThreshold (..), dustThreshold )
+    ( DustThreshold (..), dustThresholdFromIntegral )
 import Internal.Fee
-    ( Fee (..), fee )
+    ( Fee (..), feeFromIntegral )
 import Internal.SafeNatural
     ( SafeNatural )
 import Numeric.Natural
@@ -127,7 +127,7 @@ instance Buildable Address where
 --------------------------------------------------------------------------------
 
 unsafeCoin :: (Integral i, Show i) => i -> Coin
-unsafeCoin i = fromMaybe die $ coin i
+unsafeCoin i = fromMaybe die $ coinFromIntegral i
   where
     die = error $ mconcat
         [ "Test suite attempted to create a coin with negative value: "
@@ -135,7 +135,7 @@ unsafeCoin i = fromMaybe die $ coin i
         ]
 
 unsafeDustThreshold :: (Integral i, Show i) => i -> DustThreshold
-unsafeDustThreshold i = fromMaybe die $ dustThreshold i
+unsafeDustThreshold i = fromMaybe die $ dustThresholdFromIntegral i
   where
     die = error $ mconcat
         [ "Test suite attempted to create a dust theshold with negative value: "
@@ -143,7 +143,7 @@ unsafeDustThreshold i = fromMaybe die $ dustThreshold i
         ]
 
 unsafeFee :: (Integral i, Show i) => i -> Fee
-unsafeFee i = fromMaybe die $ fee i
+unsafeFee i = fromMaybe die $ feeFromIntegral i
   where
     die = error $ mconcat
         [ "Test suite attempted to create a fee with negative value: "

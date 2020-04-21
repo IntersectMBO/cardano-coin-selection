@@ -14,6 +14,7 @@ module Internal.SafeNatural
 
       -- Construction and Deconstruction
     , fromIntegral
+    , fromNatural
     , toIntegral
     , toNatural
 
@@ -58,7 +59,7 @@ import Quiet
 
 import qualified Prelude
 
-newtype SafeNatural = SafeNatural { toNatural :: Natural }
+newtype SafeNatural = SafeNatural { unSafeNatural :: Natural }
     deriving stock (Eq, Generic, Ord)
     deriving newtype Show
 
@@ -69,6 +70,12 @@ fromIntegral :: Integral i => i -> Maybe SafeNatural
 fromIntegral i
     | i >= 0    = Just $ SafeNatural $ Prelude.fromIntegral i
     | otherwise = Nothing
+
+fromNatural :: Natural -> SafeNatural
+fromNatural = SafeNatural
+
+toNatural :: SafeNatural -> Natural
+toNatural = unSafeNatural
 
 add :: SafeNatural -> SafeNatural -> SafeNatural
 add (SafeNatural x) (SafeNatural y) = SafeNatural $ x + y
