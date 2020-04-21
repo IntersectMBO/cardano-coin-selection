@@ -14,10 +14,7 @@ module Cardano.CoinSelectionSpec
     , CoinSelectionFixture(..)
     , CoinSelectionResult(..)
     , CoinSelProp(..)
-    , ErrValidation(..)
     , coinSelectionUnitTest
-    , noValidation
-    , alwaysFail
     ) where
 
 -- | This module contains shared functionality for coin selection tests.
@@ -300,8 +297,6 @@ instance (Buildable i, Buildable o) => Buildable (CoinSelProp i o) where
 data CoinSelectionFixture i o = CoinSelectionFixture
     { maxNumOfInputs :: Word8
         -- ^ Maximum number of inputs that can be selected
-    , validateSelection :: CoinSelection i o -> Either ErrValidation ()
-        -- ^ A extra validation function on the resulting selection
     , utxoInputs :: [Integer]
         -- ^ Value (in Lovelace) & number of available coins in the UTxO
     , txOutputs :: [Integer]
@@ -310,14 +305,6 @@ data CoinSelectionFixture i o = CoinSelectionFixture
 
 -- | A dummy error for testing extra validation
 data ErrValidation = ErrValidation deriving (Eq, Show)
-
--- | Smart constructor for the validation function that always succeeds.
-noValidation :: CoinSelection i o -> Either ErrValidation ()
-noValidation = const (Right ())
-
--- | Smart constructor for the validation function that always fails.
-alwaysFail :: CoinSelection i o -> Either ErrValidation ()
-alwaysFail = const (Left ErrValidation)
 
 -- | Testing-friendly format for 'CoinSelection' results of unit tests.
 data CoinSelectionResult = CoinSelectionResult
@@ -333,17 +320,17 @@ sortCoinSelectionResult (CoinSelectionResult is cs os) =
 -- | Generate a 'UTxO' and 'TxOut' matching the given 'Fixture', and perform
 -- the given coin selection on it.
 coinSelectionUnitTest
-    :: CoinSelectionAlgorithm TxIn Address IO ErrValidation
+    :: CoinSelectionAlgorithm TxIn Address IO
     -> String
-    -> Either (CoinSelectionError ErrValidation) CoinSelectionResult
+    -> Either CoinSelectionError CoinSelectionResult
     -> CoinSelectionFixture TxIn Address
     -> SpecWith ()
-coinSelectionUnitTest alg lbl expected (CoinSelectionFixture n fn utxoF outsF) =
+coinSelectionUnitTest alg lbl expected (CoinSelectionFixture n utxoF outsF) =
     it title $ do
         (utxo,txOuts) <- setup
         result <- runExceptT $ do
             (CoinSelection inps outs chngs, _) <-
-                selectCoins alg (CoinSelectionOptions (const n) fn) utxo txOuts
+                selectCoins alg (CoinSelectionOptions (const n)) utxo txOuts
             return $ CoinSelectionResult
                 { rsInputs = coinToIntegral . entryValue <$> coinMapToList inps
                 , rsChange = coinToIntegral <$> chngs
@@ -381,7 +368,7 @@ instance (Arbitrary i, Arbitrary o, Ord i, Ord o) =>
         <*> arbitrary
     shrink = genericShrink
 
-instance Arbitrary (CoinSelectionOptions i o e) where
+instance Arbitrary (CoinSelectionOptions) where
     arbitrary = do
         -- NOTE Functions have to be decreasing functions
         fn <- elements
@@ -392,9 +379,9 @@ instance Arbitrary (CoinSelectionOptions i o e) where
                     else maxBound - (2 * x)
             , const 42
             ]
-        pure $ CoinSelectionOptions fn (const (pure ()))
+        pure $ CoinSelectionOptions fn
 
-instance Show (CoinSelectionOptions i o e) where
+instance Show (CoinSelectionOptions) where
     show _ = "CoinSelectionOptions"
 
 instance Arbitrary a => Arbitrary (NonEmpty a) where

@@ -23,10 +23,7 @@ import Cardano.CoinSelectionSpec
     ( CoinSelProp (..)
     , CoinSelectionFixture (..)
     , CoinSelectionResult (..)
-    , ErrValidation (..)
-    , alwaysFail
     , coinSelectionUnitTest
-    , noValidation
     )
 import Cardano.Test.Utilities
     ( Address, TxIn, unsafeCoin )
@@ -60,7 +57,6 @@ spec = do
                 })
             (CoinSelectionFixture
                 { maxNumOfInputs = 100
-                , validateSelection = noValidation
                 , utxoInputs = [1,1,1,1,1,1]
                 , txOutputs = [2]
                 })
@@ -73,7 +69,6 @@ spec = do
                 })
             (CoinSelectionFixture
                 { maxNumOfInputs = 100
-                , validateSelection = noValidation
                 , utxoInputs = [1,1,1,1,1,1]
                 , txOutputs = [2,1]
                 })
@@ -86,7 +81,6 @@ spec = do
                 })
             (CoinSelectionFixture
                 { maxNumOfInputs = 100
-                , validateSelection = noValidation
                 , utxoInputs = [1,1,1,1,1]
                 , txOutputs = [2,1]
                 })
@@ -99,7 +93,6 @@ spec = do
                 })
             (CoinSelectionFixture
                 { maxNumOfInputs = 100
-                , validateSelection = noValidation
                 , utxoInputs = [1,1,1,1]
                 , txOutputs = [2,1]
                 })
@@ -112,7 +105,6 @@ spec = do
                 })
             (CoinSelectionFixture
                 { maxNumOfInputs = 100
-                , validateSelection = noValidation
                 , utxoInputs = [5,5,5]
                 , txOutputs = [2]
                 })
@@ -126,7 +118,6 @@ spec = do
             )
             (CoinSelectionFixture
                 { maxNumOfInputs = 100
-                , validateSelection = noValidation
                 , utxoInputs = [10,10,10]
                 , txOutputs = [2,2]
                 })
@@ -139,7 +130,6 @@ spec = do
                 })
             (CoinSelectionFixture
                 { maxNumOfInputs = 4
-                , validateSelection = noValidation
                 , utxoInputs = [1,1,1,1,1,1]
                 , txOutputs = [3]
                 })
@@ -152,7 +142,6 @@ spec = do
                 })
             (CoinSelectionFixture
                 { maxNumOfInputs = 4
-                , validateSelection = noValidation
                 , utxoInputs = [oneAda, oneAda, oneAda, oneAda]
                 , txOutputs = [2*oneAda, oneAda `div` 2]
                 })
@@ -162,7 +151,6 @@ spec = do
             (Left ErrUtxoFullyDepleted)
             (CoinSelectionFixture
                 { maxNumOfInputs = 100
-                , validateSelection = noValidation
                 , utxoInputs = [10,10,10,10]
                 , txOutputs = [38,1]
                 })
@@ -171,7 +159,6 @@ spec = do
             (Left $ ErrMaximumInputCountExceeded 2)
             (CoinSelectionFixture
                 { maxNumOfInputs = 2
-                , validateSelection = noValidation
                 , utxoInputs = [1,1,1,1,1,1]
                 , txOutputs = [3]
                 })
@@ -180,7 +167,6 @@ spec = do
             (Left $ ErrMaximumInputCountExceeded 9)
             (CoinSelectionFixture
                 { maxNumOfInputs = 9
-                , validateSelection = noValidation
                 , utxoInputs = replicate 100 1
                 , txOutputs = replicate 100 1
                 })
@@ -189,7 +175,6 @@ spec = do
             (Left $ ErrMaximumInputCountExceeded 9)
             (CoinSelectionFixture
                 { maxNumOfInputs = 9
-                , validateSelection = noValidation
                 , utxoInputs = replicate 100 1
                 , txOutputs = replicate 10 10
                 })
@@ -199,7 +184,6 @@ spec = do
                 (unsafeCoin @Int 39) (unsafeCoin @Int 40))
             (CoinSelectionFixture
                 { maxNumOfInputs = 100
-                , validateSelection = noValidation
                 , utxoInputs = [12,10,17]
                 , txOutputs = [40]
                 })
@@ -209,7 +193,6 @@ spec = do
                 (unsafeCoin @Int 39) (unsafeCoin @Int 43))
             (CoinSelectionFixture
                 { maxNumOfInputs = 100
-                , validateSelection = noValidation
                 , utxoInputs = [12,10,17]
                 , txOutputs = [40,1,1,1]
                 })
@@ -218,18 +201,8 @@ spec = do
             (Left $ ErrUtxoNotFragmentedEnough 3 4)
             (CoinSelectionFixture
                 { maxNumOfInputs = 100
-                , validateSelection = noValidation
                 , utxoInputs = [12,20,17]
                 , txOutputs = [40,1,1,1]
-                })
-
-        coinSelectionUnitTest randomImprove "custom validation"
-            (Left $ ErrInvalidSelection ErrValidation)
-            (CoinSelectionFixture
-                { maxNumOfInputs = 100
-                , validateSelection = alwaysFail
-                , utxoInputs = [1,1]
-                , txOutputs = [2]
                 })
 
     before getSystemDRG $
@@ -262,7 +235,7 @@ propFragmentation drg (CoinSelProp utxo txOuts) = do
         (runExceptT $ selectCoins randomImprove opt txOuts utxo)
     selection2 = runIdentity $ runExceptT $
         selectCoins largestFirst opt txOuts utxo
-    opt = CoinSelectionOptions (const 100) noValidation
+    opt = CoinSelectionOptions (const 100)
 
 propErrors
     :: (Ord i, Ord o)
@@ -280,4 +253,4 @@ propErrors drg (CoinSelProp utxo txOuts) = do
         (runExceptT $ selectCoins randomImprove opt txOuts utxo)
     selection2 = runIdentity $ runExceptT $
         selectCoins largestFirst opt txOuts utxo
-    opt = (CoinSelectionOptions (const 1) noValidation)
+    opt = CoinSelectionOptions (const 1)

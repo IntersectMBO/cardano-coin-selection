@@ -26,7 +26,7 @@ import Cardano.CoinSelection.Fee
 import Cardano.CoinSelection.FeeSpec
     ()
 import Cardano.CoinSelection.Migration
-    ( selectCoins, idealBatchSize )
+    ( idealBatchSize, selectCoins )
 import Cardano.CoinSelectionSpec
     ()
 import Cardano.Test.Utilities
@@ -317,3 +317,7 @@ genUTxO r dust = do
         ]
       where
         integralDust = C.coinToIntegral dust
+
+--------------------------------------------------------------------------------
+-- Utility Functions
+--------------------------------------------------------------------------------

@@ -25,14 +25,10 @@ import Cardano.CoinSelection
     , coinMapToList
     , coinMapValue
     )
-import Control.Arrow
-    ( left )
 import Control.Monad
     ( foldM )
 import Control.Monad.Trans.Except
-    ( ExceptT (..), except, throwE )
-import Data.Functor
-    ( ($>) )
+    ( ExceptT (..), throwE )
 import Data.Ord
     ( Down (..) )
 import Internal.Coin
@@ -177,20 +173,19 @@ import qualified Internal.Coin as C
 --
 largestFirst
     :: (Ord i, Ord o, Monad m)
-    => CoinSelectionAlgorithm i o m e
+    => CoinSelectionAlgorithm i o m
 largestFirst = CoinSelectionAlgorithm payForOutputs
 
 payForOutputs
     :: (Ord i, Ord o, Monad m)
-    => CoinSelectionOptions i o e
+    => CoinSelectionOptions
     -> CoinMap i
     -> CoinMap o
-    -> ExceptT (CoinSelectionError e) m (CoinSelection i o, CoinMap i)
+    -> ExceptT CoinSelectionError m (CoinSelection i o, CoinMap i)
 payForOutputs options utxo outputsRequested =
     case foldM payForOutput (utxoDescending, mempty) outputsDescending of
         Just (utxoRemaining, selection) ->
-            validateSelection selection $>
-                (selection, coinMapFromList utxoRemaining)
+            pure (selection, coinMapFromList utxoRemaining)
         Nothing ->
             throwE errorCondition
   where
@@ -219,8 +214,6 @@ payForOutputs options utxo outputsRequested =
         take (fromIntegral inputCountMax)
             $ L.sortOn (Down . entryValue)
             $ coinMapToList utxo
-    validateSelection =
-        except . left ErrInvalidSelection . validate options
 
 -- | Attempts to pay for a /single transaction output/ by selecting the
 --   /smallest possible/ number of entries from the /head/ of the given

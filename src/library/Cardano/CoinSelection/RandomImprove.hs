@@ -28,20 +28,16 @@ import Cardano.CoinSelection
     , coinMapToList
     , coinMapValue
     )
-import Control.Arrow
-    ( left )
 import Control.Monad
     ( foldM )
 import Control.Monad.Trans.Class
     ( lift )
 import Control.Monad.Trans.Except
-    ( ExceptT (..), except, throwE )
+    ( ExceptT (..), throwE )
 import Control.Monad.Trans.Maybe
     ( MaybeT (..), runMaybeT )
 import Crypto.Random.Types
     ( MonadRandom )
-import Data.Functor
-    ( ($>) )
 import Data.Ord
     ( Down (..) )
 import Internal.Coin
@@ -206,15 +202,15 @@ import qualified Internal.Coin as C
 --
 randomImprove
     :: (Ord i, Ord o, MonadRandom m)
-    => CoinSelectionAlgorithm i o m e
+    => CoinSelectionAlgorithm i o m
 randomImprove = CoinSelectionAlgorithm payForOutputs
 
 payForOutputs
     :: (Ord i, Ord o, MonadRandom m)
-    => CoinSelectionOptions i o e
+    => CoinSelectionOptions
     -> CoinMap i
     -> CoinMap o
-    -> ExceptT (CoinSelectionError e) m (CoinSelection i o, CoinMap i)
+    -> ExceptT CoinSelectionError m (CoinSelection i o, CoinMap i)
 payForOutputs options utxo outputsRequested = do
     mRandomSelections <- lift $ runMaybeT $ foldM makeRandomSelection
         (inputCountMax, utxo, []) outputsDescending
@@ -224,8 +220,7 @@ payForOutputs options utxo outputsRequested = do
                 improveSelection
                     (inputCountRemaining, mempty, utxoRemaining)
                     (reverse randomSelections)
-            validateSelection finalSelection $>
-                (finalSelection, utxoRemaining')
+            pure (finalSelection, utxoRemaining')
         Nothing ->
             throwE errorCondition
   where
@@ -251,8 +246,6 @@ payForOutputs options utxo outputsRequested = do
         L.sortOn (Down . entryValue) $ coinMapToList outputsRequested
     utxoCount =
         fromIntegral $ L.length $ coinMapToList utxo
-    validateSelection =
-        except . left ErrInvalidSelection . validate options
 
 -- | Randomly select entries from the given UTxO set, until the total value of
 --   selected entries is greater than or equal to the given output value.

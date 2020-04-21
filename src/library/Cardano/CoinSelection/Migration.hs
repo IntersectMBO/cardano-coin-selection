@@ -190,7 +190,7 @@ selectCoins feeOpts batchSize utxo =
 
 -- Try to find a fixed "ideal" number of input transactions that would generate
 -- relatively balanced transactions.
-idealBatchSize :: CoinSelectionOptions i o e -> Word8
+idealBatchSize :: CoinSelectionOptions -> Word8
 idealBatchSize coinselOpts = fixPoint 1
   where
     fixPoint :: Word8 -> Word8

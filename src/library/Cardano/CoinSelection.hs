@@ -163,12 +163,12 @@ coinMapValue = mconcat . fmap entryValue . coinMapToList
 -- The total value of the initial UTxO set must be /greater than or equal to/
 -- the total value of the output set, as given by the 'coinMapValue' function.
 --
-newtype CoinSelectionAlgorithm i o m e = CoinSelectionAlgorithm
+newtype CoinSelectionAlgorithm i o m = CoinSelectionAlgorithm
     { selectCoins
-        :: CoinSelectionOptions i o e
+        :: CoinSelectionOptions
         -> CoinMap i
         -> CoinMap o
-        -> ExceptT (CoinSelectionError e) m (CoinSelection i o, CoinMap i)
+        -> ExceptT CoinSelectionError m (CoinSelection i o, CoinMap i)
     }
 
 -- | Represents the __result__ of running a coin selection algorithm.
@@ -213,21 +213,17 @@ sumChange = mconcat . change
 
 -- | Represents a set of options to be passed to a coin selection algorithm.
 --
-data CoinSelectionOptions i o e = CoinSelectionOptions
+newtype CoinSelectionOptions = CoinSelectionOptions
     { maximumInputCount
         :: Word8 -> Word8
             -- ^ Calculate the maximum number of inputs allowed for a given
             -- number of outputs.
-    , validate
-        :: CoinSelection i o -> Either e ()
-            -- ^ Validate the given coin selection, returning a backend-specific
-            -- error.
-    } deriving (Generic)
+    } deriving Generic
 
 -- | Represents the set of possible failures that can occur when attempting
 --   to produce a 'CoinSelection'.
 --
-data CoinSelectionError e
+data CoinSelectionError
     = ErrUtxoBalanceInsufficient Coin Coin
     -- ^ The UTxO balance was insufficient to cover the total payment amount.
     --
@@ -251,12 +247,6 @@ data CoinSelectionError e
     -- exceeded the upper limit specified by 'maximumInputCount'.
     --
     -- Records the value of 'maximumInputCount'.
-    --
-    | ErrInvalidSelection e
-    -- ^ The coin selection generated was reported to be invalid by the backend.
-    --
-    -- Records the /backend-specific error/ that occurred while attempting to
-    -- validate the selection.
     --
     deriving (Show, Eq)
 
