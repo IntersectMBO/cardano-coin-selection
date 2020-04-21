@@ -41,10 +41,6 @@ module Cardano.Test.Utilities
     , unsafeDustThreshold
     , unsafeFee
     , unsafeFromHex
-    , unsafeNatural
-
-    -- * Special Values
-    , zeroCoin
 
     ) where
 
@@ -52,6 +48,8 @@ import Prelude
 
 import Cardano.CoinSelection
     ( CoinMap (..), CoinMapEntry (..), CoinSelection (..), coinMapToList )
+import Cardano.CoinSelection.Fee
+    ( DustThreshold (..), Fee (..) )
 import Control.DeepSeq
     ( NFData (..) )
 import Data.ByteArray
@@ -83,13 +81,7 @@ import GHC.Stack
 import GHC.TypeLits
     ( Symbol )
 import Internal.Coin
-    ( Coin (..), coinFromIntegral )
-import Internal.DustThreshold
-    ( DustThreshold (..), dustThresholdFromIntegral )
-import Internal.Fee
-    ( Fee (..), feeFromIntegral )
-import Internal.SafeNatural
-    ( SafeNatural )
+    ( Coin, coinFromIntegral )
 import Numeric.Natural
     ( Natural )
 import Quiet
@@ -98,7 +90,7 @@ import Quiet
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
 import qualified Data.Text.Encoding as T
-import qualified Internal.SafeNatural as SN
+import qualified Internal.Coin as C
 
 --------------------------------------------------------------------------------
 -- Addresses
@@ -135,7 +127,7 @@ unsafeCoin i = fromMaybe die $ coinFromIntegral i
         ]
 
 unsafeDustThreshold :: (Integral i, Show i) => i -> DustThreshold
-unsafeDustThreshold i = fromMaybe die $ dustThresholdFromIntegral i
+unsafeDustThreshold i = DustThreshold $ fromMaybe die $ coinFromIntegral i
   where
     die = error $ mconcat
         [ "Test suite attempted to create a dust theshold with negative value: "
@@ -143,18 +135,10 @@ unsafeDustThreshold i = fromMaybe die $ dustThresholdFromIntegral i
         ]
 
 unsafeFee :: (Integral i, Show i) => i -> Fee
-unsafeFee i = fromMaybe die $ feeFromIntegral i
+unsafeFee i = Fee $ fromMaybe die $ coinFromIntegral i
   where
     die = error $ mconcat
         [ "Test suite attempted to create a fee with negative value: "
-        , show i
-        ]
-
-unsafeNatural :: (Integral i, Show i) => i -> SafeNatural
-unsafeNatural i = fromMaybe die $ SN.fromIntegral i
-  where
-    die = error $ mconcat
-        [ "Test suite attempted to create a natural with negative value: "
         , show i
         ]
 
@@ -260,10 +244,7 @@ restrictedTo (CoinMap utxo) outs =
 --------------------------------------------------------------------------------
 
 instance Buildable Coin where
-    build = build . unCoin
-
-instance Buildable SafeNatural where
-    build = build . fromIntegral @Natural @Integer . SN.toIntegral
+    build = build . fromIntegral @Natural @Integer . C.coinToIntegral
 
 instance Buildable a => Buildable (CoinMapEntry a) where
     build a = mempty
@@ -279,11 +260,3 @@ instance (Buildable i, Buildable o) => Buildable (CoinSelection i o) where
             (blockListF $ coinMapToList $ outputs s)
         <> nameF "change"
             (listF $ change s)
-
---------------------------------------------------------------------------------
--- Special Values
---------------------------------------------------------------------------------
-
-zeroCoin :: Coin
-zeroCoin = Coin SN.zero
-

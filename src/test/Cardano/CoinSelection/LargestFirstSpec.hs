@@ -39,8 +39,6 @@ import Data.Either
     ( isRight )
 import Data.Functor.Identity
     ( Identity (runIdentity) )
-import Internal.Coin
-    ( Coin (..) )
 import Test.Hspec
     ( Spec, describe, it, shouldSatisfy )
 import Test.QuickCheck
@@ -254,9 +252,8 @@ propInputDecreasingOrder (CoinSelProp utxo txOuts) =
             utxo' = (Map.toList . unCoinMap) $ utxo `excluding`
                 Set.fromList (entryKey <$> coinMapToList inps)
         in unless (L.null utxo') $
-            (getExtremumValue L.minimum (entryValue <$> coinMapToList inps))
+            (L.minimum (entryValue <$> coinMapToList inps))
             `shouldSatisfy`
-            (>= (getExtremumValue L.maximum (snd <$> utxo')))
-    getExtremumValue f = f . map unCoin
+            (>= (L.maximum (snd <$> utxo')))
     selection = runIdentity $ runExceptT $ selectCoins largestFirst
         (CoinSelectionOptions (const 100) noValidation) utxo txOuts

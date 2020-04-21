@@ -51,7 +51,7 @@ import Cardano.CoinSelection
     , sumInputs
     )
 import Cardano.CoinSelection.Fee
-    ( FeeEstimator (..), FeeOptions (..) )
+    ( DustThreshold (..), Fee (..), FeeEstimator (..), FeeOptions (..) )
 import Control.Monad.Trans.State
     ( State, evalState, get, put )
 import Data.List.NonEmpty
@@ -61,13 +61,9 @@ import Data.Maybe
 import Data.Word
     ( Word8 )
 import Internal.Coin
-    ( Coin (..), coinFromIntegral, coinToIntegral )
-import Internal.DustThreshold
-    ( DustThreshold (..) )
-import Internal.Fee
-    ( feeToIntegral )
+    ( Coin, coinFromIntegral, coinToIntegral )
 
-import qualified Internal.SafeNatural as SN
+import qualified Internal.Coin as C
 
 -- | Construct a list of coin selections / transactions to transfer the totality
 -- of a user's wallet. The resulting 'CoinSelection' do not contain any
@@ -114,7 +110,7 @@ depleteUTxO feeOpts batchSize utxo =
             in if null chgs then [threshold] else chgs
         }
       where
-        threshold = Coin $ unDustThreshold $ dustThreshold feeOpts
+        threshold = unDustThreshold $ dustThreshold feeOpts
         noDust :: Coin -> Maybe Coin
         noDust c
             | c < threshold = Nothing
@@ -147,14 +143,15 @@ depleteUTxO feeOpts batchSize utxo =
       where
         applyDiff :: Integer -> Coin -> Coin
         applyDiff i c
-            = fromMaybe (Coin SN.zero)
+            = fromMaybe C.zero
             $ coinFromIntegral (i + coinToIntegral c)
 
         diff :: Integer
         diff = actualFee - requiredFee
           where
-            requiredFee =
-                feeToIntegral $ estimateFee (feeEstimator feeOpts) coinSel
+            requiredFee
+                = coinToIntegral $ unFee
+                $ estimateFee (feeEstimator feeOpts) coinSel
             actualFee
                 = coinToIntegral (sumInputs coinSel)
                 - coinToIntegral (sumChange coinSel)
@@ -165,9 +162,9 @@ depleteUTxO feeOpts batchSize utxo =
     modifyFirst :: NonEmpty Coin -> (Coin -> Coin) -> [Coin]
     modifyFirst (c :| cs) op
         | c' <= threshold = cs
-        | otherwise = Coin c' : cs
+        | otherwise = c' : cs
       where
-        Coin c' = op c
+        c' = op c
         threshold = unDustThreshold (dustThreshold feeOpts)
 
     getNextBatch :: State [a] [a]

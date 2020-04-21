@@ -47,9 +47,6 @@ library cardano-coin-selection-internal
       Internal.Invariant
       Internal.Rounding
       Internal.Coin
-      Internal.DustThreshold
-      Internal.Fee
-      Internal.SafeNatural
 
 library
   default-language:
@@ -128,6 +125,6 @@ test-suite cardano-coin-selection-test
       Cardano.CoinSelection.TypesSpec
       Cardano.CoinSelectionSpec
       Cardano.Test.Utilities
-      Internal.SafeNaturalSpec
+      Internal.CoinSpec
       Test.Vector.Shuffle
       Test.Vector.ShuffleSpec

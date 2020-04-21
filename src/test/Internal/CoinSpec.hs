@@ -1,7 +1,7 @@
 {-# LANGUAGE TypeApplications #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
-module Internal.SafeNaturalSpec
+module Internal.CoinSpec
     ( spec
     ) where
 
@@ -9,8 +9,8 @@ import Prelude
 
 import Data.Maybe
     ( catMaybes, fromMaybe )
-import Internal.SafeNatural
-    ( SafeNatural )
+import Internal.Coin
+    ( Coin )
 import Test.Hspec
     ( Spec, describe, it, shouldBe, shouldSatisfy )
 import Test.QuickCheck
@@ -23,12 +23,12 @@ import Test.QuickCheck
     , property
     )
 
-import qualified Internal.SafeNatural as SN
+import qualified Internal.Coin as C
 
 spec :: Spec
 spec = do
 
-    describe "SafeNatural properties" $ do
+    describe "Coin properties" $ do
         it "Only construction of non-negative values is possible." $
             checkCoverage prop_construction
         it "Coverage of generated values is acceptable." $
@@ -57,34 +57,42 @@ prop_construction i = property
     $ cover 2 (i == 0)
         "input is zero"
     $ if i < 0
-        then SN.fromIntegral i `shouldBe` Nothing
-        else (SN.toIntegral <$> SN.fromIntegral i) `shouldBe` Just i
+        then C.coinFromIntegral i `shouldBe` Nothing
+        else (C.coinToIntegral <$> C.coinFromIntegral i) `shouldBe` Just i
 
 prop_generation
-    :: SafeNatural
+    :: Coin
     -> Property
 prop_generation n = property
-    $ cover 2 (n == SN.zero)
+    $ cover 2 (n == C.zero)
         "value is zero"
-    $ cover 2 (n == SN.one)
+    $ cover 2 (n == C.one)
         "value is one"
-    $ cover 10 (n > SN.one)
+    $ cover 10 (n > C.one)
         "value is more than one"
     True
 
-prop_add :: SafeNatural -> SafeNatural -> Property
+prop_add :: Coin -> Coin -> Property
 prop_add x y = property $
-    SN.toIntegral @Integer (x `SN.add` y)
+    C.coinToIntegral @Integer (x `C.add` y)
         `shouldBe`
-        (SN.toIntegral x + SN.toIntegral y)
+        (C.coinToIntegral x + C.coinToIntegral y)
 
-prop_mul :: SafeNatural -> SafeNatural -> Property
-prop_mul x y = property $
-    SN.toIntegral @Integer (x `SN.mul` y)
-        `shouldBe`
-        (SN.toIntegral x * SN.toIntegral y)
+prop_mul :: Coin -> Integer -> Property
+prop_mul x y = property
+    $ cover 2 (y == 0)
+        "scaling factor is zero"
+    $ cover 8 (y < 0)
+        "scaling factor is negative"
+    $ cover 8 (y > 0)
+        "scaling factor is positive"
+    $ case (x `C.mul` y) of
+        Nothing ->
+            y `shouldSatisfy` (< 0)
+        Just r ->
+            (C.coinToIntegral x * y) `shouldBe` C.coinToIntegral @Integer r
 
-prop_sub :: SafeNatural -> SafeNatural -> Property
+prop_sub :: Coin -> Coin -> Property
 prop_sub x y = property
     $ cover 4 (x == y)
         "values are equal"
@@ -92,40 +100,44 @@ prop_sub x y = property
         "x < y"
     $ cover 8 (x > y)
         "x > y"
-    $ case x `SN.sub` y of
+    $ case x `C.sub` y of
         Nothing ->
             x `shouldSatisfy` (< y)
         Just r ->
-            SN.toIntegral x - SN.toIntegral y
-                `shouldBe` SN.toIntegral @Integer r
+            C.coinToIntegral x - C.coinToIntegral y
+                `shouldBe` C.coinToIntegral @Integer r
 
-prop_div :: SafeNatural -> SafeNatural -> Property
+prop_div :: Coin -> Integer -> Property
 prop_div x y = property
-    $ cover 2 (SN.isZero y)
+    $ cover 2 (y == 0)
         "denominator is zero"
-    $ cover 8 (y > SN.zero)
+    $ cover 8 (y < 0)
+        "denominator is negative"
+    $ cover 8 (y > 0)
         "denominator is positive"
-    $ case (x `SN.div` y) of
+    $ case (x `C.div` y) of
         Nothing ->
-            y `shouldBe` SN.zero
+            y `shouldSatisfy` (<= 0)
         Just r ->
-            SN.toIntegral x `div` SN.toIntegral y
-                `shouldBe` SN.toIntegral @Integer r
+            (C.coinToIntegral x `div` y)
+                `shouldBe` C.coinToIntegral @Integer r
 
-prop_mod :: SafeNatural -> SafeNatural -> Property
+prop_mod :: Coin -> Integer -> Property
 prop_mod x y = property
-    $ cover 2 (SN.isZero y)
+    $ cover 2 (y == 0)
         "denominator is zero"
-    $ cover 8 (y > SN.zero)
+    $ cover 8 (y < 0)
+        "denominator is negative"
+    $ cover 8 (y > 0)
         "denominator is positive"
-    $ case (x `SN.mod` y) of
+    $ case (x `C.mod` y) of
         Nothing ->
-            y `shouldBe` SN.zero
+            y `shouldSatisfy` (<= 0)
         Just r ->
-            SN.toIntegral x `mod` SN.toIntegral y
-                `shouldBe` SN.toIntegral @Integer r
+            (C.coinToIntegral x `mod` y)
+                `shouldBe` C.coinToIntegral @Integer r
 
-prop_distance :: SafeNatural -> SafeNatural -> Property
+prop_distance :: Coin -> Coin -> Property
 prop_distance x y = property
     $ cover 4 (x == y)
         "values are equal"
@@ -133,20 +145,20 @@ prop_distance x y = property
         "x < y"
     $ cover 8 (x > y)
         "x > y"
-    $ SN.toIntegral @Integer (x `SN.distance` y)
+    $ C.coinToIntegral @Integer (x `C.distance` y)
         `shouldBe`
-        abs (SN.toIntegral x - SN.toIntegral y)
+        abs (C.coinToIntegral x - C.coinToIntegral y)
 
-instance Arbitrary SafeNatural where
+instance Arbitrary Coin where
     arbitrary = oneof
-        [ pure SN.zero
-        , pure SN.one
+        [ pure C.zero
+        , pure C.one
         , somethingElse
         ]
       where
         somethingElse =
-            fromMaybe SN.zero
-            . SN.fromIntegral @Integer
+            fromMaybe C.zero
+            . C.coinFromIntegral @Integer
             . getNonNegative <$> arbitrary
     shrink n = catMaybes
-        $ SN.fromIntegral @Integer <$> shrink (SN.toIntegral @Integer n)
+        $ C.coinFromIntegral @Integer <$> shrink (C.coinToIntegral @Integer n)

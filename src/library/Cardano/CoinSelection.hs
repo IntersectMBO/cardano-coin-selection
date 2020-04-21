@@ -61,7 +61,7 @@ import Data.Word
 import GHC.Generics
     ( Generic )
 import Internal.Coin
-    ( Coin (..), coinFromNatural, coinToNatural )
+    ( Coin, coinFromNatural, coinToNatural )
 import Numeric.Natural
     ( Natural )
 import Quiet

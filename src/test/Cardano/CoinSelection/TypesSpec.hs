@@ -30,7 +30,7 @@ import Cardano.Test.Utilities
 import Data.Set
     ( Set, (\\) )
 import Internal.Coin
-    ( Coin (..) )
+    ( Coin )
 import Test.Hspec
     ( Spec, describe, it )
 import Test.QuickCheck
@@ -48,7 +48,7 @@ import Test.QuickCheck
 
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
-import qualified Internal.SafeNatural as SN
+import qualified Internal.Coin as C
 
 spec :: Spec
 spec = do
@@ -176,8 +176,8 @@ prop_2_6_1 (u, v) =
     -- a v' that has no overlap with u.
     v' = v `excluding` dom u
     cond = not (u `isSubsetOf` mempty || v' `isSubsetOf` mempty)
-    prop = unCoin (coinMapValue (u <> v'))
-        === unCoin (coinMapValue u) `SN.add` unCoin (coinMapValue v')
+    prop = coinMapValue (u <> v')
+        === coinMapValue u `C.add` coinMapValue v'
 
 prop_2_6_2 :: Ord u => (Set u, CoinMap u) -> Property
 prop_2_6_2 (ins, u) =
@@ -185,10 +185,10 @@ prop_2_6_2 (ins, u) =
   where
     cond = not $ Set.null $ dom u `Set.intersection` ins
     prop =
-        Just (unCoin (coinMapValue (u `excluding` ins)))
+        Just (coinMapValue (u `excluding` ins))
             ===
-        unCoin (coinMapValue u) `SN.sub`
-            unCoin (coinMapValue (u `restrictedBy` ins))
+        coinMapValue u `C.sub`
+            coinMapValue (u `restrictedBy` ins)
 
 --------------------------------------------------------------------------------
 -- UTxO Utilities

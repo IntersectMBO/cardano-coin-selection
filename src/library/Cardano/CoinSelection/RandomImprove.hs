@@ -45,10 +45,10 @@ import Data.Functor
 import Data.Ord
     ( Down (..) )
 import Internal.Coin
-    ( Coin (..) )
+    ( Coin )
 
 import qualified Data.List as L
-import qualified Internal.SafeNatural as SN
+import qualified Internal.Coin as C
 
 -- | An implementation of the __Random-Improve__ coin selection algorithm.
 --
@@ -333,12 +333,12 @@ improveSelection (maxN0, selection, utxo0) (inps0, txout) = do
             condB = -- (b) Addition gets us closer to the ideal change
                 distanceA < distanceB
               where
-                distanceA = SN.distance
-                    (unCoin $ targetAim target)
-                    (unCoin $ sumEntries (io : selected))
-                distanceB = SN.distance
-                    (unCoin $ targetAim target)
-                    (unCoin $ sumEntries selected)
+                distanceA = C.distance
+                    (targetAim target)
+                    (sumEntries (io : selected))
+                distanceB = C.distance
+                    (targetAim target)
+                    (sumEntries selected)
 
             -- (c) Doesn't exceed maximum number of inputs
             -- Guaranteed by the precondition on 'improve'.
@@ -372,10 +372,10 @@ data TargetRange = TargetRange
 -- See 'TargetRange'.
 --
 mkTargetRange :: CoinMapEntry o -> TargetRange
-mkTargetRange (CoinMapEntry _ (Coin c)) = TargetRange
-    { targetMin = Coin c
-    , targetAim = Coin $ c `SN.add` c
-    , targetMax = Coin $ c `SN.add` c `SN.add` c
+mkTargetRange (CoinMapEntry _ c) = TargetRange
+    { targetMin = c
+    , targetAim = c `C.add` c
+    , targetMax = c `C.add` c `C.add` c
     }
 
 -- | Re-wrap 'utxoPickRandom' in a 'MaybeT' monad
@@ -402,12 +402,12 @@ mkChange (CoinMapEntry _ out) inps =
                 [ "mkChange: "
                 , "output must be less than or equal to sum of inputs"
                 ]
-        Just d | SN.isZero d ->
+        Just d | C.isZero d ->
             []
         Just d ->
-            [Coin d]
+            [d]
   where
-    difference = unCoin (sumEntries inps) `SN.sub` unCoin out
+    difference = sumEntries inps `C.sub` out
 
 --------------------------------------------------------------------------------
 -- Utilities

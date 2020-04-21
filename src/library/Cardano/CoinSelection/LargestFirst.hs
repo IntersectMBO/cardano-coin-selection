@@ -36,11 +36,11 @@ import Data.Functor
 import Data.Ord
     ( Down (..) )
 import Internal.Coin
-    ( Coin (..) )
+    ( Coin )
 
 import qualified Data.Foldable as F
 import qualified Data.List as L
-import qualified Internal.SafeNatural as SN
+import qualified Internal.Coin as C
 
 -- | An implementation of the __Largest-First__ coin selection algorithm.
 --
@@ -251,8 +251,8 @@ payForOutput (utxoAvailable, currentSelection) out =
             , currentSelection <> CoinSelection
                 { inputs  = coinMapFromList utxoSelected
                 , outputs = coinMapFromList [out]
-                , change  = Coin <$> filter (> SN.zero)
-                    (F.toList $ valueSelected `SN.sub` valueTarget)
+                , change  = filter (> C.zero)
+                    (F.toList $ valueSelected `C.sub` valueTarget)
                 }
             )
         | otherwise =
@@ -266,9 +266,9 @@ payForOutput (utxoAvailable, currentSelection) out =
                     Nothing
       where
         valueTarget
-            = unCoin $ entryValue out
+            = entryValue out
         valueSelected
-            = unCoin $ sumEntries utxoSelected
+            = sumEntries utxoSelected
 
 sumEntries :: [CoinMapEntry a] -> Coin
 sumEntries entries = mconcat $ entryValue <$> entries

@@ -22,7 +22,7 @@ import Cardano.CoinSelection
     , sumInputs
     )
 import Cardano.CoinSelection.Fee
-    ( FeeEstimator (..), FeeOptions (..) )
+    ( DustThreshold (..), Fee (..), FeeEstimator (..), FeeOptions (..) )
 import Cardano.CoinSelection.FeeSpec
     ()
 import Cardano.CoinSelection.Migration
@@ -44,11 +44,7 @@ import Data.Function
 import Data.Word
     ( Word8 )
 import Internal.Coin
-    ( Coin (..), coinToIntegral )
-import Internal.DustThreshold
-    ( DustThreshold (..) )
-import Internal.Fee
-    ( feeToIntegral )
+    ( Coin, coinToIntegral )
 import Numeric.Natural
     ( Natural )
 import Test.Hspec
@@ -75,7 +71,7 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as B8
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import qualified Internal.SafeNatural as SN
+import qualified Internal.Coin as C
 
 spec :: Spec
 spec = do
@@ -189,7 +185,7 @@ prop_noLessThanThreshold feeOpts batchSize utxo = do
             filter (< threshold) allChange
     property (undersizedCoins `shouldSatisfy` null)
   where
-    threshold = Coin $ unDustThreshold $ dustThreshold feeOpts
+    threshold = unDustThreshold $ dustThreshold feeOpts
 
 -- | Total input UTxO value >= sum of selection change coins
 prop_inputsGreaterThanOutputs
@@ -251,8 +247,9 @@ prop_wellBalanced feeOpts batchSize utxo = do
         , let actualFee
                 = coinToIntegral (sumInputs s)
                 - coinToIntegral (sumChange s)
-        , let expectedFee =
-                  feeToIntegral @Integer $ estimateFee (feeEstimator feeOpts) s
+        , let expectedFee
+                = coinToIntegral @Integer
+                $ unFee $ estimateFee (feeEstimator feeOpts) s
         , let example = unlines
                 [ "Coin Selection: " <> show s
                 , "Actual fee: " <> show actualFee
@@ -286,19 +283,19 @@ genBatchSize :: Gen Word8
 genBatchSize = choose (50, 150)
 
 genFeeOptions :: Coin -> Gen (FeeOptions TxIn Address)
-genFeeOptions (Coin dust) = do
+genFeeOptions dust = do
     pure $ FeeOptions
         { feeEstimator = FeeEstimator $ \s ->
             let x = fromIntegral @_ @Integer
                     (length (inputs s) + length (outputs s))
             in unsafeFee $
-                  (SN.toIntegral dust `div` 100) * x + SN.toIntegral dust
+                  (C.coinToIntegral dust `div` 100) * x + C.coinToIntegral dust
         , dustThreshold = DustThreshold dust
         }
 
 -- | Generate a given UTxO with a particular percentage of dust
 genUTxO :: Double -> Coin -> Gen (CoinMap TxIn)
-genUTxO r (Coin dust) = do
+genUTxO r dust = do
     n <- choose (10, 1000)
     inps <- genTxIn n
     coins <- vectorOf n genCoin
@@ -319,4 +316,4 @@ genUTxO r (Coin dust) = do
         , (round (100*(1-r)), choose (integralDust, 1000 * integralDust))
         ]
       where
-        integralDust = SN.toIntegral dust
+        integralDust = C.coinToIntegral dust

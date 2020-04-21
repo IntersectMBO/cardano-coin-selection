@@ -60,7 +60,7 @@ import Data.Word
 import Fmt
     ( Buildable (..), blockListF, nameF )
 import Internal.Coin
-    ( Coin (..), coinToIntegral )
+    ( Coin, coinToIntegral )
 import Test.Hspec
     ( Spec, SpecWith, describe, it, shouldBe )
 import Test.QuickCheck
@@ -92,7 +92,7 @@ import qualified Data.List as L
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
-import qualified Internal.SafeNatural as SN
+import qualified Internal.Coin as C
 import qualified Test.QuickCheck.Monadic as QC
 
 spec :: Spec
@@ -195,7 +195,7 @@ prop_coinMapFromList_preservesTotalValueForEachUniqueKey entries = property $
         mkEntryMap (coinMapToList (coinMapFromList entries))
   where
     mkEntryMap
-        = Map.fromListWith (\c1 c2 -> Coin $ unCoin c1 `SN.add` unCoin c2)
+        = Map.fromListWith C.add
         . fmap (entryKey &&& entryValue)
 
 prop_coinMapFromList_preservesTotalValue
