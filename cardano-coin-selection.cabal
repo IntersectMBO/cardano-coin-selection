@@ -39,12 +39,14 @@ library cardano-coin-selection-internal
       -Werror
   build-depends:
       base < 4.14
+    , quiet
   hs-source-dirs:
       src/internal
   exposed-modules:
       Internal
       Internal.Invariant
       Internal.Rounding
+      Internal.Coin
 
 library
   default-language:
@@ -123,5 +125,6 @@ test-suite cardano-coin-selection-test
       Cardano.CoinSelection.TypesSpec
       Cardano.CoinSelectionSpec
       Cardano.Test.Utilities
+      Internal.CoinSpec
       Test.Vector.Shuffle
       Test.Vector.ShuffleSpec

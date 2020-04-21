@@ -41,8 +41,7 @@ module Cardano.CoinSelection.Migration
 import Prelude
 
 import Cardano.CoinSelection
-    ( Coin (..)
-    , CoinMap
+    ( CoinMap
     , CoinMapEntry (..)
     , CoinSelection (..)
     , CoinSelectionOptions (..)
@@ -58,9 +57,13 @@ import Control.Monad.Trans.State
 import Data.List.NonEmpty
     ( NonEmpty ((:|)) )
 import Data.Maybe
-    ( mapMaybe )
+    ( fromMaybe, mapMaybe )
 import Data.Word
     ( Word8 )
+import Internal.Coin
+    ( Coin, coinFromIntegral, coinToIntegral )
+
+import qualified Internal.Coin as C
 
 -- | Construct a list of coin selections / transactions to transfer the totality
 -- of a user's wallet. The resulting 'CoinSelection' do not contain any
@@ -107,7 +110,7 @@ depleteUTxO feeOpts batchSize utxo =
             in if null chgs then [threshold] else chgs
         }
       where
-        threshold = Coin $ unDustThreshold $ dustThreshold feeOpts
+        threshold = unDustThreshold $ dustThreshold feeOpts
         noDust :: Coin -> Maybe Coin
         noDust c
             | c < threshold = Nothing
@@ -136,30 +139,33 @@ depleteUTxO feeOpts batchSize utxo =
         -- We then recursively call ourselves for this might reduce the number
         -- of outputs and change the fee.
         (c : cs) -> adjustForFee $ coinSel
-            { change = modifyFirst (c :| cs) (+ diff) }
+            { change = modifyFirst (c :| cs) (applyDiff diff) }
       where
+        applyDiff :: Integer -> Coin -> Coin
+        applyDiff i c
+            = fromMaybe C.zero
+            $ coinFromIntegral (i + coinToIntegral c)
+
         diff :: Integer
         diff = actualFee - requiredFee
           where
-            requiredFee = integer $
-                unFee $ estimateFee (feeEstimator feeOpts) coinSel
+            requiredFee
+                = coinToIntegral $ unFee
+                $ estimateFee (feeEstimator feeOpts) coinSel
             actualFee
-                = integer (unCoin $ sumInputs coinSel)
-                - integer (unCoin $ sumChange coinSel)
+                = coinToIntegral (sumInputs coinSel)
+                - coinToIntegral (sumChange coinSel)
 
     -- | Apply the given function to the first coin of the list. If the
     -- operation makes the 'Coin' smaller than the dust threshold, the coin is
     -- discarded.
-    modifyFirst :: NonEmpty Coin -> (Integer -> Integer) -> [Coin]
-    modifyFirst (Coin c :| cs) op
-        | c' < threshold = cs
-        | otherwise = (Coin (fromIntegral c')):cs
+    modifyFirst :: NonEmpty Coin -> (Coin -> Coin) -> [Coin]
+    modifyFirst (c :| cs) op
+        | c' <= threshold = cs
+        | otherwise = c' : cs
       where
-        c' :: Integer
-        c' = op (integer c)
-
-        threshold :: Integer
-        threshold = integer (unDustThreshold (dustThreshold feeOpts))
+        c' = op c
+        threshold = unDustThreshold (dustThreshold feeOpts)
 
     getNextBatch :: State [a] [a]
     getNextBatch = do
@@ -181,7 +187,3 @@ idealBatchSize coinselOpts = fixPoint 1
       where
         maxN :: Word8 -> Word8
         maxN = maximumInputCount coinselOpts
-
--- | Safe conversion of an integral type to an integer
-integer :: Integral a => a -> Integer
-integer = fromIntegral

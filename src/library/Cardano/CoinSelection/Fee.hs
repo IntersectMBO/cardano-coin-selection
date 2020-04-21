@@ -2,6 +2,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
@@ -21,10 +22,8 @@
 
 module Cardano.CoinSelection.Fee
     (
-      -- * Types
-      Fee (..)
-
       -- * Fee Calculation
+      Fee (..)
     , calculateFee
     , distributeFee
 
@@ -48,11 +47,9 @@ import Prelude hiding
     ( round )
 
 import Cardano.CoinSelection
-    ( Coin (..)
-    , CoinMap (..)
+    ( CoinMap (..)
     , CoinMapEntry (..)
     , CoinSelection (..)
-    , coinIsValid
     , coinMapFromList
     , coinMapRandomEntry
     , sumChange
@@ -71,16 +68,18 @@ import Data.Function
     ( (&) )
 import Data.List.NonEmpty
     ( NonEmpty ((:|)) )
+import Data.Maybe
+    ( fromMaybe )
 import Data.Ord
     ( Down (..), comparing )
 import Data.Ratio
     ( (%) )
-import Data.Word
-    ( Word64 )
 import GHC.Generics
     ( Generic )
 import GHC.Stack
     ( HasCallStack )
+import Internal.Coin
+    ( Coin )
 import Internal.Invariant
     ( invariant )
 import Internal.Rounding
@@ -90,29 +89,25 @@ import Quiet
 
 import qualified Data.Foldable as F
 import qualified Data.List.NonEmpty as NE
+import qualified Internal.Coin as C
 
 --------------------------------------------------------------------------------
 -- Types
 --------------------------------------------------------------------------------
 
--- | Represents a fee to be paid on a transaction.
+-- | Represents a non-negative fee to be paid on a transaction.
 --
--- This type is isomorphic to 'Coin'.
---
-newtype Fee = Fee
-    { unFee :: Word64 }
+newtype Fee = Fee { unFee :: Coin }
+    deriving newtype (Monoid, Semigroup)
     deriving stock (Eq, Generic, Ord)
     deriving Show via (Quiet Fee)
 
 -- | Defines the maximum size of a dust coin.
 --
 -- Change values that are less than or equal to this threshold will not be
--- included in transactions.
+-- included in coin selections.
 --
--- This type is isomorphic to 'Coin'.
---
-newtype DustThreshold = DustThreshold
-    { unDustThreshold :: Word64 }
+newtype DustThreshold = DustThreshold { unDustThreshold :: Coin }
     deriving stock (Eq, Generic, Ord)
     deriving Show via (Quiet DustThreshold)
 
@@ -121,11 +116,11 @@ newtype DustThreshold = DustThreshold
 --------------------------------------------------------------------------------
 
 -- | Calculates the current fee associated with a given 'CoinSelection'.
-calculateFee :: CoinSelection i o -> Fee
-calculateFee s = Fee
-    $ unCoin (sumInputs  s)
-    - unCoin (sumOutputs s)
-    - unCoin (sumChange  s)
+--
+-- If the result would be less than zero, returns 'Nothing'.
+--
+calculateFee :: CoinSelection i o -> Maybe Fee
+calculateFee s = Fee <$> sumInputs s `C.sub` (sumOutputs s `C.add` sumChange s)
 
 --------------------------------------------------------------------------------
 -- Fee Adjustment
@@ -151,7 +146,7 @@ data FeeOptions i o = FeeOptions
     } deriving Generic
 
 newtype ErrAdjustForFee
-    = ErrCannotCoverFee Word64
+    = ErrCannotCoverFee Fee
     -- ^ UTxO exhausted during fee covering
     -- We record what amount missed to cover the fee
     deriving (Show, Eq)
@@ -192,7 +187,7 @@ adjustForFee unsafeOpt utxo coinSel = do
             "adjustForFee: fee must be non-null" unsafeOpt (not . nullFee)
     senderPaysFee opt utxo coinSel
   where
-    nullFee opt = estimateFee (feeEstimator opt) coinSel == Fee 0
+    nullFee opt = estimateFee (feeEstimator opt) coinSel == Fee C.zero
 
 -- | The sender pays fee in this scenario, so fees are removed from the change
 -- outputs, and new inputs are selected if necessary.
@@ -224,7 +219,7 @@ senderPaysFee FeeOptions {feeEstimator, dustThreshold} utxo sel =
         -- transaction, and the fee. Thus, we end up paying slightly more than
         -- the upper bound. We could do some binary search and try to
         -- re-distribute excess across changes until fee becomes bigger.
-        if remFee == Fee 0
+        if remFee == Fee C.zero
         then pure coinSel'
         else do
             -- 3.2/
@@ -240,7 +235,7 @@ senderPaysFee FeeOptions {feeEstimator, dustThreshold} utxo sel =
             -- change plus the extra change brought up by this entry and see if
             -- we can now correctly cover fee.
             inps' <- coverRemainingFee remFee
-            let extraChange = splitCoin (Coin $ sumEntries inps') chgs
+            let extraChange = splitCoin (sumEntries inps') chgs
             go $ CoinSelection (inps <> coinMapFromList inps') outs extraChange
 
 -- | A short / simple version of the 'random' fee policy to cover for fee in
@@ -258,8 +253,9 @@ coverRemainingFee (Fee fee) = go [] where
             StateT (lift . coinMapRandomEntry) >>= \case
                 Just entry ->
                     go (entry : acc)
-                Nothing -> do
-                    lift $ throwE $ ErrCannotCoverFee (fee - sumEntries acc)
+                Nothing ->
+                    lift $ throwE $ ErrCannotCoverFee $ Fee $
+                        fee `C.distance` (sumEntries acc)
 
 -- | Pays for the given fee by subtracting it from the given list of change
 --   outputs, so that each change output is reduced by a portion of the fee
@@ -305,13 +301,13 @@ reduceChangeOutputs threshold (Fee totalFee) changeOutputs
             [] -> []
   where
     payFee :: (Fee, Coin) -> Coin
-    payFee (Fee f, Coin c) = Coin (c - f)
+    payFee (Fee f, c) =
+        fromMaybe C.zero (c `C.sub` f)
 
     positiveChangeOutputs :: [Coin]
-    positiveChangeOutputs = filter (> Coin 0) changeOutputs
+    positiveChangeOutputs = filter (> C.zero) changeOutputs
 
-    totalChange :: Word64
-    totalChange = sum (unCoin <$> changeOutputs)
+    totalChange = F.fold changeOutputs
 
 -- | Distribute the given fee over the given list of coins, so that each coin
 --   is allocated a __fraction__ of the fee in proportion to its relative size.
@@ -342,7 +338,7 @@ distributeFee (Fee feeTotal) coinsUnsafe =
     coins :: NonEmpty Coin
     coins =
         invariant "distributeFee: all coins must be non-zero in value."
-        coinsUnsafe (Coin 0 `F.notElem`)
+        coinsUnsafe (C.zero `F.notElem`)
 
     -- A list of rounded fee portions, where each fee portion deviates from the
     -- ideal unrounded portion by as small an amount as possible.
@@ -362,7 +358,9 @@ distributeFee (Fee feeTotal) coinsUnsafe =
         -- 5. Restore the original order:
         & NE.sortBy (comparing fst)
         -- 6. Strip away the indices:
-        & fmap (Fee . fromIntegral @Integer . snd)
+        & fmap snd
+        -- 7. Transform results into fees:
+        & fmap (Fee . fromMaybe C.zero . C.coinFromIntegral @Integer)
       where
         indices :: NonEmpty Int
         indices = 0 :| [1 ..]
@@ -397,7 +395,7 @@ distributeFee (Fee feeTotal) coinsUnsafe =
          -- The part of the total fee that we'd lose if we were to take the
          -- simple approach of rounding all ideal fee portions /down/.
         feeShortfall
-            = fromIntegral feeTotal
+            = C.coinToIntegral feeTotal
             - fromIntegral @Integer (F.sum $ round RoundDown <$> feesUnrounded)
 
     -- A list of ideal unrounded fee portions, with one fee portion per coin.
@@ -407,10 +405,10 @@ distributeFee (Fee feeTotal) coinsUnsafe =
     feesUnrounded :: NonEmpty Rational
     feesUnrounded = calculateIdealFee <$> coins
       where
-        calculateIdealFee (Coin c)
-            = fromIntegral c
-            * fromIntegral feeTotal
-            % fromIntegral (unCoin totalCoinValue)
+        calculateIdealFee c
+            = C.coinToIntegral c
+            * C.coinToIntegral feeTotal
+            % C.coinToIntegral totalCoinValue
 
     -- The total value of all coins.
     totalCoinValue :: Coin
@@ -429,7 +427,7 @@ coalesceDust :: DustThreshold -> NonEmpty Coin -> [Coin]
 coalesceDust (DustThreshold threshold) coins =
     splitCoin valueToDistribute coinsToKeep
   where
-    (coinsToKeep, coinsToRemove) = NE.partition (> Coin threshold) coins
+    (coinsToKeep, coinsToRemove) = NE.partition (> threshold) coins
     valueToDistribute = F.fold coinsToRemove
 
 -- | Computes how much is left to pay given a particular selection
@@ -440,9 +438,9 @@ remainingFee
     -> Fee
 remainingFee FeeEstimator {estimateFee} s
     | fee >= diff =
-        Fee (fee - diff)
+        Fee (fee `C.distance` diff)
     | feeDangling >= diff =
-        Fee (feeDangling - fee)
+        Fee (feeDangling `C.distance` fee)
     | otherwise =
         -- NOTE
         -- The only case where we may end up with an unbalanced transaction is
@@ -458,8 +456,10 @@ remainingFee FeeEstimator {estimateFee} s
             ]
   where
     Fee fee = estimateFee s
-    Fee diff = calculateFee s
-    Fee feeDangling = estimateFee s { change = [Coin (diff - fee)] }
+    Fee diff = fromMaybe errorUnderfundedSelection (calculateFee s)
+    Fee feeDangling = estimateFee s { change = [diff `C.distance` fee] }
+    errorUnderfundedSelection = error
+        "Cannot calculate remaining fee for an underfunded selection."
 
 -- | Splits up the given coin of value __@v@__, distributing its value over the
 --   given coin list of length __@n@__, so that each coin value is increased by
@@ -488,35 +488,13 @@ remainingFee FeeEstimator {estimateFee} s
 -- >>> splitCoin (Coin 10) (Coin <$> [1, 1, 1, 1])
 -- [Coin 3, Coin 3, Coin 4, Coin 4]
 --
--- == Handling Overflow
+-- == Handling Empty Lists
 --
--- While processing the given list, if increasing the value of any given coin
--- __'c'__ would cause its value to exceed 'maxBound', this function will leave
--- coin __'c'__ /unchanged/ in the resulting list, distributing the excess
--- value to coins that occur /later/ in the list:
---
--- >>> splitCoin (Coin 10) (Coin <$> [unCoin maxBound, 1])
--- [Coin 45000000000000000, Coin 11]
---
--- >>> splitCoin (Coin 10) (Coin <$> [unCoin maxBound - 1, 1])
--- [Coin 44999999999999999, Coin 11]
---
--- >>> splitCoin (Coin 10) (Coin <$> [unCoin maxBound - 1, 1, 1])
--- [Coin 44999999999999999, Coin 6, 6]
---
--- == Handling Leftover Remaining Value
---
--- If there is any remaining value left over after processing the list, a /new/
--- coin is appended to the /end/ of the list to hold the excess value:
+-- If the given list is empty, this function returns a list with the original
+-- given coin as its sole element:
 --
 -- >>> splitCoin (Coin 10) []
 -- [Coin 10]
---
--- >>> splitCoin (Coin 10) (Coin <$> [unCoin maxBound])
--- [Coin 45000000000000000, Coin 10]
---
--- >>> splitCoin (Coin 10) (Coin <$> [unCoin maxBound - 1])
--- [Coin 44999999999999999, Coin 10]
 --
 -- == Properties
 --
@@ -525,28 +503,23 @@ remainingFee FeeEstimator {estimateFee} s
 -- >>> sum (splitCoin x ys) == x + sum ys
 --
 splitCoin :: Coin -> [Coin] -> [Coin]
-splitCoin = go
+splitCoin coinToSplit coinsToIncrease =
+    case (mIncrement, mShortfall) of
+        (Just increment, Just shortfall) ->
+            zipWith C.add coinsToIncrease increments
+          where
+            increments = zipWith C.add majorIncrements minorIncrements
+            majorIncrements = repeat increment
+            minorIncrements = replicate (C.coinToIntegral shortfall) C.one
+                <> repeat C.zero
+        _ | coinToSplit > C.zero ->
+            [coinToSplit]
+        _ ->
+            []
   where
-    go remaining as | remaining == Coin 0 = as
-    go remaining [] = [remaining]
-        -- we only create new change if for whatever reason there is none
-        -- already or if is some overflow happens when we try to add.
-    go remaining [a] =
-        let
-            newChange = Coin $ (unCoin remaining) + (unCoin a)
-        in
-            if coinIsValid newChange
-            then [newChange]
-            else [a, remaining]
-    go rest@(Coin remaining) ls@(a : as) =
-        let
-            piece = remaining `div` fromIntegral (length ls)
-            newRemaining = Coin (remaining - piece)
-            newChange = Coin (piece + unCoin a)
-        in
-            if coinIsValid newChange
-            then newChange : go newRemaining as
-            else a : go rest as
+    mCoinCount = length coinsToIncrease
+    mIncrement = coinToSplit `C.div` mCoinCount
+    mShortfall = coinToSplit `C.mod` mCoinCount
 
 --------------------------------------------------------------------------------
 -- Utilities
@@ -570,5 +543,5 @@ fractionalPart = snd . properFraction @_ @Integer
 applyN :: Int -> (a -> a) -> a -> a
 applyN n f = F.foldr (.) id (replicate n f)
 
-sumEntries :: [CoinMapEntry i] -> Word64
-sumEntries = sum . fmap (unCoin . entryValue)
+sumEntries :: [CoinMapEntry i] -> Coin
+sumEntries = F.fold . fmap entryValue

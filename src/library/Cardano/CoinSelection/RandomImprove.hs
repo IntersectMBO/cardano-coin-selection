@@ -17,8 +17,7 @@ module Cardano.CoinSelection.RandomImprove
 import Prelude
 
 import Cardano.CoinSelection
-    ( Coin (..)
-    , CoinMap (..)
+    ( CoinMap (..)
     , CoinMapEntry (..)
     , CoinSelection (..)
     , CoinSelectionAlgorithm (..)
@@ -45,12 +44,11 @@ import Data.Functor
     ( ($>) )
 import Data.Ord
     ( Down (..) )
-import Data.Word
-    ( Word64 )
-import Internal.Invariant
-    ( invariant )
+import Internal.Coin
+    ( Coin )
 
 import qualified Data.List as L
+import qualified Internal.Coin as C
 
 -- | An implementation of the __Random-Improve__ coin selection algorithm.
 --
@@ -235,15 +233,16 @@ payForOutputs options utxo outputsRequested = do
       | amountAvailable < amountRequested =
           ErrUtxoBalanceInsufficient amountAvailable amountRequested
       | utxoCount < outputCount =
-          ErrUtxoNotFragmentedEnough utxoCount outputCount
+          ErrUtxoNotFragmentedEnough
+              (fromIntegral utxoCount) (fromIntegral outputCount)
       | utxoCount <= inputCountMax =
           ErrUtxoFullyDepleted
       | otherwise =
-          ErrMaximumInputCountExceeded inputCountMax
+          ErrMaximumInputCountExceeded (fromIntegral inputCountMax)
     amountAvailable =
-        unCoin $ coinMapValue utxo
+        coinMapValue utxo
     amountRequested =
-        unCoin $ coinMapValue outputsRequested
+        coinMapValue outputsRequested
     inputCountMax =
         fromIntegral $ maximumInputCount options $ fromIntegral outputCount
     outputCount =
@@ -264,9 +263,9 @@ payForOutputs options utxo outputsRequested = do
 --
 makeRandomSelection
     :: forall i o m . MonadRandom m
-    => (Word64, CoinMap i, [([CoinMapEntry i], CoinMapEntry o)])
+    => (Integer, CoinMap i, [([CoinMapEntry i], CoinMapEntry o)])
     -> CoinMapEntry o
-    -> MaybeT m (Word64, CoinMap i, [([CoinMapEntry i], CoinMapEntry o)])
+    -> MaybeT m (Integer, CoinMap i, [([CoinMapEntry i], CoinMapEntry o)])
 makeRandomSelection
     (inputCountRemaining, utxoRemaining, existingSelections) txout = do
         (utxoSelected, utxoRemaining') <- coverRandomly ([], utxoRemaining)
@@ -291,9 +290,9 @@ makeRandomSelection
 -- | Perform an improvement to random selection on a given output.
 improveSelection
     :: forall i o m . (MonadRandom m, Ord i, Ord o)
-    => (Word64, CoinSelection i o, CoinMap i)
+    => (Integer, CoinSelection i o, CoinMap i)
     -> ([CoinMapEntry i], CoinMapEntry o)
-    -> m (Word64, CoinSelection i o, CoinMap i)
+    -> m (Integer, CoinSelection i o, CoinMap i)
 improveSelection (maxN0, selection, utxo0) (inps0, txout) = do
     (maxN, inps, utxo) <- improve (maxN0, inps0, utxo0)
     return
@@ -309,8 +308,8 @@ improveSelection (maxN0, selection, utxo0) (inps0, txout) = do
     target = mkTargetRange txout
 
     improve
-        :: (Word64, [CoinMapEntry i], CoinMap i)
-        -> m (Word64, [CoinMapEntry i], CoinMap i)
+        :: (Integer, [CoinMapEntry i], CoinMap i)
+        -> m (Integer, [CoinMapEntry i], CoinMap i)
     improve (maxN, inps, utxo)
         | maxN >= 1 && sumEntries inps < targetAim target = do
             runMaybeT (utxoPickRandomT utxo) >>= \case
@@ -332,9 +331,14 @@ improveSelection (maxN0, selection, utxo0) (inps0, txout) = do
                 sumEntries (io : selected) < targetMax target
 
             condB = -- (b) Addition gets us closer to the ideal change
-                distance (targetAim target) (sumEntries (io : selected))
-                <
-                distance (targetAim target) (sumEntries selected)
+                distanceA < distanceB
+              where
+                distanceA = C.distance
+                    (targetAim target)
+                    (sumEntries (io : selected))
+                distanceB = C.distance
+                    (targetAim target)
+                    (sumEntries selected)
 
             -- (c) Doesn't exceed maximum number of inputs
             -- Guaranteed by the precondition on 'improve'.
@@ -351,13 +355,13 @@ improveSelection (maxN0, selection, utxo0) (inps0, txout) = do
 -- inputs selected to pay for a given output.
 --
 data TargetRange = TargetRange
-    { targetMin :: Word64
+    { targetMin :: Coin
         -- ^ The minimum value, corresponding to exactly the requested target
         -- amount, and a change amount of zero.
-    , targetAim :: Word64
+    , targetAim :: Coin
         -- ^ The ideal value, corresponding to exactly twice the requested
         -- target amount, and a change amount equal to the requested amount.
-    , targetMax :: Word64
+    , targetMax :: Coin
         -- ^ The maximum value, corresponding to exactly three times the
         -- requested amount, and a change amount equal to twice the requested
         -- amount.
@@ -368,10 +372,10 @@ data TargetRange = TargetRange
 -- See 'TargetRange'.
 --
 mkTargetRange :: CoinMapEntry o -> TargetRange
-mkTargetRange (CoinMapEntry _ (Coin c)) = TargetRange
+mkTargetRange (CoinMapEntry _ c) = TargetRange
     { targetMin = c
-    , targetAim = 2 * c
-    , targetMax = 3 * c
+    , targetAim = c `C.add` c
+    , targetMax = c `C.add` c `C.add` c
     }
 
 -- | Re-wrap 'utxoPickRandom' in a 'MaybeT' monad
@@ -384,35 +388,30 @@ utxoPickRandomT =
         . fmap (\(mi, u) -> (, u) <$> mi)
         . coinMapRandomEntry
 
--- | Compute corresponding change outputs from a target output and a selection
--- of inputs.
+-- | Compute change outputs from a target output and a selection of inputs.
 --
--- > pre-condition: the output must be smaller (or eq) than the sum of inputs
+-- Pre-condition:
+--
+-- The output must be less than (or equal to) the sum of the inputs.
+--
 mkChange :: CoinMapEntry o -> [CoinMapEntry i] -> [Coin]
-mkChange (CoinMapEntry _ (Coin out)) inps =
-    let
-        selected = invariant
-            "mkChange: output is smaller than selected inputs!"
-            (sumEntries inps)
-            (>= out)
-        Coin maxCoinValue = maxBound
-    in
-        case selected - out of
-            c | c > maxCoinValue ->
-                let h = (c `div` 2) in [Coin h, Coin (c - h)]
-            c | c == 0 ->
-                []
-            c ->
-                [ Coin c ]
+mkChange (CoinMapEntry _ out) inps =
+    case difference of
+        Nothing ->
+            error $ mconcat
+                [ "mkChange: "
+                , "output must be less than or equal to sum of inputs"
+                ]
+        Just d | C.isZero d ->
+            []
+        Just d ->
+            [d]
+  where
+    difference = sumEntries inps `C.sub` out
 
 --------------------------------------------------------------------------------
 -- Utilities
 --------------------------------------------------------------------------------
 
--- | Compute distance between two numeric values |a - b|
-distance :: (Ord a, Num a) => a -> a -> a
-distance a b =
-    if a < b then b - a else a - b
-
-sumEntries :: [CoinMapEntry i] -> Word64
-sumEntries = sum . fmap (unCoin . entryValue)
+sumEntries :: [CoinMapEntry i] -> Coin
+sumEntries = mconcat . fmap entryValue

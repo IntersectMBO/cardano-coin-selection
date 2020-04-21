@@ -13,8 +13,7 @@ module Cardano.CoinSelection.MigrationSpec
 import Prelude
 
 import Cardano.CoinSelection
-    ( Coin (..)
-    , CoinMap (..)
+    ( CoinMap (..)
     , CoinMapEntry (..)
     , CoinSelection (..)
     , coinMapToList
@@ -31,13 +30,21 @@ import Cardano.CoinSelection.Migration
 import Cardano.CoinSelectionSpec
     ()
 import Cardano.Test.Utilities
-    ( Address, Hash (..), TxIn (..) )
+    ( Address
+    , Hash (..)
+    , TxIn (..)
+    , unsafeCoin
+    , unsafeDustThreshold
+    , unsafeFee
+    )
 import Data.ByteString
     ( ByteString )
 import Data.Function
     ( (&) )
 import Data.Word
     ( Word8 )
+import Internal.Coin
+    ( Coin, coinToIntegral )
 import Numeric.Natural
     ( Natural )
 import Test.Hspec
@@ -64,6 +71,7 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as B8
 import qualified Data.Map as Map
 import qualified Data.Set as Set
+import qualified Internal.Coin as C
 
 spec :: Spec
 spec = do
@@ -76,23 +84,23 @@ spec = do
     describe "accuracy of depleteUTxO" $ do
         let testAccuracy :: Double -> SpecWith ()
             testAccuracy r = it title $ withMaxSuccess 1000 $ monadicIO $ do
-                let dust = Coin 100
+                let dust = unsafeCoin @Int 100
                 utxo <- pick (genUTxO r dust)
                 batchSize <- pick genBatchSize
                 feeOpts <- pick (genFeeOptions dust)
                 let selections = depleteUTxO feeOpts batchSize utxo
                 monitor $ label $ accuracy dust
-                    (fromIntegral $ unCoin $ coinMapValue utxo)
-                    (fromIntegral $ sum $ unCoin . sumInputs <$> selections)
+                    (coinToIntegral $ coinMapValue utxo)
+                    (sum $ coinToIntegral . sumInputs <$> selections)
               where
                 title :: String
                 title = "dust=" <> show (round (100 * r) :: Int) <> "%"
 
                 accuracy :: Coin -> Natural -> Natural -> String
-                accuracy (Coin dust) sup real
+                accuracy dust sup real
                     | a >= 1.0 =
                         "PERFECT  (== 100%)"
-                    | a > 0.99 || (sup - real) < fromIntegral dust =
+                    | a > 0.99 || (sup - real) < coinToIntegral dust =
                         "OKAY     (>   99%)"
                     | otherwise =
                         "MEDIOCRE (<=  99%)"
@@ -130,8 +138,8 @@ spec = do
     describe "depleteUTxO regressions" $ do
         it "regression #1" $ do
             let feeOpts = FeeOptions
-                    { dustThreshold = DustThreshold 9
-                    , feeEstimator = FeeEstimator $ \s -> Fee
+                    { dustThreshold = unsafeDustThreshold @Int 9
+                    , feeEstimator = FeeEstimator $ \s -> unsafeFee @Int
                         $ fromIntegral
                         $ 5 * (length (inputs s) + length (outputs s))
                     }
@@ -141,7 +149,7 @@ spec = do
                         { txinId = Hash "|\243^\SUBg\242\231\&1\213\203"
                         , txinIx = 2
                         }
-                      , Coin 2
+                      , unsafeCoin @Int 2
                       )
                     ]
             property $ prop_inputsGreaterThanOutputs
@@ -177,7 +185,7 @@ prop_noLessThanThreshold feeOpts batchSize utxo = do
             filter (< threshold) allChange
     property (undersizedCoins `shouldSatisfy` null)
   where
-    threshold = Coin $ unDustThreshold $ dustThreshold feeOpts
+    threshold = unDustThreshold $ dustThreshold feeOpts
 
 -- | Total input UTxO value >= sum of selection change coins
 prop_inputsGreaterThanOutputs
@@ -188,9 +196,9 @@ prop_inputsGreaterThanOutputs
     -> Property
 prop_inputsGreaterThanOutputs feeOpts batchSize utxo = do
     let selections  = depleteUTxO feeOpts batchSize utxo
-    let totalChange = sum (unCoin . sumChange <$> selections)
-    let balanceUTxO = unCoin $ coinMapValue utxo
-    property (balanceUTxO >= fromIntegral totalChange)
+    let totalChange = mconcat (sumChange <$> selections)
+    let balanceUTxO = coinMapValue utxo
+    property (balanceUTxO >= totalChange)
         & counterexample ("Total change balance: " <> show totalChange)
         & counterexample ("Total UTxO balance: " <> show balanceUTxO)
         & counterexample ("Selections: " <> show selections)
@@ -236,8 +244,12 @@ prop_wellBalanced feeOpts batchSize utxo = do
     conjoin
         [ counterexample example (actualFee === expectedFee)
         | s <- selections
-        , let actualFee = unCoin (sumInputs s) - unCoin (sumChange s)
-        , let expectedFee = unFee $ estimateFee (feeEstimator feeOpts) s
+        , let actualFee
+                = coinToIntegral (sumInputs s)
+                - coinToIntegral (sumChange s)
+        , let expectedFee
+                = coinToIntegral @Integer
+                $ unFee $ estimateFee (feeEstimator feeOpts) s
         , let example = unlines
                 [ "Coin Selection: " <> show s
                 , "Actual fee: " <> show actualFee
@@ -271,17 +283,19 @@ genBatchSize :: Gen Word8
 genBatchSize = choose (50, 150)
 
 genFeeOptions :: Coin -> Gen (FeeOptions TxIn Address)
-genFeeOptions (Coin dust) = do
+genFeeOptions dust = do
     pure $ FeeOptions
         { feeEstimator = FeeEstimator $ \s ->
-            let x = fromIntegral (length (inputs s) + length (outputs s))
-            in Fee $ (dust `div` 100) * x + dust
+            let x = fromIntegral @_ @Integer
+                    (length (inputs s) + length (outputs s))
+            in unsafeFee $
+                  (C.coinToIntegral dust `div` 100) * x + C.coinToIntegral dust
         , dustThreshold = DustThreshold dust
         }
 
 -- | Generate a given UTxO with a particular percentage of dust
 genUTxO :: Double -> Coin -> Gen (CoinMap TxIn)
-genUTxO r (Coin dust) = do
+genUTxO r dust = do
     n <- choose (10, 1000)
     inps <- genTxIn n
     coins <- vectorOf n genCoin
@@ -297,7 +311,9 @@ genUTxO r (Coin dust) = do
     genBytes n = B8.pack <$> vectorOf n arbitrary
 
     genCoin :: Gen Coin
-    genCoin = Coin <$> frequency
-        [ (round (100*r), choose (1, dust))
-        , (round (100*(1-r)), choose (dust, 1000*dust))
+    genCoin = unsafeCoin @Int <$> frequency
+        [ (round (100*r), choose (1, integralDust))
+        , (round (100*(1-r)), choose (integralDust, 1000 * integralDust))
         ]
+      where
+        integralDust = C.coinToIntegral dust

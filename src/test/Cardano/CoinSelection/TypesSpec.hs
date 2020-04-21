@@ -13,7 +13,7 @@ module Cardano.CoinSelection.TypesSpec
 import Prelude
 
 import Cardano.CoinSelection
-    ( Coin (..), CoinMap (..), coinIsValid, coinMapValue )
+    ( CoinMap (..), coinMapValue )
 import Cardano.Test.Utilities
     ( Address (..)
     , Hash (..)
@@ -24,10 +24,13 @@ import Cardano.Test.Utilities
     , isSubsetOf
     , restrictedBy
     , restrictedTo
+    , unsafeCoin
     , unsafeFromHex
     )
 import Data.Set
     ( Set, (\\) )
+import Internal.Coin
+    ( Coin )
 import Test.Hspec
     ( Spec, describe, it )
 import Test.QuickCheck
@@ -45,11 +48,10 @@ import Test.QuickCheck
 
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
+import qualified Internal.Coin as C
 
 spec :: Spec
 spec = do
-    describe "Generators are valid" $ do
-        it "Arbitrary Coin" $ property coinIsValid
 
     describe "Lemma 2.1 - Properties of UTxO operations" $ do
         it "2.1.1) ins⊲ u ⊆ u"
@@ -174,8 +176,8 @@ prop_2_6_1 (u, v) =
     -- a v' that has no overlap with u.
     v' = v `excluding` dom u
     cond = not (u `isSubsetOf` mempty || v' `isSubsetOf` mempty)
-    prop = unCoin (coinMapValue (u <> v'))
-        === unCoin (coinMapValue u) + unCoin (coinMapValue v')
+    prop = coinMapValue (u <> v')
+        === coinMapValue u `C.add` coinMapValue v'
 
 prop_2_6_2 :: Ord u => (Set u, CoinMap u) -> Property
 prop_2_6_2 (ins, u) =
@@ -183,9 +185,10 @@ prop_2_6_2 (ins, u) =
   where
     cond = not $ Set.null $ dom u `Set.intersection` ins
     prop =
-        unCoin (coinMapValue (u `excluding` ins))
+        Just (coinMapValue (u `excluding` ins))
             ===
-        unCoin (coinMapValue u) - unCoin (coinMapValue (u `restrictedBy` ins))
+        coinMapValue u `C.sub`
+            coinMapValue (u `restrictedBy` ins)
 
 --------------------------------------------------------------------------------
 -- UTxO Utilities
@@ -228,7 +231,7 @@ instance Arbitrary Address where
 
 instance Arbitrary Coin where
     -- No Shrinking
-    arbitrary = Coin <$> choose (0, 3)
+    arbitrary = unsafeCoin @Int <$> choose (0, 3)
 
 instance Arbitrary TxOut where
     -- No Shrinking

@@ -28,8 +28,7 @@ module Cardano.CoinSelectionSpec
 import Prelude
 
 import Cardano.CoinSelection
-    ( Coin (..)
-    , CoinMap (..)
+    ( CoinMap (..)
     , CoinMapEntry (..)
     , CoinSelection (..)
     , CoinSelectionAlgorithm (..)
@@ -43,7 +42,7 @@ import Cardano.CoinSelection
     , sumOutputs
     )
 import Cardano.Test.Utilities
-    ( Address (..), Hash (..), ShowFmt (..), TxIn (..) )
+    ( Address (..), Hash (..), ShowFmt (..), TxIn (..), unsafeCoin )
 import Control.Arrow
     ( (&&&) )
 import Control.Monad.Trans.Except
@@ -57,9 +56,11 @@ import Data.Maybe
 import Data.Set
     ( Set )
 import Data.Word
-    ( Word64, Word8 )
+    ( Word8 )
 import Fmt
     ( Buildable (..), blockListF, nameF )
+import Internal.Coin
+    ( Coin, coinToIntegral )
 import Test.Hspec
     ( Spec, SpecWith, describe, it, shouldBe )
 import Test.QuickCheck
@@ -91,6 +92,7 @@ import qualified Data.List as L
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
+import qualified Internal.Coin as C
 import qualified Test.QuickCheck.Monadic as QC
 
 spec :: Spec
@@ -193,7 +195,7 @@ prop_coinMapFromList_preservesTotalValueForEachUniqueKey entries = property $
         mkEntryMap (coinMapToList (coinMapFromList entries))
   where
     mkEntryMap
-        = Map.fromListWith (\c1 c2 -> Coin $ unCoin c1 + unCoin c2)
+        = Map.fromListWith C.add
         . fmap (entryKey &&& entryValue)
 
 prop_coinMapFromList_preservesTotalValue
@@ -300,9 +302,9 @@ data CoinSelectionFixture i o = CoinSelectionFixture
         -- ^ Maximum number of inputs that can be selected
     , validateSelection :: CoinSelection i o -> Either ErrValidation ()
         -- ^ A extra validation function on the resulting selection
-    , utxoInputs :: [Word64]
+    , utxoInputs :: [Integer]
         -- ^ Value (in Lovelace) & number of available coins in the UTxO
-    , txOutputs :: [Word64]
+    , txOutputs :: [Integer]
         -- ^ Value (in Lovelace) & number of requested outputs
     }
 
@@ -319,9 +321,9 @@ alwaysFail = const (Left ErrValidation)
 
 -- | Testing-friendly format for 'CoinSelection' results of unit tests.
 data CoinSelectionResult = CoinSelectionResult
-    { rsInputs :: [Word64]
-    , rsChange :: [Word64]
-    , rsOutputs :: [Word64]
+    { rsInputs :: [Integer]
+    , rsChange :: [Integer]
+    , rsOutputs :: [Integer]
     } deriving (Eq, Show)
 
 sortCoinSelectionResult :: CoinSelectionResult -> CoinSelectionResult
@@ -343,9 +345,9 @@ coinSelectionUnitTest alg lbl expected (CoinSelectionFixture n fn utxoF outsF) =
             (CoinSelection inps outs chngs, _) <-
                 selectCoins alg (CoinSelectionOptions (const n) fn) utxo txOuts
             return $ CoinSelectionResult
-                { rsInputs = unCoin . entryValue <$> coinMapToList inps
-                , rsChange = unCoin <$> chngs
-                , rsOutputs = unCoin . entryValue <$> coinMapToList outs
+                { rsInputs = coinToIntegral . entryValue <$> coinMapToList inps
+                , rsChange = coinToIntegral <$> chngs
+                , rsOutputs = coinToIntegral . entryValue <$> coinMapToList outs
                 }
         fmap sortCoinSelectionResult result
             `shouldBe` fmap sortCoinSelectionResult expected
@@ -419,7 +421,7 @@ instance Arbitrary Address where
 
 instance Arbitrary Coin where
     -- No Shrinking
-    arbitrary = Coin <$> choose (1, 100000)
+    arbitrary = unsafeCoin @Int <$> choose (1, 100000)
 
 instance Arbitrary TxIn where
     -- No Shrinking
@@ -453,14 +455,14 @@ instance (Arbitrary a, Ord a) => Arbitrary (CoinMap a) where
             <*> vectorOf n arbitrary
         return $ CoinMap $ Map.fromList entries
 
-genUTxO :: [Word64] -> Gen (CoinMap TxIn)
+genUTxO :: [Integer] -> Gen (CoinMap TxIn)
 genUTxO coins = do
     let n = length coins
     inps <- vectorOf n arbitrary
-    return $ CoinMap $ Map.fromList $ zip inps (Coin <$> coins)
+    return $ CoinMap $ Map.fromList $ zip inps (unsafeCoin <$> coins)
 
-genOutputs :: [Word64] -> Gen (CoinMap Address)
+genOutputs :: [Integer] -> Gen (CoinMap Address)
 genOutputs coins = do
     let n = length coins
     outs <- vectorOf n arbitrary
-    return $ coinMapFromList $ zipWith CoinMapEntry outs (map Coin coins)
+    return $ coinMapFromList $ zipWith CoinMapEntry outs (map unsafeCoin coins)

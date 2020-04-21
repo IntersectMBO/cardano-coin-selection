@@ -20,9 +20,6 @@ module Cardano.Test.Utilities
     -- * Addresses
       Address (..)
 
-    -- * Decoding
-    , unsafeFromHex
-
     -- * Hashes
     , Hash (..)
 
@@ -39,17 +36,20 @@ module Cardano.Test.Utilities
     , restrictedBy
     , restrictedTo
 
+    -- * Unsafe Operations
+    , unsafeCoin
+    , unsafeDustThreshold
+    , unsafeFee
+    , unsafeFromHex
+
     ) where
 
 import Prelude
 
 import Cardano.CoinSelection
-    ( Coin (..)
-    , CoinMap (..)
-    , CoinMapEntry (..)
-    , CoinSelection (..)
-    , coinMapToList
-    )
+    ( CoinMap (..), CoinMapEntry (..), CoinSelection (..), coinMapToList )
+import Cardano.CoinSelection.Fee
+    ( DustThreshold (..), Fee (..) )
 import Control.DeepSeq
     ( NFData (..) )
 import Data.ByteArray
@@ -58,6 +58,8 @@ import Data.ByteArray.Encoding
     ( Base (Base16), convertFromBase, convertToBase )
 import Data.ByteString
     ( ByteString )
+import Data.Maybe
+    ( fromMaybe )
 import Data.Set
     ( Set )
 import Data.Word
@@ -78,12 +80,17 @@ import GHC.Stack
     ( HasCallStack )
 import GHC.TypeLits
     ( Symbol )
+import Internal.Coin
+    ( Coin, coinFromIntegral )
+import Numeric.Natural
+    ( Natural )
 import Quiet
     ( Quiet (Quiet) )
 
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
 import qualified Data.Text.Encoding as T
+import qualified Internal.Coin as C
 
 --------------------------------------------------------------------------------
 -- Addresses
@@ -108,8 +115,32 @@ instance Buildable Address where
             . unAddress
 
 --------------------------------------------------------------------------------
--- Decoding
+-- Unsafe Operations
 --------------------------------------------------------------------------------
+
+unsafeCoin :: (Integral i, Show i) => i -> Coin
+unsafeCoin i = fromMaybe die $ coinFromIntegral i
+  where
+    die = error $ mconcat
+        [ "Test suite attempted to create a coin with negative value: "
+        , show i
+        ]
+
+unsafeDustThreshold :: (Integral i, Show i) => i -> DustThreshold
+unsafeDustThreshold i = DustThreshold $ fromMaybe die $ coinFromIntegral i
+  where
+    die = error $ mconcat
+        [ "Test suite attempted to create a dust theshold with negative value: "
+        , show i
+        ]
+
+unsafeFee :: (Integral i, Show i) => i -> Fee
+unsafeFee i = Fee $ fromMaybe die $ coinFromIntegral i
+  where
+    die = error $ mconcat
+        [ "Test suite attempted to create a fee with negative value: "
+        , show i
+        ]
 
 -- | Decode an hex-encoded 'ByteString' into raw bytes, or fail.
 unsafeFromHex :: HasCallStack => ByteString -> ByteString
@@ -168,23 +199,21 @@ instance Buildable TxIn where
         <> build (txinId txin)
 
 data TxOut = TxOut
-    { address
+    { txoutAddress
         :: !Address
-    , coin
+    , txoutCoin
         :: !Coin
     } deriving (Show, Generic, Eq, Ord)
 
-instance NFData TxOut
-
 instance Buildable TxOut where
     build txout = mempty
-        <> build (coin txout)
+        <> build (txoutCoin txout)
         <> " @ "
         <> prefixF 8 addrF
         <> "..."
         <> suffixF 8 addrF
       where
-        addrF = build $ address txout
+        addrF = build $ txoutAddress txout
 
 --------------------------------------------------------------------------------
 -- UTxO Operations
@@ -215,7 +244,7 @@ restrictedTo (CoinMap utxo) outs =
 --------------------------------------------------------------------------------
 
 instance Buildable Coin where
-    build = build . unCoin
+    build = build . fromIntegral @Natural @Integer . C.coinToIntegral
 
 instance Buildable a => Buildable (CoinMapEntry a) where
     build a = mempty
