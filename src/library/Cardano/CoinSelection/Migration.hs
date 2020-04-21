@@ -50,7 +50,7 @@ import Cardano.CoinSelection
     ( CoinMap
     , CoinMapEntry (..)
     , CoinSelection (..)
-    , CoinSelectionInputLimit (..)
+    , CoinSelectionLimit (..)
     , coinMapFromList
     , coinMapToList
     , sumChange
@@ -190,7 +190,7 @@ selectCoins feeOpts batchSize utxo =
 
 -- Try to find a fixed "ideal" number of input transactions that would generate
 -- relatively balanced transactions.
-idealBatchSize :: CoinSelectionInputLimit -> Word8
+idealBatchSize :: CoinSelectionLimit -> Word8
 idealBatchSize coinselOpts = fixPoint 1
   where
     fixPoint :: Word8 -> Word8

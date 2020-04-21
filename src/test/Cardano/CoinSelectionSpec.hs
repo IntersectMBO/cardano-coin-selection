@@ -30,7 +30,7 @@ import Cardano.CoinSelection
     , CoinSelection (..)
     , CoinSelectionAlgorithm (..)
     , CoinSelectionError (..)
-    , CoinSelectionInputLimit (..)
+    , CoinSelectionLimit (..)
     , CoinSelectionParameters (..)
     , CoinSelectionResult (..)
     , coinMapFromList
@@ -343,7 +343,7 @@ coinSelectionUnitTest alg lbl expected (CoinSelectionFixture n utxoF outsF) =
         fmap sortCoinSelectionTestResult result
             `shouldBe` fmap sortCoinSelectionTestResult expected
   where
-    maxInputCount = CoinSelectionInputLimit $ const n
+    maxInputCount = CoinSelectionLimit $ const n
 
     title :: String
     title = mempty
@@ -374,7 +374,7 @@ instance (Arbitrary i, Arbitrary o, Ord i, Ord o) =>
         <*> arbitrary
     shrink = genericShrink
 
-instance Arbitrary (CoinSelectionInputLimit) where
+instance Arbitrary (CoinSelectionLimit) where
     arbitrary = do
         -- NOTE Functions have to be decreasing functions
         fn <- elements
@@ -385,10 +385,10 @@ instance Arbitrary (CoinSelectionInputLimit) where
                     else maxBound - (2 * x)
             , const 42
             ]
-        pure $ CoinSelectionInputLimit fn
+        pure $ CoinSelectionLimit fn
 
-instance Show (CoinSelectionInputLimit) where
-    show _ = "CoinSelectionInputLimit"
+instance Show (CoinSelectionLimit) where
+    show _ = "CoinSelectionLimit"
 
 instance Arbitrary a => Arbitrary (NonEmpty a) where
     shrink xs = catMaybes (NE.nonEmpty <$> shrink (NE.toList xs))

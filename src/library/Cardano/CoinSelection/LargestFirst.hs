@@ -19,7 +19,7 @@ import Cardano.CoinSelection
     , CoinSelection (..)
     , CoinSelectionAlgorithm (..)
     , CoinSelectionError (..)
-    , CoinSelectionInputLimit (..)
+    , CoinSelectionLimit (..)
     , CoinSelectionParameters (..)
     , CoinSelectionResult (..)
     , coinMapFromList

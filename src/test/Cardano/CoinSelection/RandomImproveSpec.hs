@@ -13,7 +13,7 @@ import Cardano.CoinSelection
     ( CoinSelection (..)
     , CoinSelectionAlgorithm (..)
     , CoinSelectionError (..)
-    , CoinSelectionInputLimit (..)
+    , CoinSelectionLimit (..)
     , CoinSelectionParameters (..)
     , CoinSelectionResult (..)
     )
@@ -237,7 +237,7 @@ propFragmentation drg (CoinSelProp utxo txOuts) = do
         runExceptT $ selectCoins randomImprove params
     selection2 = runIdentity $ runExceptT $
         selectCoins largestFirst params
-    limit = CoinSelectionInputLimit $ const 100
+    limit = CoinSelectionLimit $ const 100
     params = CoinSelectionParameters limit txOuts utxo
 
 propErrors
@@ -256,5 +256,5 @@ propErrors drg (CoinSelProp utxo txOuts) = do
         runExceptT $ selectCoins randomImprove params
     selection2 = runIdentity $ runExceptT $
         selectCoins largestFirst params
-    limit = CoinSelectionInputLimit $ const 1
+    limit = CoinSelectionLimit $ const 1
     params = CoinSelectionParameters limit txOuts utxo

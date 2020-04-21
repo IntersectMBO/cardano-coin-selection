@@ -41,7 +41,7 @@ module Cardano.CoinSelection
     , CoinSelectionAlgorithm (..)
     , CoinSelectionParameters (..)
     , CoinSelectionResult (..)
-    , CoinSelectionInputLimit (..)
+    , CoinSelectionLimit (..)
     , CoinSelectionError (..)
 
       -- # Internal Functions
@@ -174,7 +174,7 @@ newtype CoinSelectionAlgorithm i o m = CoinSelectionAlgorithm
 -- | The complete set of parameters required for a 'CoinSelectionAlgorithm'.
 --
 data CoinSelectionParameters i o = CoinSelectionParameters
-    { inputLimit :: CoinSelectionInputLimit
+    { inputLimit :: CoinSelectionLimit
         -- ^ A limit on the number of inputs that can be selected.
     , inputsAvailable :: CoinMap i
         -- ^ The set of inputs available for selection.
@@ -237,7 +237,7 @@ sumChange = mconcat . change
 -- | Defines an inclusive upper bound on the number of inputs that
 --   a 'CoinSelectionAlgorithm' is allowed to select.
 --
-newtype CoinSelectionInputLimit = CoinSelectionInputLimit
+newtype CoinSelectionLimit = CoinSelectionLimit
     { calculateInputLimit
         :: Word8 -> Word8
             -- ^ Calculate the maximum number of inputs allowed for a given
