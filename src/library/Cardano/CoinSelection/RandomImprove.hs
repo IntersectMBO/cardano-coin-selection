@@ -22,7 +22,7 @@ import Cardano.CoinSelection
     , CoinSelection (..)
     , CoinSelectionAlgorithm (..)
     , CoinSelectionError (..)
-    , CoinSelectionOptions (..)
+    , CoinSelectionInputLimit (..)
     , coinMapFromList
     , coinMapRandomEntry
     , coinMapToList
@@ -118,7 +118,7 @@ import qualified Internal.Coin as C
 --
 --       * __Condition 3__: when counting cumulatively across all outputs
 --       considered so far, we have not selected more than the /maximum/ number
---       of UTxO entries specified by 'maximumInputCount'.
+--       of UTxO entries specified by 'calculateInputLimit'.
 --
 --  3.  __Creates a /change value/__ for the output, equal to the total value
 --      of the /final UTxO selection/ for that output minus the value /v/ of
@@ -165,7 +165,7 @@ import qualified Internal.Coin as C
 --      See: __'ErrUtxoFullyDepleted'__.
 --
 --  4.  The /number/ of UTxO entries needed to pay for the requested outputs
---      would /exceed/ the upper limit specified by 'maximumInputCount'.
+--      would /exceed/ the upper limit specified by 'calculateInputLimit'.
 --
 --      See: __'ErrMaximumInputCountExceeded'__.
 --
@@ -207,7 +207,7 @@ randomImprove = CoinSelectionAlgorithm payForOutputs
 
 payForOutputs
     :: (Ord i, Ord o, MonadRandom m)
-    => CoinSelectionOptions
+    => CoinSelectionInputLimit
     -> CoinMap i
     -> CoinMap o
     -> ExceptT CoinSelectionError m (CoinSelection i o, CoinMap i)
@@ -239,7 +239,7 @@ payForOutputs options utxo outputsRequested = do
     amountRequested =
         coinMapValue outputsRequested
     inputCountMax =
-        fromIntegral $ maximumInputCount options $ fromIntegral outputCount
+        fromIntegral $ calculateInputLimit options $ fromIntegral outputCount
     outputCount =
         fromIntegral $ length $ coinMapToList outputsRequested
     outputsDescending =

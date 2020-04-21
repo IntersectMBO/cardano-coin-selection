@@ -13,7 +13,7 @@ import Cardano.CoinSelection
     ( CoinSelection (..)
     , CoinSelectionAlgorithm (..)
     , CoinSelectionError (..)
-    , CoinSelectionOptions (..)
+    , CoinSelectionInputLimit (..)
     )
 import Cardano.CoinSelection.LargestFirst
     ( largestFirst )
@@ -235,7 +235,7 @@ propFragmentation drg (CoinSelProp utxo txOuts) = do
         (runExceptT $ selectCoins randomImprove opt txOuts utxo)
     selection2 = runIdentity $ runExceptT $
         selectCoins largestFirst opt txOuts utxo
-    opt = CoinSelectionOptions (const 100)
+    opt = CoinSelectionInputLimit (const 100)
 
 propErrors
     :: (Ord i, Ord o)
@@ -253,4 +253,4 @@ propErrors drg (CoinSelProp utxo txOuts) = do
         (runExceptT $ selectCoins randomImprove opt txOuts utxo)
     selection2 = runIdentity $ runExceptT $
         selectCoins largestFirst opt txOuts utxo
-    opt = CoinSelectionOptions (const 1)
+    opt = CoinSelectionInputLimit (const 1)

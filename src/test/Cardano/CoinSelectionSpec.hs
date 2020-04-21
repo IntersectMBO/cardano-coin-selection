@@ -30,7 +30,7 @@ import Cardano.CoinSelection
     , CoinSelection (..)
     , CoinSelectionAlgorithm (..)
     , CoinSelectionError (..)
-    , CoinSelectionOptions (..)
+    , CoinSelectionInputLimit (..)
     , coinMapFromList
     , coinMapToList
     , coinMapValue
@@ -330,7 +330,7 @@ coinSelectionUnitTest alg lbl expected (CoinSelectionFixture n utxoF outsF) =
         (utxo,txOuts) <- setup
         result <- runExceptT $ do
             (CoinSelection inps outs chngs, _) <-
-                selectCoins alg (CoinSelectionOptions (const n)) utxo txOuts
+                selectCoins alg maxInputCount utxo txOuts
             return $ CoinSelectionResult
                 { rsInputs = coinToIntegral . entryValue <$> coinMapToList inps
                 , rsChange = coinToIntegral <$> chngs
@@ -339,6 +339,8 @@ coinSelectionUnitTest alg lbl expected (CoinSelectionFixture n utxoF outsF) =
         fmap sortCoinSelectionResult result
             `shouldBe` fmap sortCoinSelectionResult expected
   where
+    maxInputCount = CoinSelectionInputLimit $ const n
+
     title :: String
     title = mempty
         <> if null lbl then "" else lbl <> ":\n\t"
@@ -368,7 +370,7 @@ instance (Arbitrary i, Arbitrary o, Ord i, Ord o) =>
         <*> arbitrary
     shrink = genericShrink
 
-instance Arbitrary (CoinSelectionOptions) where
+instance Arbitrary (CoinSelectionInputLimit) where
     arbitrary = do
         -- NOTE Functions have to be decreasing functions
         fn <- elements
@@ -379,10 +381,10 @@ instance Arbitrary (CoinSelectionOptions) where
                     else maxBound - (2 * x)
             , const 42
             ]
-        pure $ CoinSelectionOptions fn
+        pure $ CoinSelectionInputLimit fn
 
-instance Show (CoinSelectionOptions) where
-    show _ = "CoinSelectionOptions"
+instance Show (CoinSelectionInputLimit) where
+    show _ = "CoinSelectionInputLimit"
 
 instance Arbitrary a => Arbitrary (NonEmpty a) where
     shrink xs = catMaybes (NE.nonEmpty <$> shrink (NE.toList xs))

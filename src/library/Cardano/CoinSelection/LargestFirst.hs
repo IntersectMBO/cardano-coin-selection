@@ -20,7 +20,7 @@ import Cardano.CoinSelection
     , CoinSelection (..)
     , CoinSelectionAlgorithm (..)
     , CoinSelectionError (..)
-    , CoinSelectionOptions (..)
+    , CoinSelectionInputLimit (..)
     , coinMapFromList
     , coinMapToList
     , coinMapValue
@@ -167,7 +167,7 @@ import qualified Internal.Coin as C
 --      See: __'ErrUtxoFullyDepleted'__.
 --
 --  4.  The /number/ of UTxO entries needed to pay for the requested outputs
---      would /exceed/ the upper limit specified by 'maximumInputCount'.
+--      would /exceed/ the upper limit specified by 'calculateInputLimit'.
 --
 --      See: __'ErrMaximumInputCountExceeded'__.
 --
@@ -178,7 +178,7 @@ largestFirst = CoinSelectionAlgorithm payForOutputs
 
 payForOutputs
     :: (Ord i, Ord o, Monad m)
-    => CoinSelectionOptions
+    => CoinSelectionInputLimit
     -> CoinMap i
     -> CoinMap o
     -> ExceptT CoinSelectionError m (CoinSelection i o, CoinMap i)
@@ -203,7 +203,7 @@ payForOutputs options utxo outputsRequested =
     amountRequested =
         coinMapValue outputsRequested
     inputCountMax =
-        fromIntegral $ maximumInputCount options $ fromIntegral outputCount
+        fromIntegral $ calculateInputLimit options $ fromIntegral outputCount
     outputCount =
         fromIntegral $ length $ coinMapToList outputsRequested
     outputsDescending =

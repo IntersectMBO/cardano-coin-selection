@@ -39,7 +39,7 @@ module Cardano.CoinSelection
 
       -- * Coin Selection Algorithms
     , CoinSelectionAlgorithm (..)
-    , CoinSelectionOptions (..)
+    , CoinSelectionInputLimit (..)
     , CoinSelectionError (..)
 
       -- # Internal Functions
@@ -165,7 +165,7 @@ coinMapValue = mconcat . fmap entryValue . coinMapToList
 --
 newtype CoinSelectionAlgorithm i o m = CoinSelectionAlgorithm
     { selectCoins
-        :: CoinSelectionOptions
+        :: CoinSelectionInputLimit
         -> CoinMap i
         -> CoinMap o
         -> ExceptT CoinSelectionError m (CoinSelection i o, CoinMap i)
@@ -211,10 +211,11 @@ sumOutputs =  coinMapValue . outputs
 sumChange :: CoinSelection i o -> Coin
 sumChange = mconcat . change
 
--- | Represents a set of options to be passed to a coin selection algorithm.
+-- | Defines an inclusive upper bound on the number of inputs that
+--   a 'CoinSelectionAlgorithm' is allowed to select.
 --
-newtype CoinSelectionOptions = CoinSelectionOptions
-    { maximumInputCount
+newtype CoinSelectionInputLimit = CoinSelectionInputLimit
+    { calculateInputLimit
         :: Word8 -> Word8
             -- ^ Calculate the maximum number of inputs allowed for a given
             -- number of outputs.
@@ -244,9 +245,9 @@ data CoinSelectionError
     --
     | ErrMaximumInputCountExceeded Natural
     -- ^ The number of UTxO entries needed to cover the requested payment
-    -- exceeded the upper limit specified by 'maximumInputCount'.
+    -- exceeded the upper limit specified by 'calculateInputLimit'.
     --
-    -- Records the value of 'maximumInputCount'.
+    -- Records the value of 'calculateInputLimit'.
     --
     deriving (Show, Eq)
 
