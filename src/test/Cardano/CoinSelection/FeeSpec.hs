@@ -905,9 +905,10 @@ genSelection
     => CoinMap o
     -> Gen (CoinSelection i o)
 genSelection outs = do
-    let opts = CS.CoinSelectionInputLimit (const 100)
     utxo <- vectorOf (length outs * 3) arbitrary >>= genInputs
-    case runIdentity $ runExceptT $ selectCoins largestFirst opts utxo outs of
+    let limit = CS.CoinSelectionInputLimit $ const 100
+    let params = CS.CoinSelectionParameters limit utxo outs
+    case runIdentity $ runExceptT $ selectCoins largestFirst params of
         Left _ -> genSelection outs
         Right (s,_) -> return s
 

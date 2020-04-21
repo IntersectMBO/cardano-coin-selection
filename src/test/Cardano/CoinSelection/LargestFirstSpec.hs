@@ -16,6 +16,7 @@ import Cardano.CoinSelection
     , CoinSelectionAlgorithm (..)
     , CoinSelectionError (..)
     , CoinSelectionInputLimit (..)
+    , CoinSelectionParameters (..)
     , coinMapToList
     )
 import Cardano.CoinSelection.LargestFirst
@@ -211,8 +212,9 @@ propAtLeast (CoinSelProp utxo txOuts) =
   where
     prop (CoinSelection inps _ _) =
         length inps `shouldSatisfy` (>= length txOuts)
-    selection = runIdentity $ runExceptT $ selectCoins
-        largestFirst (CoinSelectionInputLimit (const 100)) utxo txOuts
+    selection = runIdentity $ runExceptT $ selectCoins largestFirst
+        $ CoinSelectionParameters limit utxo txOuts
+    limit = CoinSelectionInputLimit $ const 100
 
 propInputDecreasingOrder
     :: (Ord i, Ord o)
@@ -230,4 +232,5 @@ propInputDecreasingOrder (CoinSelProp utxo txOuts) =
             `shouldSatisfy`
             (>= (L.maximum (snd <$> utxo')))
     selection = runIdentity $ runExceptT $ selectCoins largestFirst
-        (CoinSelectionInputLimit (const 100)) utxo txOuts
+        $ CoinSelectionParameters limit utxo txOuts
+    limit = CoinSelectionInputLimit $ const 100

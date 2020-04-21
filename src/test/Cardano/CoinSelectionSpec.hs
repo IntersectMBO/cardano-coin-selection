@@ -31,6 +31,7 @@ import Cardano.CoinSelection
     , CoinSelectionAlgorithm (..)
     , CoinSelectionError (..)
     , CoinSelectionInputLimit (..)
+    , CoinSelectionParameters (..)
     , coinMapFromList
     , coinMapToList
     , coinMapValue
@@ -329,8 +330,8 @@ coinSelectionUnitTest alg lbl expected (CoinSelectionFixture n utxoF outsF) =
     it title $ do
         (utxo,txOuts) <- setup
         result <- runExceptT $ do
-            (CoinSelection inps outs chngs, _) <-
-                selectCoins alg maxInputCount utxo txOuts
+            (CoinSelection inps outs chngs, _) <- selectCoins alg $
+                CoinSelectionParameters maxInputCount utxo txOuts
             return $ CoinSelectionResult
                 { rsInputs = coinToIntegral . entryValue <$> coinMapToList inps
                 , rsChange = coinToIntegral <$> chngs

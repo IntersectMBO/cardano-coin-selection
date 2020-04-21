@@ -39,6 +39,7 @@ module Cardano.CoinSelection
 
       -- * Coin Selection Algorithms
     , CoinSelectionAlgorithm (..)
+    , CoinSelectionParameters (..)
     , CoinSelectionInputLimit (..)
     , CoinSelectionError (..)
 
@@ -165,11 +166,21 @@ coinMapValue = mconcat . fmap entryValue . coinMapToList
 --
 newtype CoinSelectionAlgorithm i o m = CoinSelectionAlgorithm
     { selectCoins
-        :: CoinSelectionInputLimit
-        -> CoinMap i
-        -> CoinMap o
+        :: CoinSelectionParameters i o
         -> ExceptT CoinSelectionError m (CoinSelection i o, CoinMap i)
     }
+
+-- | The complete set of parameters required for a 'CoinSelectionAlgorithm'.
+--
+data CoinSelectionParameters i o = CoinSelectionParameters
+    { inputLimit :: CoinSelectionInputLimit
+        -- ^ A limit on the number of inputs that can be selected.
+    , inputsAvailable :: CoinMap i
+        -- ^ The set of inputs available for selection.
+    , outputsRequested :: CoinMap o
+        -- ^ The set of outputs requested for payment.
+    }
+    deriving Generic
 
 -- | Represents the __result__ of running a coin selection algorithm.
 --

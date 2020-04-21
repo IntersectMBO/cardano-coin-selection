@@ -21,6 +21,7 @@ import Cardano.CoinSelection
     , CoinSelectionAlgorithm (..)
     , CoinSelectionError (..)
     , CoinSelectionInputLimit (..)
+    , CoinSelectionParameters (..)
     , coinMapFromList
     , coinMapToList
     , coinMapValue
@@ -178,11 +179,9 @@ largestFirst = CoinSelectionAlgorithm payForOutputs
 
 payForOutputs
     :: (Ord i, Ord o, Monad m)
-    => CoinSelectionInputLimit
-    -> CoinMap i
-    -> CoinMap o
+    => CoinSelectionParameters i o
     -> ExceptT CoinSelectionError m (CoinSelection i o, CoinMap i)
-payForOutputs options utxo outputsRequested =
+payForOutputs params =
     case foldM payForOutput (utxoDescending, mempty) outputsDescending of
         Just (utxoRemaining, selection) ->
             pure (selection, coinMapFromList utxoRemaining)
@@ -199,21 +198,23 @@ payForOutputs options utxo outputsRequested =
       | otherwise =
           ErrMaximumInputCountExceeded inputCountMax
     amountAvailable =
-        coinMapValue utxo
+        coinMapValue $ inputsAvailable params
     amountRequested =
-        coinMapValue outputsRequested
-    inputCountMax =
-        fromIntegral $ calculateInputLimit options $ fromIntegral outputCount
+        coinMapValue $ outputsRequested params
+    inputCountMax = fromIntegral
+        $ calculateInputLimit (inputLimit params)
+        $ fromIntegral outputCount
     outputCount =
-        fromIntegral $ length $ coinMapToList outputsRequested
+        fromIntegral $ length $ coinMapToList $ outputsRequested params
     outputsDescending =
-        L.sortOn (Down . entryValue) $ coinMapToList outputsRequested
+        L.sortOn (Down . entryValue) $ coinMapToList $ outputsRequested params
     utxoCount =
-        fromIntegral $ L.length $ coinMapToList utxo
+        fromIntegral $ L.length $ coinMapToList $ inputsAvailable params
     utxoDescending =
         take (fromIntegral inputCountMax)
             $ L.sortOn (Down . entryValue)
-            $ coinMapToList utxo
+            $ coinMapToList
+            $ inputsAvailable params
 
 -- | Attempts to pay for a /single transaction output/ by selecting the
 --   /smallest possible/ number of entries from the /head/ of the given

@@ -23,6 +23,7 @@ import Cardano.CoinSelection
     , CoinSelectionAlgorithm (..)
     , CoinSelectionError (..)
     , CoinSelectionInputLimit (..)
+    , CoinSelectionParameters (..)
     , coinMapFromList
     , coinMapRandomEntry
     , coinMapToList
@@ -207,13 +208,11 @@ randomImprove = CoinSelectionAlgorithm payForOutputs
 
 payForOutputs
     :: (Ord i, Ord o, MonadRandom m)
-    => CoinSelectionInputLimit
-    -> CoinMap i
-    -> CoinMap o
+    => CoinSelectionParameters i o
     -> ExceptT CoinSelectionError m (CoinSelection i o, CoinMap i)
-payForOutputs options utxo outputsRequested = do
+payForOutputs params = do
     mRandomSelections <- lift $ runMaybeT $ foldM makeRandomSelection
-        (inputCountMax, utxo, []) outputsDescending
+        (inputCountMax, inputsAvailable params, []) outputsDescending
     case mRandomSelections of
         Just (inputCountRemaining, utxoRemaining, randomSelections) -> do
             (_, finalSelection, utxoRemaining') <- lift $ foldM
@@ -235,17 +234,18 @@ payForOutputs options utxo outputsRequested = do
       | otherwise =
           ErrMaximumInputCountExceeded (fromIntegral inputCountMax)
     amountAvailable =
-        coinMapValue utxo
+        coinMapValue $ inputsAvailable params
     amountRequested =
-        coinMapValue outputsRequested
-    inputCountMax =
-        fromIntegral $ calculateInputLimit options $ fromIntegral outputCount
+        coinMapValue $ outputsRequested params
+    inputCountMax = fromIntegral
+        $ calculateInputLimit (inputLimit params)
+        $ fromIntegral outputCount
     outputCount =
-        fromIntegral $ length $ coinMapToList outputsRequested
+        fromIntegral $ length $ coinMapToList $ outputsRequested params
     outputsDescending =
-        L.sortOn (Down . entryValue) $ coinMapToList outputsRequested
+        L.sortOn (Down . entryValue) $ coinMapToList $ outputsRequested params
     utxoCount =
-        fromIntegral $ L.length $ coinMapToList utxo
+        fromIntegral $ L.length $ coinMapToList $ inputsAvailable params
 
 -- | Randomly select entries from the given UTxO set, until the total value of
 --   selected entries is greater than or equal to the given output value.
