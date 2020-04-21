@@ -3,6 +3,7 @@
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE NumericUnderscores #-}
 {-# LANGUAGE RankNTypes #-}
+{-# OPTIONS_HADDOCK prune #-}
 
 -- |
 -- Copyright: © 2018-2020 IOHK
@@ -29,7 +30,6 @@ module Cardano.CoinSelection
     , coinMapFromList
     , coinMapToList
     , coinMapValue
-    , coinMapRandomEntry
 
       -- * Coin Selection
     , CoinSelection (..)
@@ -41,6 +41,9 @@ module Cardano.CoinSelection
     , CoinSelectionAlgorithm (..)
     , CoinSelectionOptions (..)
     , CoinSelectionError (..)
+
+      -- # Internal Functions
+    , coinMapRandomEntry
 
     ) where
 
@@ -135,24 +138,6 @@ coinMapToList = fmap (uncurry CoinMapEntry) . Map.toList . unCoinMap
 --
 coinMapValue :: CoinMap a -> Coin
 coinMapValue = mconcat . fmap entryValue . coinMapToList
-
--- | Selects an entry at random from a 'CoinMap', returning both the selected
---   entry and the map with the entry removed.
---
--- If the given map is empty, this function returns 'Nothing'.
---
-coinMapRandomEntry
-    :: MonadRandom m
-    => CoinMap a
-    -> m (Maybe (CoinMapEntry a), CoinMap a)
-coinMapRandomEntry (CoinMap m)
-    | Map.null m =
-        return (Nothing, CoinMap m)
-    | otherwise = do
-        ix <- fromEnum <$> generateBetween 0 (toEnum (Map.size m - 1))
-        let entry = uncurry CoinMapEntry $ Map.elemAt ix m
-        let remainder = CoinMap $ Map.deleteAt ix m
-        return (Just entry, remainder)
 
 --------------------------------------------------------------------------------
 -- Coin Selection
@@ -274,3 +259,25 @@ data CoinSelectionError e
     -- validate the selection.
     --
     deriving (Show, Eq)
+
+--------------------------------------------------------------------------------
+-- Internal Functions
+--------------------------------------------------------------------------------
+
+-- Selects an entry at random from a 'CoinMap', returning both the selected
+-- entry and the map with the entry removed.
+--
+-- If the given map is empty, this function returns 'Nothing'.
+--
+coinMapRandomEntry
+    :: MonadRandom m
+    => CoinMap a
+    -> m (Maybe (CoinMapEntry a), CoinMap a)
+coinMapRandomEntry (CoinMap m)
+    | Map.null m =
+        return (Nothing, CoinMap m)
+    | otherwise = do
+        ix <- fromEnum <$> generateBetween 0 (toEnum (Map.size m - 1))
+        let entry = uncurry CoinMapEntry $ Map.elemAt ix m
+        let remainder = CoinMap $ Map.deleteAt ix m
+        return (Just entry, remainder)
