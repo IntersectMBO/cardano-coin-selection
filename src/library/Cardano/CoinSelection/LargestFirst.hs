@@ -168,7 +168,7 @@ import qualified Internal.Coin as C
 --      See: __'ErrUtxoFullyDepleted'__.
 --
 --  4.  The /number/ of UTxO entries needed to pay for the requested outputs
---      would /exceed/ the upper limit specified by 'calculateInputLimit'.
+--      would /exceed/ the upper limit specified by 'inputLimit'.
 --
 --      See: __'ErrMaximumInputCountExceeded'__.
 --

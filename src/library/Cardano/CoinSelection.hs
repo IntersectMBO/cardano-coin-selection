@@ -268,9 +268,9 @@ data CoinSelectionError
     --
     | ErrMaximumInputCountExceeded Natural
     -- ^ The number of UTxO entries needed to cover the requested payment
-    -- exceeded the upper limit specified by 'calculateInputLimit'.
+    -- exceeded the upper limit specified by 'inputLimit'.
     --
-    -- Records the value of 'calculateInputLimit'.
+    -- Records the value of 'inputLimit'.
     --
     deriving (Show, Eq)
 

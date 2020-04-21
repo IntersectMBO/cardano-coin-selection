@@ -120,7 +120,7 @@ import qualified Internal.Coin as C
 --
 --       * __Condition 3__: when counting cumulatively across all outputs
 --       considered so far, we have not selected more than the /maximum/ number
---       of UTxO entries specified by 'calculateInputLimit'.
+--       of UTxO entries specified by 'inputLimit'.
 --
 --  3.  __Creates a /change value/__ for the output, equal to the total value
 --      of the /final UTxO selection/ for that output minus the value /v/ of
@@ -167,7 +167,7 @@ import qualified Internal.Coin as C
 --      See: __'ErrUtxoFullyDepleted'__.
 --
 --  4.  The /number/ of UTxO entries needed to pay for the requested outputs
---      would /exceed/ the upper limit specified by 'calculateInputLimit'.
+--      would /exceed/ the upper limit specified by 'inputLimit'.
 --
 --      See: __'ErrMaximumInputCountExceeded'__.
 --
