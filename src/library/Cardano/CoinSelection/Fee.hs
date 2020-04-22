@@ -180,7 +180,7 @@ adjustForFee unsafeOpt utxo coinSel = do
 
 -- Calculates the current fee associated with a given 'CoinSelection'.
 --
--- If the result would be less than zero, returns 'Nothing'.
+-- If the result is less than zero, returns 'Nothing'.
 --
 calculateFee :: CoinSelection i o -> Maybe Fee
 calculateFee s = Fee <$> sumInputs s `C.sub` (sumOutputs s `C.add` sumChange s)
