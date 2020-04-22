@@ -92,6 +92,8 @@ import qualified Internal.Coin as C
 --
 -- The fee options are used to balance the coin selections and fix a threshold
 -- for dust that is removed from the selections.
+--
+-- @since 1.0.0
 selectCoins
     :: forall i o . (Ord i, Ord o)
     => FeeOptions i o

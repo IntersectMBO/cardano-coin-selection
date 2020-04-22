@@ -93,6 +93,7 @@ import qualified Internal.Coin as C
 
 -- | Represents a non-negative fee to be paid on a transaction.
 --
+-- @since 1.0.0
 newtype Fee = Fee { unFee :: Coin }
     deriving newtype (Monoid, Semigroup)
     deriving stock (Eq, Generic, Ord)
@@ -113,6 +114,7 @@ newtype Fee = Fee { unFee :: Coin }
 --
 -- See 'coalesceDust'.
 --
+-- @since 1.0.0
 newtype DustThreshold = DustThreshold { unDustThreshold :: Coin }
     deriving stock (Eq, Generic, Ord)
     deriving Show via (Quiet DustThreshold)
@@ -134,6 +136,7 @@ newtype DustThreshold = DustThreshold { unDustThreshold :: Coin }
 -- fees are generally paid for by /adjusting/ a given selection to make a /new/
 -- selection. See 'adjustForFee' for more details of this process.
 --
+-- @since 1.0.0
 newtype FeeEstimator i o = FeeEstimator
     { estimateFee :: CoinSelection i o -> Fee
     } deriving Generic
@@ -144,6 +147,7 @@ newtype FeeEstimator i o = FeeEstimator
 
 -- | Provides options for fee adjustment.
 --
+-- @since 1.0.0
 data FeeOptions i o = FeeOptions
     { feeEstimator
         :: FeeEstimator i o
@@ -300,6 +304,7 @@ data FeeAdjustmentError i o
 --
 -- See 'FeeBalancingPolicy' for more details.
 --
+-- @since 1.0.0
 adjustForFee
     :: (Ord i, MonadRandom m)
     => FeeOptions i o
