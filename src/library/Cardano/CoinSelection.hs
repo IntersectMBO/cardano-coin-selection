@@ -12,7 +12,7 @@
 -- Provides general functions and types relating to coin selection.
 --
 -- The 'CoinSelection' type represents a __coin selection__, the basis for a
--- /transaction/.
+-- /transaction/ in a UTxO-based blockchain.
 --
 -- The 'CoinSelectionAlgorithm' type provides a __common interface__ to
 -- algorithms that generate coin selections.
