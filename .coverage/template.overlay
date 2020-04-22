@@ -1,0 +1,38 @@
+module "Internal.Coin" {
+  tick "getSum" [Record accessor];
+  tick "unCoin" [Record accessor];
+  tick function "==" [derived Eq instance];
+  tick function "compare" [derived Ord instance];
+  tick function "showsPrec" [derived Show instance];
+}
+
+module "Internal.Invariant" {
+  inside "invariant" {
+    tick "error msg" [Never executed invariant];
+  }
+}
+
+module "Internal.Rounding" {
+  tick function "==" [derived Eq instance];
+  tick function "showsPrec" [derived Show instance];
+}
+
+module "Cardano.CoinSelection" {
+  tick function "==" [derived Eq instance];
+  tick function "showsPrec" [derived Show instance];
+
+  tick "calculatedInputLimit" [Record accessor];
+  tick "inputCountAvailable" [Record accessor];
+  tick "inputCountRequired" [Record accessor];
+  tick "inputValueAvailable" [Record accessor];
+  tick "inputValueRequired" [Record accessor];
+  tick "coinSelection" [Record accessor];
+  tick "inputsRemaining" [Record accessor];
+}
+
+module "Cardano.CoinSelection.Fee" {
+  tick function "<>" [derived Monoid instance];
+  tick function "==" [derived Eq instance];
+  tick function "compare" [derived Ord instance];
+  tick function "showsPrec" [derived Show instance];
+}
