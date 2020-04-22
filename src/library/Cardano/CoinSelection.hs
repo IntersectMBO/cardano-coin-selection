@@ -30,7 +30,6 @@ module Cardano.CoinSelection
     , CoinSelectionParameters (..)
     , CoinSelectionResult (..)
     , CoinSelectionLimit (..)
-    , CoinSelectionError (..)
 
       -- * Coins
     , Coin
@@ -43,6 +42,13 @@ module Cardano.CoinSelection
     , coinMapFromList
     , coinMapToList
     , coinMapValue
+
+      -- * Coin Selection Errors
+    , CoinSelectionError (..)
+    , InputValueInsufficientError (..)
+    , InputCountInsufficientError (..)
+    , InputLimitExceededError (..)
+    , InputsExhaustedError (..)
 
       -- # Internal Functions
     , coinMapRandomEntry
@@ -208,7 +214,7 @@ data CoinSelectionResult i o = CoinSelectionResult
     { coinSelection :: CoinSelection i o
         -- ^ The generated coin selection.
     , inputsRemaining :: CoinMap i
-        -- ^ The set of inputs that were not selected.
+        -- ^ The set of inputs that were __not__ selected.
     }
 
 -- | A __coin selection__ is the basis for a /transaction/.
@@ -265,7 +271,7 @@ sumOutputs =  coinMapValue . outputs
 sumChange :: CoinSelection i o -> Coin
 sumChange = mconcat . change
 
--- | Defines an inclusive upper bound on the number of inputs that
+-- | Defines an __inclusive upper bound__ on the /number/ of inputs that
 --   a 'CoinSelectionAlgorithm' is allowed to select.
 --
 newtype CoinSelectionLimit = CoinSelectionLimit
@@ -276,34 +282,68 @@ newtype CoinSelectionLimit = CoinSelectionLimit
     } deriving Generic
 
 -- | Represents the set of possible failures that can occur when attempting
---   to produce a 'CoinSelection'.
+--   to produce a 'CoinSelection' with a 'CoinSelectionAlgorithm'.
+--
+-- See 'selectCoins'.
 --
 data CoinSelectionError
-    = ErrUtxoBalanceInsufficient Coin Coin
-    -- ^ The UTxO balance was insufficient to cover the total payment amount.
-    --
-    -- Records the /UTxO balance/, as well as the /total value/ of the payment
-    -- we tried to make.
-    --
-    | ErrUtxoNotFragmentedEnough Natural Natural
-    -- ^ The UTxO was not fragmented enough to support the required number of
-    -- transaction outputs.
-    --
-    -- Records the /number/ of UTxO entries, as well as the /number/ of the
-    -- transaction outputs.
-    --
-    | ErrUtxoFullyDepleted
-    -- ^ Due to the particular distribution of values within the UTxO set, all
-    -- available UTxO entries were depleted before all the requested
-    -- transaction outputs could be paid for.
-    --
-    | ErrLimitExceeded Natural
-    -- ^ The number of UTxO entries needed to cover the requested payment
-    -- exceeded the upper limit specified by 'limit'.
-    --
-    -- Records the value of 'limit'.
-    --
-    deriving (Show, Eq)
+    = InputValueInsufficient
+        InputValueInsufficientError
+    | InputCountInsufficient
+        InputCountInsufficientError
+    | InputLimitExceeded
+        InputLimitExceededError
+    | InputsExhausted
+        InputsExhaustedError
+    deriving (Eq, Show)
+
+-- | Indicates that the total value of 'inputsAvailable' is less than the total
+--   value of 'outputsRequested', making it /impossible/ to cover all payments,
+--   /regardless/ of which algorithm is chosen.
+--
+data InputValueInsufficientError =
+    InputValueInsufficientError
+    { inputValueAvailable :: Coin
+        -- ^ The total value of 'inputsAvailable'.
+    , inputValueRequired :: Coin
+        -- ^ The total value of 'outputsRequested'.
+    }
+    deriving (Eq, Show)
+
+-- | Indicates that the total count of entries in 'inputsAvailable' is /fewer/
+--   /than/ required by the algorithm. The number required depends on the
+--   particular algorithm implementation.
+--
+data InputCountInsufficientError =
+    InputCountInsufficientError
+    { inputCountAvailable :: Natural
+        -- ^ The number of entries in 'inputsAvailable'.
+    , inputCountRequired :: Natural
+        -- ^ The number of entries required.
+    }
+    deriving (Eq, Show)
+
+-- | Indicates that all available entries in 'inputsAvailable' were depleted
+--   /before/ all the payments in 'outputsRequested' could be paid for.
+--
+-- This condition can occur /even if/ the total value of 'inputsAvailable' is
+-- greater than or equal to the total value of 'outputsRequested', due to
+-- differences in the way that algorithms select inputs.
+--
+data InputsExhaustedError =
+    InputsExhaustedError
+    deriving (Eq, Show)
+
+-- | Indicates that the coin selection algorithm is unable to cover the total
+--   value of 'outputsRequested' without exceeding the maximum number of inputs
+--   defined by 'limit'.
+--
+-- See 'calculateLimit'.
+--
+newtype InputLimitExceededError =
+    InputLimitExceededError
+    { calculatedInputLimit :: Word8 }
+    deriving (Eq, Show)
 
 --------------------------------------------------------------------------------
 -- Internal Functions

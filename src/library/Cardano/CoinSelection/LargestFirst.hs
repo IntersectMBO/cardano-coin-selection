@@ -22,6 +22,10 @@ import Cardano.CoinSelection
     , CoinSelectionLimit (..)
     , CoinSelectionParameters (..)
     , CoinSelectionResult (..)
+    , InputCountInsufficientError (..)
+    , InputLimitExceededError (..)
+    , InputValueInsufficientError (..)
+    , InputsExhaustedError (..)
     , coinMapFromList
     , coinMapToList
     , coinMapValue
@@ -151,7 +155,7 @@ import qualified Internal.Coin as C
 --      /available/) is /less than/ the total value of the output list (the
 --      amount of money /required/).
 --
---      See: __'ErrUtxoBalanceInsufficient'__.
+--      See: __'InputValueInsufficientError'__.
 --
 --  2.  The /number/ of entries in the initial UTxO set is /smaller than/ the
 --      number of requested outputs.
@@ -159,18 +163,18 @@ import qualified Internal.Coin as C
 --      Due to the nature of the algorithm, /at least one/ UTxO entry is
 --      required /for each/ output.
 --
---      See: __'ErrUtxoNotFragmentedEnough'__.
+--      See: __'InputCountInsufficientError'__.
 --
 --  3.  Due to the particular /distribution/ of values within the initial UTxO
 --      set, the algorithm depletes all entries from the UTxO set /before/ it
 --      is able to pay for all requested outputs.
 --
---      See: __'ErrUtxoFullyDepleted'__.
+--      See: __'InputsExhaustedError'__.
 --
 --  4.  The /number/ of UTxO entries needed to pay for the requested outputs
 --      would /exceed/ the upper limit specified by 'limit'.
 --
---      See: __'ErrLimitExceeded'__.
+--      See: __'InputLimitExceededError'__.
 --
 largestFirst
     :: (Ord i, Ord o, Monad m)
@@ -190,13 +194,20 @@ payForOutputs params =
   where
     errorCondition
       | amountAvailable < amountRequested =
-          ErrUtxoBalanceInsufficient amountAvailable amountRequested
+          InputValueInsufficient $
+              InputValueInsufficientError
+                  amountAvailable amountRequested
       | utxoCount < outputCount =
-          ErrUtxoNotFragmentedEnough utxoCount outputCount
+          InputCountInsufficient $
+              InputCountInsufficientError
+                  utxoCount outputCount
       | utxoCount <= inputCountMax =
-          ErrUtxoFullyDepleted
+          InputsExhausted
+              InputsExhaustedError
       | otherwise =
-          ErrLimitExceeded inputCountMax
+          InputLimitExceeded $
+              InputLimitExceededError $
+                  fromIntegral inputCountMax
     amountAvailable =
         coinMapValue $ inputsAvailable params
     amountRequested =

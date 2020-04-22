@@ -18,6 +18,10 @@ import Cardano.CoinSelection
     , CoinSelectionLimit (..)
     , CoinSelectionParameters (..)
     , CoinSelectionResult (..)
+    , InputCountInsufficientError (..)
+    , InputLimitExceededError (..)
+    , InputValueInsufficientError (..)
+    , InputsExhaustedError (..)
     , coinMapToList
     )
 import Cardano.CoinSelection.LargestFirst
@@ -113,7 +117,7 @@ spec = do
 
         coinSelectionUnitTest largestFirst
             "UTxO balance not sufficient"
-            (Left $ ErrUtxoBalanceInsufficient
+            (Left $ InputValueInsufficient $ InputValueInsufficientError
                 (unsafeCoin @Int 39) (unsafeCoin @Int 40))
             (CoinSelectionFixture
                 { maxNumOfInputs = 100
@@ -123,7 +127,7 @@ spec = do
 
         coinSelectionUnitTest largestFirst
             "UTxO balance not sufficient, and not fragmented enough"
-            (Left $ ErrUtxoBalanceInsufficient
+            (Left $ InputValueInsufficient $ InputValueInsufficientError
                 (unsafeCoin @Int 39) (unsafeCoin @Int 43))
             (CoinSelectionFixture
                 { maxNumOfInputs = 100
@@ -133,7 +137,7 @@ spec = do
 
         coinSelectionUnitTest largestFirst
             "UTxO balance sufficient, but not fragmented enough"
-            (Left $ ErrUtxoNotFragmentedEnough 3 4)
+            (Left $ InputCountInsufficient $ InputCountInsufficientError 3 4)
             (CoinSelectionFixture
                 { maxNumOfInputs = 100
                 , utxoInputs = [12,20,17]
@@ -143,7 +147,7 @@ spec = do
         coinSelectionUnitTest largestFirst
             "UTxO balance sufficient, fragmented enough, but single output \
             \depletes all UTxO entries"
-            (Left ErrUtxoFullyDepleted)
+            (Left (InputsExhausted InputsExhaustedError))
             (CoinSelectionFixture
                 { maxNumOfInputs = 100
                 , utxoInputs = [12,20,17]
@@ -153,7 +157,7 @@ spec = do
         coinSelectionUnitTest largestFirst
             "UTxO balance sufficient, fragmented enough, but single output \
             \depletes all UTxO entries"
-            (Left ErrUtxoFullyDepleted)
+            (Left (InputsExhausted InputsExhaustedError))
             (CoinSelectionFixture
                 { maxNumOfInputs = 100
                 , utxoInputs = [20,20,10,5]
@@ -163,7 +167,7 @@ spec = do
         coinSelectionUnitTest largestFirst
             "UTxO balance sufficient, fragmented enough, but maximum input \
             \count exceeded"
-            (Left $ ErrLimitExceeded 9)
+            (Left $ InputLimitExceeded $ InputLimitExceededError 9)
             (CoinSelectionFixture
                 { maxNumOfInputs = 9
                 , utxoInputs = replicate 100 1
@@ -173,7 +177,7 @@ spec = do
         coinSelectionUnitTest largestFirst
             "UTxO balance sufficient, fragmented enough, but maximum input \
             \count exceeded"
-            (Left $ ErrLimitExceeded 9)
+            (Left $ InputLimitExceeded $ InputLimitExceededError 9)
             (CoinSelectionFixture
                 { maxNumOfInputs = 9
                 , utxoInputs = replicate 100 1
@@ -183,7 +187,7 @@ spec = do
         coinSelectionUnitTest largestFirst
             "UTxO balance sufficient, fragmented enough, but maximum input \
             \count exceeded"
-            (Left $ ErrLimitExceeded 2)
+            (Left $ InputLimitExceeded $ InputLimitExceededError 2)
             (CoinSelectionFixture
                 { maxNumOfInputs = 2
                 , utxoInputs = [1,2,10,6,5]

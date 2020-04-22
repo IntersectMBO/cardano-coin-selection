@@ -16,6 +16,10 @@ import Cardano.CoinSelection
     , CoinSelectionLimit (..)
     , CoinSelectionParameters (..)
     , CoinSelectionResult (..)
+    , InputCountInsufficientError (..)
+    , InputLimitExceededError (..)
+    , InputValueInsufficientError (..)
+    , InputsExhaustedError (..)
     )
 import Cardano.CoinSelection.LargestFirst
     ( largestFirst )
@@ -150,7 +154,7 @@ spec = do
 
         coinSelectionUnitTest randomImprove
             "enough funds, proper fragmentation, inputs depleted"
-            (Left ErrUtxoFullyDepleted)
+            (Left (InputsExhausted InputsExhaustedError))
             (CoinSelectionFixture
                 { maxNumOfInputs = 100
                 , utxoInputs = [10,10,10,10]
@@ -158,7 +162,7 @@ spec = do
                 })
 
         coinSelectionUnitTest randomImprove ""
-            (Left $ ErrLimitExceeded 2)
+            (Left $ InputLimitExceeded $ InputLimitExceededError 2)
             (CoinSelectionFixture
                 { maxNumOfInputs = 2
                 , utxoInputs = [1,1,1,1,1,1]
@@ -166,7 +170,7 @@ spec = do
                 })
 
         coinSelectionUnitTest randomImprove "each output needs <maxNumOfInputs"
-            (Left $ ErrLimitExceeded 9)
+            (Left $ InputLimitExceeded $ InputLimitExceededError 9)
             (CoinSelectionFixture
                 { maxNumOfInputs = 9
                 , utxoInputs = replicate 100 1
@@ -174,7 +178,7 @@ spec = do
                 })
 
         coinSelectionUnitTest randomImprove "each output needs >maxNumInputs"
-            (Left $ ErrLimitExceeded 9)
+            (Left $ InputLimitExceeded $ InputLimitExceededError 9)
             (CoinSelectionFixture
                 { maxNumOfInputs = 9
                 , utxoInputs = replicate 100 1
@@ -182,7 +186,7 @@ spec = do
                 })
 
         coinSelectionUnitTest randomImprove ""
-            (Left $ ErrUtxoBalanceInsufficient
+            (Left $ InputValueInsufficient $ InputValueInsufficientError
                 (unsafeCoin @Int 39) (unsafeCoin @Int 40))
             (CoinSelectionFixture
                 { maxNumOfInputs = 100
@@ -191,7 +195,7 @@ spec = do
                 })
 
         coinSelectionUnitTest randomImprove ""
-            (Left $ ErrUtxoBalanceInsufficient
+            (Left $ InputValueInsufficient $ InputValueInsufficientError
                 (unsafeCoin @Int 39) (unsafeCoin @Int 43))
             (CoinSelectionFixture
                 { maxNumOfInputs = 100
@@ -200,7 +204,7 @@ spec = do
                 })
 
         coinSelectionUnitTest randomImprove ""
-            (Left $ ErrUtxoNotFragmentedEnough 3 4)
+            (Left $ InputCountInsufficient $ InputCountInsufficientError 3 4)
             (CoinSelectionFixture
                 { maxNumOfInputs = 100
                 , utxoInputs = [12,20,17]
