@@ -163,7 +163,7 @@ spec = do
         coinSelectionUnitTest largestFirst
             "UTxO balance sufficient, fragmented enough, but maximum input \
             \count exceeded"
-            (Left $ ErrMaximumInputCountExceeded 9)
+            (Left $ ErrLimitExceeded 9)
             (CoinSelectionFixture
                 { maxNumOfInputs = 9
                 , utxoInputs = replicate 100 1
@@ -173,7 +173,7 @@ spec = do
         coinSelectionUnitTest largestFirst
             "UTxO balance sufficient, fragmented enough, but maximum input \
             \count exceeded"
-            (Left $ ErrMaximumInputCountExceeded 9)
+            (Left $ ErrLimitExceeded 9)
             (CoinSelectionFixture
                 { maxNumOfInputs = 9
                 , utxoInputs = replicate 100 1
@@ -183,7 +183,7 @@ spec = do
         coinSelectionUnitTest largestFirst
             "UTxO balance sufficient, fragmented enough, but maximum input \
             \count exceeded"
-            (Left $ ErrMaximumInputCountExceeded 2)
+            (Left $ ErrLimitExceeded 2)
             (CoinSelectionFixture
                 { maxNumOfInputs = 2
                 , utxoInputs = [1,2,10,6,5]

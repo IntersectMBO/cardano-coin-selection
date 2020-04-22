@@ -170,7 +170,7 @@ import qualified Internal.Coin as C
 --  4.  The /number/ of UTxO entries needed to pay for the requested outputs
 --      would /exceed/ the upper limit specified by 'limit'.
 --
---      See: __'ErrMaximumInputCountExceeded'__.
+--      See: __'ErrLimitExceeded'__.
 --
 largestFirst
     :: (Ord i, Ord o, Monad m)
@@ -196,7 +196,7 @@ payForOutputs params =
       | utxoCount <= inputCountMax =
           ErrUtxoFullyDepleted
       | otherwise =
-          ErrMaximumInputCountExceeded inputCountMax
+          ErrLimitExceeded inputCountMax
     amountAvailable =
         coinMapValue $ inputsAvailable params
     amountRequested =

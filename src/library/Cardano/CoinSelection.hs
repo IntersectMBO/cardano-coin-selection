@@ -297,7 +297,7 @@ data CoinSelectionError
     -- available UTxO entries were depleted before all the requested
     -- transaction outputs could be paid for.
     --
-    | ErrMaximumInputCountExceeded Natural
+    | ErrLimitExceeded Natural
     -- ^ The number of UTxO entries needed to cover the requested payment
     -- exceeded the upper limit specified by 'limit'.
     --

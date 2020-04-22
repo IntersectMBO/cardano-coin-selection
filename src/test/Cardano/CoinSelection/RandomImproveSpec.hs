@@ -158,7 +158,7 @@ spec = do
                 })
 
         coinSelectionUnitTest randomImprove ""
-            (Left $ ErrMaximumInputCountExceeded 2)
+            (Left $ ErrLimitExceeded 2)
             (CoinSelectionFixture
                 { maxNumOfInputs = 2
                 , utxoInputs = [1,1,1,1,1,1]
@@ -166,7 +166,7 @@ spec = do
                 })
 
         coinSelectionUnitTest randomImprove "each output needs <maxNumOfInputs"
-            (Left $ ErrMaximumInputCountExceeded 9)
+            (Left $ ErrLimitExceeded 9)
             (CoinSelectionFixture
                 { maxNumOfInputs = 9
                 , utxoInputs = replicate 100 1
@@ -174,7 +174,7 @@ spec = do
                 })
 
         coinSelectionUnitTest randomImprove "each output needs >maxNumInputs"
-            (Left $ ErrMaximumInputCountExceeded 9)
+            (Left $ ErrLimitExceeded 9)
             (CoinSelectionFixture
                 { maxNumOfInputs = 9
                 , utxoInputs = replicate 100 1
