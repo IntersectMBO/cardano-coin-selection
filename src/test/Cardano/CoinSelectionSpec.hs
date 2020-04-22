@@ -334,7 +334,7 @@ coinSelectionUnitTest alg lbl expected (CoinSelectionFixture n utxoF outsF) =
         result <- runExceptT $ do
             CoinSelectionResult (CoinSelection inps outs chngs) _ <-
                 selectCoins alg $
-                    CoinSelectionParameters maxInputCount utxo txOuts
+                    CoinSelectionParameters utxo txOuts selectionLimit
             return $ CoinSelectionTestResult
                 { rsInputs = coinToIntegral . entryValue <$> coinMapToList inps
                 , rsChange = coinToIntegral <$> chngs
@@ -343,7 +343,7 @@ coinSelectionUnitTest alg lbl expected (CoinSelectionFixture n utxoF outsF) =
         fmap sortCoinSelectionTestResult result
             `shouldBe` fmap sortCoinSelectionTestResult expected
   where
-    maxInputCount = CoinSelectionLimit $ const n
+    selectionLimit = CoinSelectionLimit $ const n
 
     title :: String
     title = mempty

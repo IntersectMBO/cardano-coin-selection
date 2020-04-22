@@ -216,8 +216,8 @@ propAtLeast (CoinSelProp utxo txOuts) =
     prop (CoinSelection inps _ _) =
         length inps `shouldSatisfy` (>= length txOuts)
     selection = runIdentity $ runExceptT $ selectCoins largestFirst
-        $ CoinSelectionParameters limit utxo txOuts
-    limit = CoinSelectionLimit $ const 100
+        $ CoinSelectionParameters utxo txOuts selectionLimit
+    selectionLimit = CoinSelectionLimit $ const 100
 
 propInputDecreasingOrder
     :: (Ord i, Ord o)
@@ -239,5 +239,5 @@ propInputDecreasingOrder (CoinSelProp utxo txOuts) =
     selection = runIdentity
         $ runExceptT
         $ selectCoins largestFirst
-        $ CoinSelectionParameters limit utxo txOuts
-    limit = CoinSelectionLimit $ const 100
+        $ CoinSelectionParameters utxo txOuts selectionLimit
+    selectionLimit = CoinSelectionLimit $ const 100

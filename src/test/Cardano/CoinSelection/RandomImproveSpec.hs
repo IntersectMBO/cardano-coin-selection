@@ -237,8 +237,8 @@ propFragmentation drg (CoinSelProp utxo txOuts) = do
         runExceptT $ selectCoins randomImprove params
     selection2 = runIdentity $ runExceptT $
         selectCoins largestFirst params
-    limit = CoinSelectionLimit $ const 100
-    params = CoinSelectionParameters limit txOuts utxo
+    selectionLimit = CoinSelectionLimit $ const 100
+    params = CoinSelectionParameters txOuts utxo selectionLimit
 
 propErrors
     :: (Ord i, Ord o)
@@ -256,5 +256,5 @@ propErrors drg (CoinSelProp utxo txOuts) = do
         runExceptT $ selectCoins randomImprove params
     selection2 = runIdentity $ runExceptT $
         selectCoins largestFirst params
-    limit = CoinSelectionLimit $ const 1
-    params = CoinSelectionParameters limit txOuts utxo
+    selectionLimit = CoinSelectionLimit $ const 1
+    params = CoinSelectionParameters txOuts utxo selectionLimit

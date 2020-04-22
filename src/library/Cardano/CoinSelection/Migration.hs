@@ -200,4 +200,4 @@ idealBatchSize coinselOpts = fixPoint 1
         | otherwise = fixPoint (n + 1)
       where
         maxN :: Word8 -> Word8
-        maxN = calculateInputLimit coinselOpts
+        maxN = calculateLimit coinselOpts

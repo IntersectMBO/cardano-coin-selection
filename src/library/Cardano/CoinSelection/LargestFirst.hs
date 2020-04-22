@@ -168,7 +168,7 @@ import qualified Internal.Coin as C
 --      See: __'ErrUtxoFullyDepleted'__.
 --
 --  4.  The /number/ of UTxO entries needed to pay for the requested outputs
---      would /exceed/ the upper limit specified by 'inputLimit'.
+--      would /exceed/ the upper limit specified by 'limit'.
 --
 --      See: __'ErrMaximumInputCountExceeded'__.
 --
@@ -202,7 +202,7 @@ payForOutputs params =
     amountRequested =
         coinMapValue $ outputsRequested params
     inputCountMax = fromIntegral
-        $ calculateInputLimit (inputLimit params)
+        $ calculateLimit (limit params)
         $ fromIntegral outputCount
     outputCount =
         fromIntegral $ length $ coinMapToList $ outputsRequested params

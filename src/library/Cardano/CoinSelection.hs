@@ -11,28 +11,16 @@
 --
 -- Provides general functions and types relating to coin selection.
 --
--- The 'CoinSelectionAlgorithm' type provides a __common interface__ to coin
--- selection algorithms.
+-- The 'CoinSelection' type represents a __coin selection__, the basis for a
+-- /transaction/.
 --
--- The 'CoinSelection' type represents the __result__ of running a coin
--- selection algorithm.
+-- The 'CoinSelectionAlgorithm' type provides a __common interface__ to
+-- algorithms that generate coin selections.
 --
 module Cardano.CoinSelection
     (
-      -- * Coins
-      Coin
-    , coinFromNatural
-    , coinToNatural
-
-      -- * Coin Maps
-    , CoinMap (..)
-    , CoinMapEntry (..)
-    , coinMapFromList
-    , coinMapToList
-    , coinMapValue
-
       -- * Coin Selections
-    , CoinSelection (..)
+      CoinSelection (..)
     , sumInputs
     , sumOutputs
     , sumChange
@@ -43,6 +31,18 @@ module Cardano.CoinSelection
     , CoinSelectionResult (..)
     , CoinSelectionLimit (..)
     , CoinSelectionError (..)
+
+      -- * Coins
+    , Coin
+    , coinFromNatural
+    , coinToNatural
+
+      -- * Coin Maps
+    , CoinMap (..)
+    , CoinMapEntry (..)
+    , coinMapFromList
+    , coinMapToList
+    , coinMapValue
 
       -- # Internal Functions
     , coinMapRandomEntry
@@ -147,23 +147,10 @@ coinMapValue = mconcat . fmap entryValue . coinMapToList
 
 -- | Provides a __common interface__ for coin selection algorithms.
 --
--- The function 'selectCoins', when applied to the given /initial UTxO set/
--- and /output set/, generates a 'CoinSelection' that is capable of paying
--- for all of the outputs, and a /remaining UTxO set/ from which all spent
--- values have been removed.
---
--- Each entry in the /initial UTxO set/ refers to a unique unspent output from
--- a previous transaction, together with its corresponding value. The algorithm
--- will select from among the entries in this set to pay for entries in the
--- output set, placing the selected entries in the 'inputs' field of the
--- resulting 'CoinSelection'.
---
--- Each entry in the /output set/ refers to a unique payment recipient together
--- with the value to pay to that recipient. The 'outputs' field of the
--- resulting 'CoinSelection' will be equal to this set.
---
--- The total value of the initial UTxO set must be /greater than or equal to/
--- the total value of the output set, as given by the 'coinMapValue' function.
+-- The function 'selectCoins', when applied to the given
+-- 'CoinSelectionParameters' object (with /available inputs/ and /requested/
+-- /outputs/), will generate a 'CoinSelectionResult' (with /remaining inputs/
+-- and a /coin selection/).
 --
 newtype CoinSelectionAlgorithm i o m = CoinSelectionAlgorithm
     { selectCoins
@@ -173,13 +160,43 @@ newtype CoinSelectionAlgorithm i o m = CoinSelectionAlgorithm
 
 -- | The complete set of parameters required for a 'CoinSelectionAlgorithm'.
 --
+-- The 'inputsAvailable' and 'outputsRequested' fields are both maps of unique
+-- keys to associated 'Coin' values, where:
+--
+--   * Each key-value pair in the 'inputsAvailable' map corresponds to an
+--     __unspent output__ from a previous transaction that is /available/
+--     /for selection as an input/ by the coin selection algorithm. The /key/
+--     is a unique reference to that output, and the /value/ is the amount of
+--     unspent value associated with it.
+--
+--   * Each key-value pair in the 'outputsRequested' map corresponds to a
+--     __payment__ whose value is /to be paid for/ by the coin selection
+--     algorithm. The /key/ is a unique reference to a payment recipient,
+--     and the /value/ is the amount of money to pay to that recipient.
+--
+-- A coin selection algorithm will select a __subset__ of inputs from
+-- 'inputsAvailable' in order to pay for __all__ the outputs in
+-- 'outputsRequested', where:
+--
+--   * Inputs __selected__ by the algorithm are included in the 'inputs'
+--     set of the generated 'CoinSelection'.
+--
+--   * Inputs __not__ selected by the algorithm are included in the
+--     'inputsRemaining' set of the 'CoinSelectionResult'.
+--
+-- The number of inputs that can selected is limited by 'limit'.
+--
+-- The total value of 'inputsAvailable' must be /greater than or equal to/
+-- the total value of 'outputsRequested', as given by the 'coinMapValue'
+-- function.
+--
 data CoinSelectionParameters i o = CoinSelectionParameters
-    { inputLimit :: CoinSelectionLimit
-        -- ^ A limit on the number of inputs that can be selected.
-    , inputsAvailable :: CoinMap i
+    { inputsAvailable :: CoinMap i
         -- ^ The set of inputs available for selection.
     , outputsRequested :: CoinMap o
         -- ^ The set of outputs requested for payment.
+    , limit :: CoinSelectionLimit
+        -- ^ A limit on the number of inputs that can be selected.
     }
     deriving Generic
 
@@ -189,26 +206,40 @@ data CoinSelectionParameters i o = CoinSelectionParameters
 --
 data CoinSelectionResult i o = CoinSelectionResult
     { coinSelection :: CoinSelection i o
-        -- ^ The coin selection.
+        -- ^ The generated coin selection.
     , inputsRemaining :: CoinMap i
         -- ^ The set of inputs that were not selected.
     }
 
--- | Represents a selection of inputs, outputs, and change.
+-- | A __coin selection__ is the basis for a /transaction/.
 --
--- A coin selection is the basis for a transaction.
+-- It consists of a selection of 'inputs', 'outputs', and 'change'.
+--
+-- The 'inputs' and 'outputs' fields are both maps of unique keys to associated
+-- 'Coin' values, where:
+--
+--   * Each key-value pair in the 'inputs' map corresponds to an
+--     __unspent output__ from a previous transaction (also known as a UTxO).
+--     The /key/ is a unique reference to that output, and the /value/ is the
+--     amount of unspent value associated with it.
+--
+--   * Each key-value pair in the 'outputs' map corresponds to a __payment__.
+--     The /key/ is a unique reference to a payment recipient, and the /value/
+--     is the amount of money to pay to that recipient.
+--
+-- The 'change' field is a set of coins to be returned to the originator of the
+-- transaction.
+--
+-- The 'CoinSelectionAlgorithm' type provides a common interface for generating
+-- coin selections.
 --
 data CoinSelection i o = CoinSelection
     { inputs :: CoinMap i
-      -- ^ A __subset__ of the original UTxO set that was passed to the coin
-      -- selection algorithm, containing __only__ the entries that were
-      -- selected by the coin selection algorithm.
+      -- ^ The set of inputs.
     , outputs :: CoinMap o
-      -- ^ The original set of output payments passed to the coin selection
-      -- algorithm, whose total value is covered by the 'inputs'.
+      -- ^ The set of outputs.
     , change :: [Coin]
-      -- ^ A set of change values to be paid back to the originator of the
-      -- payment.
+      -- ^ The set of change.
     }
     deriving (Generic, Show, Eq)
 
@@ -238,7 +269,7 @@ sumChange = mconcat . change
 --   a 'CoinSelectionAlgorithm' is allowed to select.
 --
 newtype CoinSelectionLimit = CoinSelectionLimit
-    { calculateInputLimit
+    { calculateLimit
         :: Word8 -> Word8
             -- ^ Calculate the maximum number of inputs allowed for a given
             -- number of outputs.
@@ -268,9 +299,9 @@ data CoinSelectionError
     --
     | ErrMaximumInputCountExceeded Natural
     -- ^ The number of UTxO entries needed to cover the requested payment
-    -- exceeded the upper limit specified by 'inputLimit'.
+    -- exceeded the upper limit specified by 'limit'.
     --
-    -- Records the value of 'inputLimit'.
+    -- Records the value of 'limit'.
     --
     deriving (Show, Eq)
 
