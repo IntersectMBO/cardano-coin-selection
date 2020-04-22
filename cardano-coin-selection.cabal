@@ -19,6 +19,11 @@ source-repository head
   type:     git
   location: https://github.com/input-output-hk/cardano-coin-selection.git
 
+flag release
+  description: Compile for a release.
+  manual: True
+  default: False
+
 flag werror
     description: Enable `-Werror`
     default: False
