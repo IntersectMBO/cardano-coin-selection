@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
+{-# OPTIONS_HADDOCK hide #-}
 
 -- |
 -- Copyright: © 2018-2020 IOHK

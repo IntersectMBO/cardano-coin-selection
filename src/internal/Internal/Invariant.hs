@@ -1,3 +1,5 @@
+{-# OPTIONS_HADDOCK hide #-}
+
 -- |
 -- Copyright: © 2018-2020 IOHK
 -- License: Apache-2.0

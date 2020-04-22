@@ -1,0 +1,81 @@
+name:                cardano-coin-selection
+version:             1.0.0
+github:              input-output-hk/cardano-coin-selection
+license:             Apache-2.0
+author:              IOHK
+maintainer:          operations@iohk.io
+copyright:           2020 IOHK
+synopsis:            Algorithms for coin selection and fee balancing.
+category:            Cardano
+
+extra-source-files:
+- ChangeLog.md
+
+description: |
+  Please see the README on GitHub at <https://github.com/input-output-hk/cardano-coin-selection>
+
+dependencies:
+- base >= 4.7 && < 5
+
+flags:
+  release:
+    description: Compile executables for a release.
+    default: False
+    manual: True
+
+library:
+  source-dirs:
+  - src/library
+  - src/internal
+  ghc-options:
+  - -Wcompat
+  - -fwarn-redundant-constraints
+  when:
+  - condition: flag(release)
+    ghc-options:
+    - -Werror
+    - -Wall
+  default-extensions:
+  - NoImplicitPrelude
+  dependencies:
+  - bytestring
+  - containers
+  - cryptonite
+  - deepseq
+  - quiet
+  - quiet
+  - text
+  - transformers
+
+tests:
+  unit:
+    source-dirs: src/test
+    main: Spec.hs
+    default-extensions:
+    - NoImplicitPrelude
+    ghc-options:
+    - -Wcompat
+    - -fwarn-redundant-constraints
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    when:
+    - condition: flag(release)
+      ghc-options:
+      - -Werror
+      - -Wall
+    dependencies:
+    - bytestring
+    - cardano-coin-selection
+    - containers
+    - cryptonite
+    - deepseq
+    - fmt
+    - hspec
+    - memory
+    - QuickCheck
+    - random
+    - quiet
+    - text
+    - transformers
+    - vector

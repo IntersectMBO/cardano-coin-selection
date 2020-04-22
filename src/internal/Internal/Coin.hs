@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# OPTIONS_HADDOCK hide #-}
 
 -- |
 -- Copyright: © 2018-2020 IOHK
