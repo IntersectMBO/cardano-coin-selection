@@ -9,36 +9,32 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# OPTIONS_HADDOCK prune #-}
 
 -- |
 -- Copyright: © 2018-2020 IOHK
 -- License: Apache-2.0
 --
--- Provides the API of Coin Selection algorithm and Fee Calculation
--- This module contains the implementation of adjusting coin selection for a
--- fee.  The sender pays for the fee and additional inputs are picked randomly.
--- For more information refer to:
--- https://iohk.io/blog/self-organisation-in-coin-selection/
-
+-- Provides functionality for __adjusting__ coin selections in order to pay for
+-- transaction __fees__.
+--
 module Cardano.CoinSelection.Fee
     (
-      -- * Fee Calculation
+      -- * Fundamental Types
       Fee (..)
-    , calculateFee
-    , distributeFee
+    , FeeEstimator (..)
+    , DustThreshold (..)
 
       -- * Fee Adjustment
-    , FeeEstimator (..)
-    , FeeOptions (..)
-    , ErrAdjustForFee(..)
     , adjustForFee
-    , reduceChangeOutputs
+    , FeeOptions (..)
+    , FeeAdjustmentError (..)
 
-      -- * Dust Processing
-    , DustThreshold (..)
+      -- # Internal Functions
+    , calculateFee
     , coalesceDust
-
-      -- * Coin Splitting
+    , distributeFee
+    , reduceChangeOutputs
     , splitCoin
 
     ) where
@@ -92,7 +88,7 @@ import qualified Data.List.NonEmpty as NE
 import qualified Internal.Coin as C
 
 --------------------------------------------------------------------------------
--- Types
+-- Fundamental Types
 --------------------------------------------------------------------------------
 
 -- | Represents a non-negative fee to be paid on a transaction.
@@ -105,26 +101,11 @@ newtype Fee = Fee { unFee :: Coin }
 -- | Defines the maximum size of a dust coin.
 --
 -- Change values that are less than or equal to this threshold will not be
--- included in coin selections.
+-- included in coin selections produced by the 'adjustForFee' function.
 --
 newtype DustThreshold = DustThreshold { unDustThreshold :: Coin }
     deriving stock (Eq, Generic, Ord)
     deriving Show via (Quiet DustThreshold)
-
---------------------------------------------------------------------------------
--- Fee Calculation
---------------------------------------------------------------------------------
-
--- | Calculates the current fee associated with a given 'CoinSelection'.
---
--- If the result would be less than zero, returns 'Nothing'.
---
-calculateFee :: CoinSelection i o -> Maybe Fee
-calculateFee s = Fee <$> sumInputs s `C.sub` (sumOutputs s `C.add` sumChange s)
-
---------------------------------------------------------------------------------
--- Fee Adjustment
---------------------------------------------------------------------------------
 
 -- | Provides a function capable of estimating the fee for a given coin
 --   selection.
@@ -136,7 +117,11 @@ newtype FeeEstimator i o = FeeEstimator
     { estimateFee :: CoinSelection i o -> Fee
     } deriving Generic
 
--- | Provides options for fee balancing.
+--------------------------------------------------------------------------------
+-- Fee Adjustment
+--------------------------------------------------------------------------------
+
+-- | Provides options for fee adjustment.
 --
 data FeeOptions i o = FeeOptions
     { feeEstimator
@@ -145,7 +130,7 @@ data FeeOptions i o = FeeOptions
         :: DustThreshold
     } deriving Generic
 
-newtype ErrAdjustForFee
+newtype FeeAdjustmentError
     = ErrCannotCoverFee Fee
     -- ^ UTxO exhausted during fee covering
     -- We record what amount missed to cover the fee
@@ -181,7 +166,7 @@ adjustForFee
     => FeeOptions i o
     -> CoinMap i
     -> CoinSelection i o
-    -> ExceptT ErrAdjustForFee m (CoinSelection i o)
+    -> ExceptT FeeAdjustmentError m (CoinSelection i o)
 adjustForFee unsafeOpt utxo coinSel = do
     let opt = invariant
             "adjustForFee: fee must be non-null" unsafeOpt (not . nullFee)
@@ -189,20 +174,32 @@ adjustForFee unsafeOpt utxo coinSel = do
   where
     nullFee opt = estimateFee (feeEstimator opt) coinSel == Fee C.zero
 
--- | The sender pays fee in this scenario, so fees are removed from the change
+--------------------------------------------------------------------------------
+-- Internal Functions
+--------------------------------------------------------------------------------
+
+-- Calculates the current fee associated with a given 'CoinSelection'.
+--
+-- If the result is less than zero, returns 'Nothing'.
+--
+calculateFee :: CoinSelection i o -> Maybe Fee
+calculateFee s = Fee <$> sumInputs s `C.sub` (sumOutputs s `C.add` sumChange s)
+
+-- The sender pays fee in this scenario, so fees are removed from the change
 -- outputs, and new inputs are selected if necessary.
+--
 senderPaysFee
     :: forall i o m . (Ord i, Show i, Show o, MonadRandom m)
     => FeeOptions i o
     -> CoinMap i
     -> CoinSelection i o
-    -> ExceptT ErrAdjustForFee m (CoinSelection i o)
+    -> ExceptT FeeAdjustmentError m (CoinSelection i o)
 senderPaysFee FeeOptions {feeEstimator, dustThreshold} utxo sel =
     evalStateT (go sel) utxo
   where
     go
         :: CoinSelection i o
-        -> StateT (CoinMap i) (ExceptT ErrAdjustForFee m) (CoinSelection i o)
+        -> StateT (CoinMap i) (ExceptT FeeAdjustmentError m) (CoinSelection i o)
     go coinSel@(CoinSelection inps outs chgs) = do
         -- 1/
         -- We compute fees using all inputs, outputs and changes since all of
@@ -238,12 +235,13 @@ senderPaysFee FeeOptions {feeEstimator, dustThreshold} utxo sel =
             let extraChange = splitCoin (sumEntries inps') chgs
             go $ CoinSelection (inps <> coinMapFromList inps') outs extraChange
 
--- | A short / simple version of the 'random' fee policy to cover for fee in
--- case where existing change were not enough.
+-- A short and simple version of the 'random' fee policy to cover for the fee
+-- in the case where existing set of change is not enough.
+--
 coverRemainingFee
     :: MonadRandom m
     => Fee
-    -> StateT (CoinMap i) (ExceptT ErrAdjustForFee m) [CoinMapEntry i]
+    -> StateT (CoinMap i) (ExceptT FeeAdjustmentError m) [CoinMapEntry i]
 coverRemainingFee (Fee fee) = go [] where
     go acc
         | sumEntries acc >= fee =
@@ -257,9 +255,9 @@ coverRemainingFee (Fee fee) = go [] where
                     lift $ throwE $ ErrCannotCoverFee $ Fee $
                         fee `C.distance` (sumEntries acc)
 
--- | Pays for the given fee by subtracting it from the given list of change
---   outputs, so that each change output is reduced by a portion of the fee
---   that's in proportion to its relative size.
+-- Pays for the given fee by subtracting it from the given list of change
+-- outputs, so that each change output is reduced by a portion of the fee
+-- that's in proportion to its relative size.
 --
 -- == Basic Examples
 --
@@ -309,8 +307,8 @@ reduceChangeOutputs threshold (Fee totalFee) changeOutputs
 
     totalChange = F.fold changeOutputs
 
--- | Distribute the given fee over the given list of coins, so that each coin
---   is allocated a __fraction__ of the fee in proportion to its relative size.
+-- Distribute the given fee over the given list of coins, so that each coin
+-- is allocated a __fraction__ of the fee in proportion to its relative size.
 --
 -- == Pre-condition
 --
@@ -414,9 +412,9 @@ distributeFee (Fee feeTotal) coinsUnsafe =
     totalCoinValue :: Coin
     totalCoinValue = F.fold coins
 
--- | From the given list of coins, remove dust coins with a value less than or
---   equal to the given threshold value, redistributing their total value over
---   the coins that remain.
+-- From the given list of coins, remove dust coins with a value less than or
+-- equal to the given threshold value, redistributing their total value over
+-- the coins that remain.
 --
 -- This function satisfies the following properties:
 --
@@ -430,7 +428,8 @@ coalesceDust (DustThreshold threshold) coins =
     (coinsToKeep, coinsToRemove) = NE.partition (> threshold) coins
     valueToDistribute = F.fold coinsToRemove
 
--- | Computes how much is left to pay given a particular selection
+-- Computes how much is left to pay given a particular selection.
+--
 remainingFee
     :: (HasCallStack, Show i, Show o)
     => FeeEstimator i o
@@ -461,10 +460,10 @@ remainingFee FeeEstimator {estimateFee} s
     errorUnderfundedSelection = error
         "Cannot calculate remaining fee for an underfunded selection."
 
--- | Splits up the given coin of value __@v@__, distributing its value over the
---   given coin list of length __@n@__, so that each coin value is increased by
---   an integral amount within unity of __@v/n@__, producing a new list of coin
---   values where the overall total is preserved.
+-- Splits up the given coin of value __@v@__, distributing its value over the
+-- given coin list of length __@n@__, so that each coin value is increased by
+-- an integral amount within unity of __@v/n@__, producing a new list of coin
+-- values where the overall total is preserved.
 --
 -- == Basic Examples
 --
@@ -521,11 +520,7 @@ splitCoin coinToSplit coinsToIncrease =
     mIncrement = coinToSplit `C.div` mCoinCount
     mShortfall = coinToSplit `C.mod` mCoinCount
 
---------------------------------------------------------------------------------
--- Utilities
---------------------------------------------------------------------------------
-
--- | Extract the fractional part of a rational number.
+-- Extract the fractional part of a rational number.
 --
 -- Examples:
 --
@@ -538,10 +533,12 @@ splitCoin coinToSplit coinsToIncrease =
 fractionalPart :: Rational -> Rational
 fractionalPart = snd . properFraction @_ @Integer
 
--- | Apply the same function multiple times to a value.
+-- Apply the same function multiple times to a value.
 --
 applyN :: Int -> (a -> a) -> a -> a
 applyN n f = F.foldr (.) id (replicate n f)
 
+-- Find the sum of a list of entries.
+--
 sumEntries :: [CoinMapEntry i] -> Coin
 sumEntries = F.fold . fmap entryValue

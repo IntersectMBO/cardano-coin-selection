@@ -2,6 +2,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# OPTIONS_HADDOCK prune #-}
 
 -- |
 -- Copyright: © 2018-2020 IOHK
@@ -34,8 +35,13 @@
 -- that a wallet is not "fragmented enough").
 
 module Cardano.CoinSelection.Migration
-    ( depleteUTxO
+    (
+      -- * Coin Selection for Migration
+      selectCoins
+
+      -- # Internal Functions
     , idealBatchSize
+
     ) where
 
 import Prelude
@@ -44,7 +50,7 @@ import Cardano.CoinSelection
     ( CoinMap
     , CoinMapEntry (..)
     , CoinSelection (..)
-    , CoinSelectionOptions (..)
+    , CoinSelectionLimit (..)
     , coinMapFromList
     , coinMapToList
     , sumChange
@@ -65,6 +71,10 @@ import Internal.Coin
 
 import qualified Internal.Coin as C
 
+--------------------------------------------------------------------------------
+-- Coin Selection for Migration
+--------------------------------------------------------------------------------
+
 -- | Construct a list of coin selections / transactions to transfer the totality
 -- of a user's wallet. The resulting 'CoinSelection' do not contain any
 -- 'outputs', but only change coins (so there's no restriction about how
@@ -75,7 +85,7 @@ import qualified Internal.Coin as C
 --
 -- The fee options are used to balance the coin selections and fix a threshold
 -- for dust that is removed from the selections.
-depleteUTxO
+selectCoins
     :: forall i o . (Ord i, Ord o)
     => FeeOptions i o
         -- ^ Fee computation and threshold definition
@@ -84,7 +94,7 @@ depleteUTxO
     -> CoinMap i
         -- ^ UTxO to deplete
     -> [CoinSelection i o]
-depleteUTxO feeOpts batchSize utxo =
+selectCoins feeOpts batchSize utxo =
     evalState migrate (coinMapToList utxo)
   where
     migrate :: State [CoinMapEntry i] [CoinSelection i o]
@@ -174,9 +184,13 @@ depleteUTxO feeOpts batchSize utxo =
         put rest
         pure batch
 
--- | Try to find a fix "ideal" number of input transactions that would generate
--- rather balanced transactions.
-idealBatchSize :: CoinSelectionOptions i o e -> Word8
+--------------------------------------------------------------------------------
+-- Internal Functions
+--------------------------------------------------------------------------------
+
+-- Try to find a fixed "ideal" number of input transactions that would generate
+-- relatively balanced transactions.
+idealBatchSize :: CoinSelectionLimit -> Word8
 idealBatchSize coinselOpts = fixPoint 1
   where
     fixPoint :: Word8 -> Word8
@@ -186,4 +200,4 @@ idealBatchSize coinselOpts = fixPoint 1
         | otherwise = fixPoint (n + 1)
       where
         maxN :: Word8 -> Word8
-        maxN = maximumInputCount coinselOpts
+        maxN = calculateLimit coinselOpts

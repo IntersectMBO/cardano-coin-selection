@@ -15,24 +15,25 @@ module Cardano.CoinSelection.LargestFirst (
 import Prelude
 
 import Cardano.CoinSelection
-    ( CoinMap (..)
-    , CoinMapEntry (..)
+    ( CoinMapEntry (..)
     , CoinSelection (..)
     , CoinSelectionAlgorithm (..)
     , CoinSelectionError (..)
-    , CoinSelectionOptions (..)
+    , CoinSelectionLimit (..)
+    , CoinSelectionParameters (..)
+    , CoinSelectionResult (..)
+    , InputCountInsufficientError (..)
+    , InputLimitExceededError (..)
+    , InputValueInsufficientError (..)
+    , InputsExhaustedError (..)
     , coinMapFromList
     , coinMapToList
     , coinMapValue
     )
-import Control.Arrow
-    ( left )
 import Control.Monad
     ( foldM )
 import Control.Monad.Trans.Except
-    ( ExceptT (..), except, throwE )
-import Data.Functor
-    ( ($>) )
+    ( ExceptT (..), throwE )
 import Data.Ord
     ( Down (..) )
 import Internal.Coin
@@ -154,7 +155,7 @@ import qualified Internal.Coin as C
 --      /available/) is /less than/ the total value of the output list (the
 --      amount of money /required/).
 --
---      See: __'ErrUtxoBalanceInsufficient'__.
+--      See: __'InputValueInsufficientError'__.
 --
 --  2.  The /number/ of entries in the initial UTxO set is /smaller than/ the
 --      number of requested outputs.
@@ -162,65 +163,69 @@ import qualified Internal.Coin as C
 --      Due to the nature of the algorithm, /at least one/ UTxO entry is
 --      required /for each/ output.
 --
---      See: __'ErrUtxoNotFragmentedEnough'__.
+--      See: __'InputCountInsufficientError'__.
 --
 --  3.  Due to the particular /distribution/ of values within the initial UTxO
 --      set, the algorithm depletes all entries from the UTxO set /before/ it
 --      is able to pay for all requested outputs.
 --
---      See: __'ErrUtxoFullyDepleted'__.
+--      See: __'InputsExhaustedError'__.
 --
 --  4.  The /number/ of UTxO entries needed to pay for the requested outputs
---      would /exceed/ the upper limit specified by 'maximumInputCount'.
+--      would /exceed/ the upper limit specified by 'limit'.
 --
---      See: __'ErrMaximumInputCountExceeded'__.
+--      See: __'InputLimitExceededError'__.
 --
 largestFirst
     :: (Ord i, Ord o, Monad m)
-    => CoinSelectionAlgorithm i o m e
+    => CoinSelectionAlgorithm i o m
 largestFirst = CoinSelectionAlgorithm payForOutputs
 
 payForOutputs
     :: (Ord i, Ord o, Monad m)
-    => CoinSelectionOptions i o e
-    -> CoinMap i
-    -> CoinMap o
-    -> ExceptT (CoinSelectionError e) m (CoinSelection i o, CoinMap i)
-payForOutputs options utxo outputsRequested =
+    => CoinSelectionParameters i o
+    -> ExceptT CoinSelectionError m (CoinSelectionResult i o)
+payForOutputs params =
     case foldM payForOutput (utxoDescending, mempty) outputsDescending of
         Just (utxoRemaining, selection) ->
-            validateSelection selection $>
-                (selection, coinMapFromList utxoRemaining)
+            pure $ CoinSelectionResult selection $ coinMapFromList utxoRemaining
         Nothing ->
             throwE errorCondition
   where
     errorCondition
       | amountAvailable < amountRequested =
-          ErrUtxoBalanceInsufficient amountAvailable amountRequested
+          InputValueInsufficient $
+              InputValueInsufficientError
+                  amountAvailable amountRequested
       | utxoCount < outputCount =
-          ErrUtxoNotFragmentedEnough utxoCount outputCount
+          InputCountInsufficient $
+              InputCountInsufficientError
+                  utxoCount outputCount
       | utxoCount <= inputCountMax =
-          ErrUtxoFullyDepleted
+          InputsExhausted
+              InputsExhaustedError
       | otherwise =
-          ErrMaximumInputCountExceeded inputCountMax
+          InputLimitExceeded $
+              InputLimitExceededError $
+                  fromIntegral inputCountMax
     amountAvailable =
-        coinMapValue utxo
+        coinMapValue $ inputsAvailable params
     amountRequested =
-        coinMapValue outputsRequested
-    inputCountMax =
-        fromIntegral $ maximumInputCount options $ fromIntegral outputCount
+        coinMapValue $ outputsRequested params
+    inputCountMax = fromIntegral
+        $ calculateLimit (limit params)
+        $ fromIntegral outputCount
     outputCount =
-        fromIntegral $ length $ coinMapToList outputsRequested
+        fromIntegral $ length $ coinMapToList $ outputsRequested params
     outputsDescending =
-        L.sortOn (Down . entryValue) $ coinMapToList outputsRequested
+        L.sortOn (Down . entryValue) $ coinMapToList $ outputsRequested params
     utxoCount =
-        fromIntegral $ L.length $ coinMapToList utxo
+        fromIntegral $ L.length $ coinMapToList $ inputsAvailable params
     utxoDescending =
         take (fromIntegral inputCountMax)
             $ L.sortOn (Down . entryValue)
-            $ coinMapToList utxo
-    validateSelection =
-        except . left ErrInvalidSelection . validate options
+            $ coinMapToList
+            $ inputsAvailable params
 
 -- | Attempts to pay for a /single transaction output/ by selecting the
 --   /smallest possible/ number of entries from the /head/ of the given

@@ -3,6 +3,7 @@
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE NumericUnderscores #-}
 {-# LANGUAGE RankNTypes #-}
+{-# OPTIONS_HADDOCK prune #-}
 
 -- |
 -- Copyright: © 2018-2020 IOHK
@@ -10,37 +11,47 @@
 --
 -- Provides general functions and types relating to coin selection.
 --
--- The 'CoinSelectionAlgorithm' type provides a /common interface/ to coin
--- selection algorithms.
+-- The 'CoinSelection' type represents a __coin selection__, the basis for a
+-- /transaction/ in a UTxO-based blockchain.
 --
--- The 'CoinSelection' type represents the /result/ of running a coin selection
--- algorithm.
+-- The 'CoinSelectionAlgorithm' type provides a __common interface__ to
+-- algorithms that generate coin selections.
 --
 module Cardano.CoinSelection
     (
-      -- * Coin
-      Coin
+      -- * Coin Selections
+      CoinSelection (..)
+    , sumInputs
+    , sumOutputs
+    , sumChange
+
+      -- * Coin Selection Algorithms
+    , CoinSelectionAlgorithm (..)
+    , CoinSelectionParameters (..)
+    , CoinSelectionResult (..)
+    , CoinSelectionLimit (..)
+
+      -- * Coins
+    , Coin
     , coinFromNatural
     , coinToNatural
 
-      -- * Coin Map
+      -- * Coin Maps
     , CoinMap (..)
     , CoinMapEntry (..)
     , coinMapFromList
     , coinMapToList
     , coinMapValue
-    , coinMapRandomEntry
 
-      -- * Coin Selection
-    , CoinSelection (..)
-    , sumInputs
-    , sumOutputs
-    , sumChange
-
-      -- * Coin Selection Algorithm
-    , CoinSelectionAlgorithm (..)
-    , CoinSelectionOptions (..)
+      -- * Coin Selection Errors
     , CoinSelectionError (..)
+    , InputValueInsufficientError (..)
+    , InputCountInsufficientError (..)
+    , InputLimitExceededError (..)
+    , InputsExhaustedError (..)
+
+      -- # Internal Functions
+    , coinMapRandomEntry
 
     ) where
 
@@ -136,71 +147,105 @@ coinMapToList = fmap (uncurry CoinMapEntry) . Map.toList . unCoinMap
 coinMapValue :: CoinMap a -> Coin
 coinMapValue = mconcat . fmap entryValue . coinMapToList
 
--- | Selects an entry at random from a 'CoinMap', returning both the selected
---   entry and the map with the entry removed.
---
--- If the given map is empty, this function returns 'Nothing'.
---
-coinMapRandomEntry
-    :: MonadRandom m
-    => CoinMap a
-    -> m (Maybe (CoinMapEntry a), CoinMap a)
-coinMapRandomEntry (CoinMap m)
-    | Map.null m =
-        return (Nothing, CoinMap m)
-    | otherwise = do
-        ix <- fromEnum <$> generateBetween 0 (toEnum (Map.size m - 1))
-        let entry = uncurry CoinMapEntry $ Map.elemAt ix m
-        let remainder = CoinMap $ Map.deleteAt ix m
-        return (Just entry, remainder)
-
 --------------------------------------------------------------------------------
 -- Coin Selection
 --------------------------------------------------------------------------------
 
--- | Provides a common interface for coin selection algorithms.
+-- | Provides a __common interface__ for coin selection algorithms.
 --
--- The function 'selectCoins', when applied to the given /initial UTxO set/
--- and /output set/, generates a 'CoinSelection' that is capable of paying
--- for all of the outputs, and a /remaining UTxO set/ from which all spent
--- values have been removed.
+-- The function 'selectCoins', when applied to the given
+-- 'CoinSelectionParameters' object (with /available inputs/ and /requested/
+-- /outputs/), will generate a 'CoinSelectionResult' (with /remaining inputs/
+-- and a /coin selection/).
 --
--- Each entry in the /initial UTxO set/ refers to a unique unspent output from
--- a previous transaction, together with its corresponding value. The algorithm
--- will select from among the entries in this set to pay for entries in the
--- output set, placing the selected entries in the 'inputs' field of the
--- resulting 'CoinSelection'.
---
--- Each entry in the /output set/ refers to a unique payment recipient together
--- with the value to pay to that recipient. The 'outputs' field of the
--- resulting 'CoinSelection' will be equal to this set.
---
--- The total value of the initial UTxO set must be /greater than or equal to/
--- the total value of the output set, as given by the 'coinMapValue' function.
---
-newtype CoinSelectionAlgorithm i o m e = CoinSelectionAlgorithm
+newtype CoinSelectionAlgorithm i o m = CoinSelectionAlgorithm
     { selectCoins
-        :: CoinSelectionOptions i o e
-        -> CoinMap i
-        -> CoinMap o
-        -> ExceptT (CoinSelectionError e) m (CoinSelection i o, CoinMap i)
+        :: CoinSelectionParameters i o
+        -> ExceptT CoinSelectionError m (CoinSelectionResult i o)
     }
 
--- | Represents the /result/ of running a coin selection algorithm.
+-- | The complete set of parameters required for a 'CoinSelectionAlgorithm'.
+--
+-- The 'inputsAvailable' and 'outputsRequested' fields are both maps of unique
+-- keys to associated 'Coin' values, where:
+--
+--   * Each key-value pair in the 'inputsAvailable' map corresponds to an
+--     __unspent output__ from a previous transaction that is /available/
+--     /for selection as an input/ by the coin selection algorithm. The /key/
+--     is a unique reference to that output, and the /value/ is the amount of
+--     unspent value associated with it.
+--
+--   * Each key-value pair in the 'outputsRequested' map corresponds to a
+--     __payment__ whose value is /to be paid for/ by the coin selection
+--     algorithm. The /key/ is a unique reference to a payment recipient,
+--     and the /value/ is the amount of money to pay to that recipient.
+--
+-- A coin selection algorithm will select a __subset__ of inputs from
+-- 'inputsAvailable' in order to pay for __all__ the outputs in
+-- 'outputsRequested', where:
+--
+--   * Inputs __selected__ by the algorithm are included in the 'inputs'
+--     set of the generated 'CoinSelection'.
+--
+--   * Inputs __not__ selected by the algorithm are included in the
+--     'inputsRemaining' set of the 'CoinSelectionResult'.
+--
+-- The number of inputs that can selected is limited by 'limit'.
+--
+-- The total value of 'inputsAvailable' must be /greater than or equal to/
+-- the total value of 'outputsRequested', as given by the 'coinMapValue'
+-- function.
+--
+data CoinSelectionParameters i o = CoinSelectionParameters
+    { inputsAvailable :: CoinMap i
+        -- ^ The set of inputs available for selection.
+    , outputsRequested :: CoinMap o
+        -- ^ The set of outputs requested for payment.
+    , limit :: CoinSelectionLimit
+        -- ^ A limit on the number of inputs that can be selected.
+    }
+    deriving Generic
+
+-- | Represents the __result__ of running a coin selection algorithm.
 --
 -- See 'CoinSelectionAlgorithm'.
 --
+data CoinSelectionResult i o = CoinSelectionResult
+    { coinSelection :: CoinSelection i o
+        -- ^ The generated coin selection.
+    , inputsRemaining :: CoinMap i
+        -- ^ The set of inputs that were __not__ selected.
+    }
+
+-- | A __coin selection__ is the basis for a /transaction/.
+--
+-- It consists of a selection of 'inputs', 'outputs', and 'change'.
+--
+-- The 'inputs' and 'outputs' fields are both maps of unique keys to associated
+-- 'Coin' values, where:
+--
+--   * Each key-value pair in the 'inputs' map corresponds to an
+--     __unspent output__ from a previous transaction (also known as a UTxO).
+--     The /key/ is a unique reference to that output, and the /value/ is the
+--     amount of unspent value associated with it.
+--
+--   * Each key-value pair in the 'outputs' map corresponds to a __payment__.
+--     The /key/ is a unique reference to a payment recipient, and the /value/
+--     is the amount of money to pay to that recipient.
+--
+-- The 'change' field is a set of coins to be returned to the originator of the
+-- transaction.
+--
+-- The 'CoinSelectionAlgorithm' type provides a common interface for generating
+-- coin selections.
+--
 data CoinSelection i o = CoinSelection
     { inputs :: CoinMap i
-      -- ^ A /subset/ of the original UTxO set that was passed to the coin
-      -- selection algorithm, containing only the entries that were /selected/
-      -- by the coin selection algorithm.
+      -- ^ The set of inputs.
     , outputs :: CoinMap o
-      -- ^ The original set of output payments passed to the coin selection
-      -- algorithm, whose total value is covered by the 'inputs'.
+      -- ^ The set of outputs.
     , change :: [Coin]
-      -- ^ A set of change values to be paid back to the originator of the
-      -- payment.
+      -- ^ The set of change.
     }
     deriving (Generic, Show, Eq)
 
@@ -226,51 +271,98 @@ sumOutputs =  coinMapValue . outputs
 sumChange :: CoinSelection i o -> Coin
 sumChange = mconcat . change
 
--- | Represents a set of options to be passed to a coin selection algorithm.
+-- | Defines an __inclusive upper bound__ on the /number/ of inputs that
+--   a 'CoinSelectionAlgorithm' is allowed to select.
 --
-data CoinSelectionOptions i o e = CoinSelectionOptions
-    { maximumInputCount
+newtype CoinSelectionLimit = CoinSelectionLimit
+    { calculateLimit
         :: Word8 -> Word8
             -- ^ Calculate the maximum number of inputs allowed for a given
             -- number of outputs.
-    , validate
-        :: CoinSelection i o -> Either e ()
-            -- ^ Validate the given coin selection, returning a backend-specific
-            -- error.
-    } deriving (Generic)
+    } deriving Generic
 
 -- | Represents the set of possible failures that can occur when attempting
---   to produce a 'CoinSelection'.
+--   to produce a 'CoinSelection' with a 'CoinSelectionAlgorithm'.
 --
-data CoinSelectionError e
-    = ErrUtxoBalanceInsufficient Coin Coin
-    -- ^ The UTxO balance was insufficient to cover the total payment amount.
-    --
-    -- Records the /UTxO balance/, as well as the /total value/ of the payment
-    -- we tried to make.
-    --
-    | ErrUtxoNotFragmentedEnough Natural Natural
-    -- ^ The UTxO was not fragmented enough to support the required number of
-    -- transaction outputs.
-    --
-    -- Records the /number/ of UTxO entries, as well as the /number/ of the
-    -- transaction outputs.
-    --
-    | ErrUtxoFullyDepleted
-    -- ^ Due to the particular distribution of values within the UTxO set, all
-    -- available UTxO entries were depleted before all the requested
-    -- transaction outputs could be paid for.
-    --
-    | ErrMaximumInputCountExceeded Natural
-    -- ^ The number of UTxO entries needed to cover the requested payment
-    -- exceeded the upper limit specified by 'maximumInputCount'.
-    --
-    -- Records the value of 'maximumInputCount'.
-    --
-    | ErrInvalidSelection e
-    -- ^ The coin selection generated was reported to be invalid by the backend.
-    --
-    -- Records the /backend-specific error/ that occurred while attempting to
-    -- validate the selection.
-    --
-    deriving (Show, Eq)
+-- See 'selectCoins'.
+--
+data CoinSelectionError
+    = InputValueInsufficient
+        InputValueInsufficientError
+    | InputCountInsufficient
+        InputCountInsufficientError
+    | InputLimitExceeded
+        InputLimitExceededError
+    | InputsExhausted
+        InputsExhaustedError
+    deriving (Eq, Show)
+
+-- | Indicates that the total value of 'inputsAvailable' is less than the total
+--   value of 'outputsRequested', making it /impossible/ to cover all payments,
+--   /regardless/ of which algorithm is chosen.
+--
+data InputValueInsufficientError =
+    InputValueInsufficientError
+    { inputValueAvailable :: Coin
+        -- ^ The total value of 'inputsAvailable'.
+    , inputValueRequired :: Coin
+        -- ^ The total value of 'outputsRequested'.
+    }
+    deriving (Eq, Show)
+
+-- | Indicates that the total count of entries in 'inputsAvailable' is /fewer/
+--   /than/ required by the algorithm. The number required depends on the
+--   particular algorithm implementation.
+--
+data InputCountInsufficientError =
+    InputCountInsufficientError
+    { inputCountAvailable :: Natural
+        -- ^ The number of entries in 'inputsAvailable'.
+    , inputCountRequired :: Natural
+        -- ^ The number of entries required.
+    }
+    deriving (Eq, Show)
+
+-- | Indicates that all available entries in 'inputsAvailable' were depleted
+--   /before/ all the payments in 'outputsRequested' could be paid for.
+--
+-- This condition can occur /even if/ the total value of 'inputsAvailable' is
+-- greater than or equal to the total value of 'outputsRequested', due to
+-- differences in the way that algorithms select inputs.
+--
+data InputsExhaustedError =
+    InputsExhaustedError
+    deriving (Eq, Show)
+
+-- | Indicates that the coin selection algorithm is unable to cover the total
+--   value of 'outputsRequested' without exceeding the maximum number of inputs
+--   defined by 'limit'.
+--
+-- See 'calculateLimit'.
+--
+newtype InputLimitExceededError =
+    InputLimitExceededError
+    { calculatedInputLimit :: Word8 }
+    deriving (Eq, Show)
+
+--------------------------------------------------------------------------------
+-- Internal Functions
+--------------------------------------------------------------------------------
+
+-- Selects an entry at random from a 'CoinMap', returning both the selected
+-- entry and the map with the entry removed.
+--
+-- If the given map is empty, this function returns 'Nothing'.
+--
+coinMapRandomEntry
+    :: MonadRandom m
+    => CoinMap a
+    -> m (Maybe (CoinMapEntry a), CoinMap a)
+coinMapRandomEntry (CoinMap m)
+    | Map.null m =
+        return (Nothing, CoinMap m)
+    | otherwise = do
+        ix <- fromEnum <$> generateBetween 0 (toEnum (Map.size m - 1))
+        let entry = uncurry CoinMapEntry $ Map.elemAt ix m
+        let remainder = CoinMap $ Map.deleteAt ix m
+        return (Just entry, remainder)

@@ -22,26 +22,28 @@ import Cardano.CoinSelection
     , CoinSelection (..)
     , CoinSelectionAlgorithm (..)
     , CoinSelectionError (..)
-    , CoinSelectionOptions (..)
+    , CoinSelectionLimit (..)
+    , CoinSelectionParameters (..)
+    , CoinSelectionResult (..)
+    , InputCountInsufficientError (..)
+    , InputLimitExceededError (..)
+    , InputValueInsufficientError (..)
+    , InputsExhaustedError (..)
     , coinMapFromList
     , coinMapRandomEntry
     , coinMapToList
     , coinMapValue
     )
-import Control.Arrow
-    ( left )
 import Control.Monad
     ( foldM )
 import Control.Monad.Trans.Class
     ( lift )
 import Control.Monad.Trans.Except
-    ( ExceptT (..), except, throwE )
+    ( ExceptT (..), throwE )
 import Control.Monad.Trans.Maybe
     ( MaybeT (..), runMaybeT )
 import Crypto.Random.Types
     ( MonadRandom )
-import Data.Functor
-    ( ($>) )
 import Data.Ord
     ( Down (..) )
 import Internal.Coin
@@ -122,7 +124,7 @@ import qualified Internal.Coin as C
 --
 --       * __Condition 3__: when counting cumulatively across all outputs
 --       considered so far, we have not selected more than the /maximum/ number
---       of UTxO entries specified by 'maximumInputCount'.
+--       of UTxO entries specified by 'limit'.
 --
 --  3.  __Creates a /change value/__ for the output, equal to the total value
 --      of the /final UTxO selection/ for that output minus the value /v/ of
@@ -152,7 +154,7 @@ import qualified Internal.Coin as C
 --      /available/) is /less than/ the total value of the output list (the
 --      amount of money /required/).
 --
---      See: __'ErrUtxoBalanceInsufficient'__.
+--      See: __'InputValueInsufficientError'__.
 --
 --  2.  The /number/ of entries in the initial UTxO set is /smaller than/ the
 --      number of requested outputs.
@@ -160,18 +162,18 @@ import qualified Internal.Coin as C
 --      Due to the nature of the algorithm, /at least one/ UTxO entry is
 --      required /for each/ output.
 --
---      See: __'ErrUtxoNotFragmentedEnough'__.
+--      See: __'InputCountInsufficientError'__.
 --
 --  3.  Due to the particular /distribution/ of values within the initial UTxO
 --      set, the algorithm depletes all entries from the UTxO set /before/ it
 --      is able to pay for all requested outputs.
 --
---      See: __'ErrUtxoFullyDepleted'__.
+--      See: __'InputsExhaustedError'__.
 --
 --  4.  The /number/ of UTxO entries needed to pay for the requested outputs
---      would /exceed/ the upper limit specified by 'maximumInputCount'.
+--      would /exceed/ the upper limit specified by 'limit'.
 --
---      See: __'ErrMaximumInputCountExceeded'__.
+--      See: __'InputLimitExceededError'__.
 --
 -- = Motivating Principles
 --
@@ -206,53 +208,54 @@ import qualified Internal.Coin as C
 --
 randomImprove
     :: (Ord i, Ord o, MonadRandom m)
-    => CoinSelectionAlgorithm i o m e
+    => CoinSelectionAlgorithm i o m
 randomImprove = CoinSelectionAlgorithm payForOutputs
 
 payForOutputs
     :: (Ord i, Ord o, MonadRandom m)
-    => CoinSelectionOptions i o e
-    -> CoinMap i
-    -> CoinMap o
-    -> ExceptT (CoinSelectionError e) m (CoinSelection i o, CoinMap i)
-payForOutputs options utxo outputsRequested = do
+    => CoinSelectionParameters i o
+    -> ExceptT CoinSelectionError m (CoinSelectionResult i o)
+payForOutputs params = do
     mRandomSelections <- lift $ runMaybeT $ foldM makeRandomSelection
-        (inputCountMax, utxo, []) outputsDescending
+        (inputCountMax, inputsAvailable params, []) outputsDescending
     case mRandomSelections of
         Just (inputCountRemaining, utxoRemaining, randomSelections) -> do
             (_, finalSelection, utxoRemaining') <- lift $ foldM
                 improveSelection
                     (inputCountRemaining, mempty, utxoRemaining)
                     (reverse randomSelections)
-            validateSelection finalSelection $>
-                (finalSelection, utxoRemaining')
+            pure $ CoinSelectionResult finalSelection utxoRemaining'
         Nothing ->
             throwE errorCondition
   where
     errorCondition
       | amountAvailable < amountRequested =
-          ErrUtxoBalanceInsufficient amountAvailable amountRequested
+          InputValueInsufficient $
+              InputValueInsufficientError
+                  amountAvailable amountRequested
       | utxoCount < outputCount =
-          ErrUtxoNotFragmentedEnough
-              (fromIntegral utxoCount) (fromIntegral outputCount)
-      | utxoCount <= inputCountMax =
-          ErrUtxoFullyDepleted
+          InputCountInsufficient $
+              InputCountInsufficientError
+                  utxoCount outputCount
+      | utxoCount <= fromIntegral inputCountMax =
+          InputsExhausted
+              InputsExhaustedError
       | otherwise =
-          ErrMaximumInputCountExceeded (fromIntegral inputCountMax)
+          InputLimitExceeded $
+              InputLimitExceededError $
+                  fromIntegral inputCountMax
     amountAvailable =
-        coinMapValue utxo
+        coinMapValue $ inputsAvailable params
     amountRequested =
-        coinMapValue outputsRequested
+        coinMapValue $ outputsRequested params
     inputCountMax =
-        fromIntegral $ maximumInputCount options $ fromIntegral outputCount
+        fromIntegral $ calculateLimit (limit params) $ fromIntegral outputCount
     outputCount =
-        fromIntegral $ length $ coinMapToList outputsRequested
+        fromIntegral $ length $ coinMapToList $ outputsRequested params
     outputsDescending =
-        L.sortOn (Down . entryValue) $ coinMapToList outputsRequested
+        L.sortOn (Down . entryValue) $ coinMapToList $ outputsRequested params
     utxoCount =
-        fromIntegral $ L.length $ coinMapToList utxo
-    validateSelection =
-        except . left ErrInvalidSelection . validate options
+        fromIntegral $ L.length $ coinMapToList $ inputsAvailable params
 
 -- | Randomly select entries from the given UTxO set, until the total value of
 --   selected entries is greater than or equal to the given output value.

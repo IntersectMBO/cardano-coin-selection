@@ -24,6 +24,7 @@ import Cardano.CoinSelection
     , CoinMapEntry (..)
     , CoinSelection (..)
     , CoinSelectionAlgorithm (..)
+    , CoinSelectionResult (..)
     , coinMapFromList
     , coinMapToList
     , sumChange
@@ -32,8 +33,8 @@ import Cardano.CoinSelection
     )
 import Cardano.CoinSelection.Fee
     ( DustThreshold (..)
-    , ErrAdjustForFee (..)
     , Fee (..)
+    , FeeAdjustmentError (..)
     , FeeEstimator (..)
     , FeeOptions (..)
     , adjustForFee
@@ -817,7 +818,7 @@ feeOptions fee dust = FeeOptions
 
 feeUnitTest
     :: FeeFixture
-    -> Either ErrAdjustForFee FeeOutput
+    -> Either FeeAdjustmentError FeeOutput
     -> SpecWith ()
 feeUnitTest (FeeFixture inpsF outsF chngsF utxoF feeF dustF) expected =
     it title $ do
@@ -905,11 +906,12 @@ genSelection
     => CoinMap o
     -> Gen (CoinSelection i o)
 genSelection outs = do
-    let opts = CS.CoinSelectionOptions (const 100) (const $ pure ())
     utxo <- vectorOf (length outs * 3) arbitrary >>= genInputs
-    case runIdentity $ runExceptT $ selectCoins largestFirst opts utxo outs of
+    let selectionLimit = CS.CoinSelectionLimit $ const 100
+    let params = CS.CoinSelectionParameters utxo outs selectionLimit
+    case runIdentity $ runExceptT $ selectCoins largestFirst params of
         Left _ -> genSelection outs
-        Right (s,_) -> return s
+        Right (CoinSelectionResult s _) -> return s
 
 instance Arbitrary TxIn where
     shrink _ = []
