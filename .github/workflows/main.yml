@@ -56,13 +56,13 @@ jobs:
 
     - name: 🔨 Build & Test
       run: |
-        stack --no-terminal test --bench --no-run-benchmarks --haddock --no-haddock-deps --coverage
+        stack setup
+        PKG_NAME=$(cat *.cabal | grep "name:" | sed "s/name:\s*\(.*\)/\1/")
+        stack --no-terminal test --bench --no-run-benchmarks --haddock --no-haddock-deps --coverage --flag $PKG_NAME:release
         wget -O Makefile https://raw.githubusercontent.com/input-output-hk/adrestia/master/.haskell/coverage/Makefile
         mkdir -p .coverage && touch .coverage/template.overlay
-        DESTDIR=dist/coverage make report  && DESTDIR=dist/coverage make badge
-        PKG_NAME=$(cat *.cabal | grep "name:" | sed "s/name:\s*\(.*\)/\1/")
+        DESTDIR=dist/coverage make report && DESTDIR=dist/coverage make badge
         mkdir -p dist/haddock  && mv $(stack path --local-install-root)/doc/$PKG_NAME-*/* dist/haddock
-        stack build --flag $PKG_NAME:release
 
     - name: 📘 Publish Documentation
       if: matrix.os == 'ubuntu-latest' && github.event_name == 'push'
@@ -95,5 +95,3 @@ jobs:
         CHANGELOG_FILE: "ChangeLog.md"
         ALLOW_EMPTY_CHANGELOG: "false"
         ALLOW_TAG_PREFIX: "true"
-      with:
-        args: ${{ steps.variables.outputs.pkg_name }}-${{ steps.variables.outputs.tag }}-linux64.tar.gz
