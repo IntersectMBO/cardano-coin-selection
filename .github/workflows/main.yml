@@ -1,8 +1,11 @@
-name: Build and Test
+name: Continuous Integration
 
 on:
-  push: { "branches": [ "master" ] }
-  pull_request: { "branches": [ "master" ] }
+  pull_request:
+    branches: [ "master" ]
+  push:
+    branches: [ "master" ]
+    tags: [ "*.*.*" ]
 
 jobs:
   build:
@@ -12,53 +15,83 @@ jobs:
 
     runs-on: ${{ matrix.os }}
     steps:
-    - name: Install OS Packages
+    - name: 💽 Install OS Packages
       uses: mstksg/get-package@v1
       with:
         apt-get: libgmp-dev
 
-    - uses: actions/checkout@v1
+    - name: 📥 Checkout repository
+      uses: actions/checkout@v1
 
-    - name: Setup Stack
+    - name: 🧰 Setup Stack
       uses: mstksg/setup-stack@v1
 
-    - name: Cache Key
+    - name: 🔑 Cache Key
       id: cache_key
       run: echo ::set-output name=key::$(md5sum stack.yaml | awk '{print $1}')
 
-    - name: Cache Dependencies
+    - name: 💾 Cache Dependencies
       id: cache
       uses: actions/cache@v1
       with:
         path: ~/.stack
         key: ${{ matrix.os }}-${{ steps.cache_key.outputs.key }}
 
-    - name: Build Snapshot
+    - name: 📸 Build Snapshot
       if: steps.cache.outputs.cache-hit != 'true'
       run: |
         stack --no-terminal test --bench --only-snapshot
 
-    - name: Build & Test
+    - name: ✍  Check hlint and stylish
       run: |
-        stack --no-terminal test --bench --no-run-benchmarks --coverage
+        curl -sSL https://raw.github.com/ndmitchell/hlint/master/misc/run.sh | sh -s .
+        curl -sSL https://raw.github.com/jaspervdj/stylish-haskell/master/scripts/latest.sh | sh -s $(find . -type f -name "*.hs" ! -path "*.stack-work*") -i
+        if [ -z "$(git status --porcelain)" ]; then
+            echo "No style errors detected."
+        else
+            echo "Style errors detected:"
+            git diff
+            exit 1
+        fi
 
-    - name: Coverage
-      if: matrix.os == 'ubuntu-latest' && github.event_name == 'push'
+    - name: 🔨 Build & Test
       run: |
-        mkdir -p dist/coverage && stack hpc report --all --destdir dist/coverage
-        curl https://raw.githubusercontent.com/input-output-hk/adrestia/master/.github/make-badge.sh > make-badge
-        bash make-badge dist/coverage/hpc_index.html > dist/coverage/badge.svg
+        stack setup
+        PKG_NAME=$(cat *.cabal | grep "name:" | sed "s/name:\s*\(.*\)/\1/")
+        stack --no-terminal test --bench --no-run-benchmarks --haddock --no-haddock-deps --coverage --flag $PKG_NAME:release
+        wget -O Makefile https://raw.githubusercontent.com/input-output-hk/adrestia/master/.haskell/coverage/Makefile
+        mkdir -p .coverage && touch .coverage/template.overlay
+        DESTDIR=dist/coverage make report && DESTDIR=dist/coverage make badge
+        mkdir -p dist/haddock  && mv $(stack path --local-install-root)/doc/$PKG_NAME-*/* dist/haddock
 
-    - name: Documentation
-      if: matrix.os == 'ubuntu-latest' && github.event_name == 'push'
-      run: |
-        stack --no-terminal build --no-haddock-deps --haddock
-        mkdir -p dist/haddock && mv $(stack path --local-pkg-db)/../doc/cardano-coin-selection-*/* dist/haddock
-
-    - name: Deploy Documentation
+    - name: 📘 Publish Documentation
       if: matrix.os == 'ubuntu-latest' && github.event_name == 'push'
       uses: peaceiris/actions-gh-pages@v3
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         publish_dir: dist
         enable_jekyll: true
+
+  release:
+    needs: [build]
+    runs-on: ubuntu-latest
+    if: ${{ startsWith(github.ref, 'refs/tags') }}
+    steps:
+    - name: 📥 Checkout repository
+      uses: actions/checkout@v1
+
+    - name: 🏷️ Variables
+      id: variables
+      run: |
+        echo ::set-output name=tag::${GITHUB_REF/refs\/tags\//}
+        echo ::set-output name=pkg_name::$(cat *.cabal | grep "name:" | sed "s/name:\s*\(.*\)/\1/")
+
+    - name: 🚀 Release
+      uses: docker://antonyurchenko/git-release:latest
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        DRAFT_RELEASE: "true"
+        PRE_RELEASE: "false"
+        CHANGELOG_FILE: "ChangeLog.md"
+        ALLOW_EMPTY_CHANGELOG: "false"
+        ALLOW_TAG_PREFIX: "true"
