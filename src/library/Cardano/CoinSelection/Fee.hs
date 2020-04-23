@@ -132,6 +132,9 @@ data FeeOptions i o = FeeOptions
         :: DustThreshold
     } deriving Generic
 
+-- | Represents the set of possible failures that can occur when adjusting a
+--   'CoinSelection' with the 'adjustForFee' function.
+--
 newtype FeeAdjustmentError
     = CannotCoverFee Fee
     -- ^ Indicates that the given map of additional inputs was exhausted while
