@@ -57,7 +57,7 @@ import Data.Maybe
 import Data.Set
     ( Set )
 import Data.Word
-    ( Word8 )
+    ( Word16, Word8 )
 import Fmt
     ( Buildable (..), blockListF, nameF )
 import Internal.Coin
@@ -299,7 +299,7 @@ instance (Buildable i, Buildable o) => Buildable (CoinSelProp i o) where
 
 -- | A fixture for testing the coin selection
 data CoinSelectionFixture i o = CoinSelectionFixture
-    { maxNumOfInputs :: Word8
+    { maxNumOfInputs :: Word16
         -- ^ Maximum number of inputs that can be selected
     , utxoInputs :: [Integer]
         -- ^ Value (in Lovelace) & number of available coins in the UTxO

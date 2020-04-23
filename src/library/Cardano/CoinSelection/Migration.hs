@@ -65,7 +65,7 @@ import Data.List.NonEmpty
 import Data.Maybe
     ( fromMaybe, mapMaybe )
 import Data.Word
-    ( Word8 )
+    ( Word16 )
 import Internal.Coin
     ( Coin, coinFromIntegral, coinToIntegral )
 
@@ -81,7 +81,7 @@ import qualified Internal.Coin as C
 -- addresses are generated).
 --
 -- It tries to fit as many inputs as possible in a single transaction (fixed by
--- the 'Word8' maximum number of inputs given as argument.
+-- the 'Word16' maximum number of inputs given as argument.
 --
 -- The fee options are used to balance the coin selections and fix a threshold
 -- for dust that is removed from the selections.
@@ -89,7 +89,7 @@ selectCoins
     :: forall i o . (Ord i, Ord o)
     => FeeOptions i o
         -- ^ Fee computation and threshold definition
-    -> Word8
+    -> Word16
         -- ^ Maximum number of inputs we can select per transaction
     -> CoinMap i
         -- ^ UTxO to deplete
@@ -190,14 +190,14 @@ selectCoins feeOpts batchSize utxo =
 
 -- Try to find a fixed "ideal" number of input transactions that would generate
 -- relatively balanced transactions.
-idealBatchSize :: CoinSelectionLimit -> Word8
+idealBatchSize :: CoinSelectionLimit -> Word16
 idealBatchSize coinselOpts = fixPoint 1
   where
-    fixPoint :: Word8 -> Word8
+    fixPoint :: Word16 -> Word16
     fixPoint !n
         | maxN n <= n = n
         | n == maxBound = n
         | otherwise = fixPoint (n + 1)
       where
-        maxN :: Word8 -> Word8
+        maxN :: Word16 -> Word16
         maxN = calculateLimit coinselOpts

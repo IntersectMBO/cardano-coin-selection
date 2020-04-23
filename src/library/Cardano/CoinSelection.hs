@@ -69,7 +69,7 @@ import Crypto.Random.Types
 import Data.Map.Strict
     ( Map )
 import Data.Word
-    ( Word8 )
+    ( Word16 )
 import GHC.Generics
     ( Generic )
 import Internal.Coin
@@ -277,7 +277,7 @@ sumChange = mconcat . change
 --
 newtype CoinSelectionLimit = CoinSelectionLimit
     { calculateLimit
-        :: Word8 -> Word8
+        :: Word16 -> Word16
             -- ^ Calculate the maximum number of inputs allowed for a given
             -- number of outputs.
     } deriving Generic
@@ -343,7 +343,7 @@ data InputsExhaustedError =
 --
 newtype InputLimitExceededError =
     InputLimitExceededError
-    { calculatedInputLimit :: Word8 }
+    { calculatedInputLimit :: Word16 }
     deriving (Eq, Show)
 
 --------------------------------------------------------------------------------
