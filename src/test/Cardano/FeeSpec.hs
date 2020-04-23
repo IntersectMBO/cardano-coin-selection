@@ -14,7 +14,7 @@
 
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
-module Cardano.CoinSelection.FeeSpec
+module Cardano.FeeSpec
     ( spec
     ) where
 
@@ -33,7 +33,9 @@ import Cardano.CoinSelection
     , sumInputs
     , sumOutputs
     )
-import Cardano.CoinSelection.Fee
+import Cardano.CoinSelection.Algorithm.LargestFirst
+    ( largestFirst )
+import Cardano.Fee
     ( DustThreshold (..)
     , Fee (..)
     , FeeAdjustmentError (..)
@@ -45,8 +47,6 @@ import Cardano.CoinSelection.Fee
     , reduceChangeOutputs
     , splitCoin
     )
-import Cardano.CoinSelection.LargestFirst
-    ( largestFirst )
 import Cardano.Test.Utilities
     ( Address (..)
     , Hash (..)

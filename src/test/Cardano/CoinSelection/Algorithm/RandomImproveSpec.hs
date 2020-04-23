@@ -3,7 +3,7 @@
 {-# LANGUAGE TypeApplications #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
-module Cardano.CoinSelection.RandomImproveSpec
+module Cardano.CoinSelection.Algorithm.RandomImproveSpec
     ( spec
     ) where
 
@@ -21,9 +21,9 @@ import Cardano.CoinSelection
     , InputValueInsufficientError (..)
     , InputsExhaustedError (..)
     )
-import Cardano.CoinSelection.LargestFirst
+import Cardano.CoinSelection.Algorithm.LargestFirst
     ( largestFirst )
-import Cardano.CoinSelection.RandomImprove
+import Cardano.CoinSelection.Algorithm.RandomImprove
     ( randomImprove )
 import Cardano.CoinSelectionSpec
     ( CoinSelProp (..)

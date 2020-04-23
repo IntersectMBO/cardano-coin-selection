@@ -18,7 +18,7 @@
 -- Provides functionality for __adjusting__ coin selections in order to pay for
 -- transaction __fees__.
 --
-module Cardano.CoinSelection.Fee
+module Cardano.Fee
     (
       -- * Fundamental Types
       Fee (..)
