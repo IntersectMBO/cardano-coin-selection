@@ -41,6 +41,7 @@ import Cardano.CoinSelection.Fee
     , FeeAdjustmentError (..)
     , FeeEstimator (..)
     , FeeOptions (..)
+    , OnDanglingChange (..)
     , adjustForFee
     , coalesceDust
     , distributeFee
@@ -391,8 +392,6 @@ spec = do
     describe "reduceChangeOutputs" $ do
         it "data coverage is adequate"
             (checkCoverage propReduceChangeOutputsDataCoverage)
-        it "preserves sum"
-            (checkCoverage propReduceChangeOutputsPreservesSum)
 
     describe "splitCoin" $ do
         it "data coverage is adequate"
@@ -441,7 +440,7 @@ propDeterministic (ShowFmt (FeeProp coinSel _ (fee, dust))) =
         resultOne `shouldBe` resultTwo
 
 propReducedChanges
-    :: forall i o . (Show i, Show o, Ord i)
+    :: forall i o . (Ord i, Show i, Show o)
     => SystemDRG
     -> ShowFmt (FeeProp i o)
     -> Property
@@ -716,19 +715,6 @@ propReduceChangeOutputsDataCoverage
                 "fee > sum coins"
             True
 
-propReduceChangeOutputsPreservesSum :: ReduceChangeOutputsData -> Property
-propReduceChangeOutputsPreservesSum
-    (ReduceChangeOutputsData (Fee fee) threshold coins) = property check
-  where
-    coinsRemaining = reduceChangeOutputs threshold (Fee fee) coins
-    -- We can only expect the total sum to be preserved if the supplied coins
-    -- are enough to pay for the fee:
-    check
-        | fee < F.fold coins =
-            F.fold coins == F.fold coinsRemaining `C.add` fee
-        | otherwise =
-            null coinsRemaining
-
 --------------------------------------------------------------------------------
 -- splitCoin - Properties
 --------------------------------------------------------------------------------
@@ -816,11 +802,13 @@ feeOptions fee dust = FeeOptions
         \_ -> unsafeFee fee
     , dustThreshold =
         unsafeDustThreshold dust
+    , onDanglingChange =
+        PayAndBalance
     }
 
 feeUnitTest
     :: FeeFixture
-    -> Either FeeAdjustmentError FeeOutput
+    -> Either (FeeAdjustmentError TxIn Address) FeeOutput
     -> SpecWith ()
 feeUnitTest (FeeFixture inpsF outsF chngsF utxoF feeF dustF) expected =
     it title $ do
@@ -1026,7 +1014,8 @@ instance Arbitrary (FeeOptions i o) where
     arbitrary = do
         dustThreshold <- unsafeDustThreshold @Int <$> choose (0, 10)
         feeEstimator <- feeEstimatorFromParameters <$> arbitrary
-        return $ FeeOptions {dustThreshold, feeEstimator}
+        onDanglingChange <- elements [SaveMoney, PayAndBalance]
+        return $ FeeOptions {dustThreshold, feeEstimator, onDanglingChange}
 
 instance Arbitrary a => Arbitrary (NonEmpty a) where
     arbitrary = do
@@ -1035,4 +1024,4 @@ instance Arbitrary a => Arbitrary (NonEmpty a) where
     shrink = genericShrink
 
 instance Show (FeeOptions i o) where
-    show (FeeOptions _ dust) = show dust
+    show (FeeOptions _ dust onDangling) = show (dust, onDangling)

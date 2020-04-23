@@ -25,7 +25,12 @@ import Cardano.CoinSelection
 import Cardano.CoinSelection.Algorithm.Migration
     ( idealBatchSize, selectCoins )
 import Cardano.CoinSelection.Fee
-    ( DustThreshold (..), Fee (..), FeeEstimator (..), FeeOptions (..) )
+    ( BalancingPolicy (..)
+    , DustThreshold (..)
+    , Fee (..)
+    , FeeEstimator (..)
+    , FeeOptions (..)
+    )
 import Cardano.CoinSelection.FeeSpec
     ()
 import Cardano.CoinSelectionSpec
@@ -143,6 +148,7 @@ spec = do
                     , feeEstimator = FeeEstimator $ \s -> unsafeFee @Int
                         $ fromIntegral
                         $ 5 * (length (inputs s) + length (outputs s))
+                    , balancingPolicy = RequirePerfectBalance
                     }
             let batchSize = 1
             let utxo = CoinMap $ Map.fromList
@@ -292,6 +298,7 @@ genFeeOptions dust = do
             in unsafeFee $
                   (C.coinToIntegral dust `div` 100) * x + C.coinToIntegral dust
         , dustThreshold = DustThreshold dust
+        , balancingPolicy = RequirePerfectBalance
         }
 
 -- | Generate a given UTxO with a particular percentage of dust

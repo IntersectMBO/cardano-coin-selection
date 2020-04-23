@@ -4,7 +4,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
@@ -27,6 +26,7 @@ module Cardano.CoinSelection.Fee
       -- * Fee Adjustment
     , adjustForFee
     , FeeOptions (..)
+    , BalancingPolicy (..)
     , FeeAdjustmentError (..)
 
       -- * Dust Processing
@@ -57,7 +57,7 @@ import Cardano.CoinSelection
 import Control.Monad.Trans.Class
     ( lift )
 import Control.Monad.Trans.Except
-    ( ExceptT (..), throwE )
+    ( ExceptT (..), except, throwE )
 import Control.Monad.Trans.State
     ( StateT (..), evalStateT )
 import Crypto.Random.Types
@@ -74,8 +74,6 @@ import Data.Ratio
     ( (%) )
 import GHC.Generics
     ( Generic )
-import GHC.Stack
-    ( HasCallStack )
 import Internal.Coin
     ( Coin )
 import Internal.Invariant
@@ -128,21 +126,58 @@ newtype FeeEstimator i o = FeeEstimator
 data FeeOptions i o = FeeOptions
     { feeEstimator
         :: FeeEstimator i o
+        -- ^ Estimate fees based on selected inputs and requested outputs.
+
     , dustThreshold
         :: DustThreshold
+        -- ^ Change addresses below the given threshold will be evicted
+        -- from the created transaction. This can be useful if you do not want
+        -- to produce change output below a certain threshold and instead,
+        -- conflate them with other change outputs.
+        --
+        -- Setting the 'dustThreshold' to @mempty@ is a very reasonable choice
+        -- if you don't know what to do with this. This would have no effect and
+        -- keep all valid coin values that are positive.
+
+    , balancingPolicy
+        :: BalancingPolicy
+        -- ^ What do to when we encounter a dangling change output.
+        -- See 'BalancingPolicy'
     } deriving Generic
+
+-- | A /dangling/ change output is one that would be too expensive to add. This
+-- can happen when a change output is small, and including it would result in a
+-- higher fee than if it were not included.
+--
+-- In case where nodes accept slightly unbalanced transactions (i.e. when fees
+-- left are more than the minimal possible fees), we may choose to save money
+-- and keep the transaction slightly unbalanced. In case where node demands
+-- exactly balanced transactions, we have no choice but to add the dangling
+-- change output and pay for the extra cost induced.
+data BalancingPolicy
+    = RequirePerfectBalance
+        -- ^ Generate selections that are perfectly balanced, with the
+        -- trade-off of allowing slightly higher fees.
+    | RequireMinimalFee
+        -- ^ Generate selections with the lowest fees possible, with the
+        -- trade-off of allowing slightly imbalanced selections.
+    deriving (Generic, Show, Eq)
 
 -- | Represents the set of possible failures that can occur when adjusting a
 --   'CoinSelection' with the 'adjustForFee' function.
 --
-newtype FeeAdjustmentError
+data FeeAdjustmentError i o
     = CannotCoverFee Fee
     -- ^ Indicates that the given map of additional inputs was exhausted while
     --   attempting to select extra inputs to cover the required fee.
     --
     -- Records the shortfall (__/f/__ − __/s/__) between the required fee
     -- __/f/__ and the total value __/s/__ of currently-selected inputs.
-    --
+
+    | CoinSelectionUnderfunded (CoinSelection i o)
+    -- ^ Indicates that given the coin selection is __underfunded__: the total
+    -- value of 'inputs' is less than the total value of 'outputs', as
+    -- calculated by the 'coinMapValue' function.
     deriving (Show, Eq)
 
 -- | Adjusts the given 'CoinSelection' in order to pay for a __transaction__
@@ -207,11 +242,11 @@ newtype FeeAdjustmentError
 -- >>> sumInputs c ≈ sumOutputs c + sumChange c + estimateFee c
 --
 adjustForFee
-    :: (Ord i, Show i, Show o, MonadRandom m)
+    :: (Ord i, MonadRandom m)
     => FeeOptions i o
     -> CoinMap i
     -> CoinSelection i o
-    -> ExceptT FeeAdjustmentError m (CoinSelection i o)
+    -> ExceptT (FeeAdjustmentError i o) m (CoinSelection i o)
 adjustForFee unsafeOpt utxo coinSel = do
     let opt = invariant
             "adjustForFee: fee must be non-null" unsafeOpt (not . nullFee)
@@ -234,28 +269,21 @@ calculateFee s = Fee <$> sumInputs s `C.sub` (sumOutputs s `C.add` sumChange s)
 -- outputs, and new inputs are selected if necessary.
 --
 senderPaysFee
-    :: forall i o m . (Ord i, Show i, Show o, MonadRandom m)
+    :: forall i o m . (Ord i, MonadRandom m)
     => FeeOptions i o
     -> CoinMap i
     -> CoinSelection i o
-    -> ExceptT FeeAdjustmentError m (CoinSelection i o)
-senderPaysFee FeeOptions {feeEstimator, dustThreshold} utxo sel =
+    -> ExceptT (FeeAdjustmentError i o) m (CoinSelection i o)
+senderPaysFee opts utxo sel =
     evalStateT (go sel) utxo
   where
     go
         :: CoinSelection i o
-        -> StateT (CoinMap i) (ExceptT FeeAdjustmentError m) (CoinSelection i o)
+        -> StateT (CoinMap i) (ExceptT (FeeAdjustmentError i o) m) (CoinSelection i o)
     go coinSel@(CoinSelection inps outs chgs) = do
-        -- 1/
-        -- We compute fees using all inputs, outputs and changes since all of
-        -- them have an influence on the fee calculation.
-        let feeUpperBound = estimateFee feeEstimator coinSel
-        -- 2/
         -- Substract fee from change outputs, proportionally to their value.
-        let chgs' = reduceChangeOutputs dustThreshold feeUpperBound chgs
-        let coinSel' = coinSel { change = chgs' }
-        let remFee = remainingFee feeEstimator coinSel'
-        -- 3.1/
+        (coinSel', remFee) <- lift $ except $ reduceChangeOutputs opts coinSel
+
         -- Should the change cover the fee, we're (almost) good. By removing
         -- change outputs, we make them smaller and may reduce the size of the
         -- transaction, and the fee. Thus, we end up paying slightly more than
@@ -264,7 +292,6 @@ senderPaysFee FeeOptions {feeEstimator, dustThreshold} utxo sel =
         if remFee == Fee C.zero
         then pure coinSel'
         else do
-            -- 3.2/
             -- Otherwise, we need an extra entries from the available utxo to
             -- cover what's left. Note that this entry may increase our change
             -- because we may not consume it entirely. So we will just split
@@ -286,7 +313,7 @@ senderPaysFee FeeOptions {feeEstimator, dustThreshold} utxo sel =
 coverRemainingFee
     :: MonadRandom m
     => Fee
-    -> StateT (CoinMap i) (ExceptT FeeAdjustmentError m) [CoinMapEntry i]
+    -> StateT (CoinMap i) (ExceptT (FeeAdjustmentError i o) m) [CoinMapEntry i]
 coverRemainingFee (Fee fee) = go [] where
     go acc
         | sumEntries acc >= fee =
@@ -331,26 +358,84 @@ coverRemainingFee (Fee fee) = go [] where
 -- >>> reduceChangeOutputs (DustThreshold 0) (Fee 15) (Coin <$> [1, 2, 4, 8])
 -- []
 --
-reduceChangeOutputs :: DustThreshold -> Fee -> [Coin] -> [Coin]
-reduceChangeOutputs threshold (Fee totalFee) changeOutputs
-    | totalFee >= totalChange =
-        []
-    | otherwise =
-        case positiveChangeOutputs of
-            x : xs -> x :| xs
-                & distributeFee (Fee totalFee)
-                & fmap payFee
-                & coalesceDust threshold
-            [] -> []
-  where
-    payFee :: (Fee, Coin) -> Coin
-    payFee (Fee f, c) =
-        fromMaybe C.zero (c `C.sub` f)
+reduceChangeOutputs
+    :: FeeOptions i o
+    -> CoinSelection i o
+    -> Either (FeeAdjustmentError i o) (CoinSelection i o, Fee)
+reduceChangeOutputs opts s = do
+    -- The original requested fee amount
+    let Fee φ_original = estimateFee (feeEstimator opts) s
+    -- The initial amount left for fee (i.e. inputs - outputs)
+    let mδ_original = sumInputs s `C.sub` (sumOutputs s `C.add` sumChange s)
+    case mδ_original of
+        -- selection is now balanced, nothing to do.
+        Just δ_original | φ_original == δ_original -> do
+            pure (s, Fee C.zero)
 
-    positiveChangeOutputs :: [Coin]
-    positiveChangeOutputs = filter (> C.zero) changeOutputs
+        -- some fee left to pay, but we've depleted all change outputs
+        Just δ_original | φ_original > δ_original && null (change s) -> do
+            let remainder = φ_original `C.distance` δ_original
+            pure (s, Fee remainder)
 
-    totalChange = F.fold changeOutputs
+        -- some fee left to pay, and we've haven't depleted all change yet
+        Just δ_original | φ_original > δ_original && not (null (change s)) -> do
+            let remainder = φ_original `C.distance` δ_original
+            let chgs' = distributeFee (Fee remainder) (NE.fromList (change s))
+                      & fmap payFee
+                      & coalesceDust (dustThreshold opts)
+            reduceChangeOutputs opts (s { change = chgs' })
+
+        -- The current selection has a higher fee than necessary. This typically
+        -- occurs if, after reducing an output to pay for the predicted fee, the
+        -- required fee turns out to be less than originally predicted.
+        -- The outcome depends on whether or not the node allows transactions
+        -- to be unbalanced.
+        Just δ_original | δ_original > φ_original -> do
+            let extraChng = δ_original `C.distance` φ_original
+            let sDangling = s { change = splitCoin extraChng (change s) }
+            let Fee φ_dangling = estimateFee (feeEstimator opts) sDangling
+            -- We have `δ_dangling = φ_original` by construction of sDangling.
+            --
+            -- Proof:
+            --
+            -- δ_dangling = Σi_dangling - (Σo_dangling + Σc_dangling)
+            --            = Σi_original - (Σo_original + Σc_original + extraChng)
+            --            = Σi_original - (Σo_original + Σc_original) - extraChng
+            --            = δ_original - extraChng
+            --            = δ_original - (δ_original - φ_original)
+            --            = φ_original
+            let δ_dangling = φ_original
+            case φ_dangling `C.sub` δ_dangling of
+                -- we've left too much, but adding a change output would be more
+                -- expensive than not having it. Here we have two choices:
+                --
+                -- a) If the node allows unbalanced transaction, we can stop here
+                --    and do nothing. We'll leave slightly more than what's needed
+                --    for fees, but having an extra change output isn't worth it
+                --    anyway.
+                --
+                -- b) If we __must__ balance the transaction, then we can choose
+                --    to pay the extra cost by adding the change output and
+                --    continue trying to balance the transaction (likely, by
+                --    selecting another input).
+                Just remainder | φ_dangling >= δ_original ->
+                    case balancingPolicy opts of
+                        RequireMinimalFee ->
+                            pure (s, Fee C.zero)
+                        RequirePerfectBalance ->
+                            pure (sDangling, Fee remainder)
+
+                -- If however, adding the dangling change doesn't cost more than
+                -- not having it, we might as well add it to get the money and
+                -- continue balancing!
+                _otherwise ->
+                    reduceChangeOutputs opts sDangling
+
+        -- The only way to end-up here is if the user has provided an invalid
+        -- selection where outputs are trying to spend more than inputs. This is
+        -- simply forbidden.
+        _Nothing ->
+            Left (CoinSelectionUnderfunded s)
 
 -- Distribute the given fee over the given list of coins, so that each coin
 -- is allocated a __fraction__ of the fee in proportion to its relative size.
@@ -473,38 +558,6 @@ coalesceDust (DustThreshold threshold) coins =
     (coinsToKeep, coinsToRemove) = NE.partition (> threshold) coins
     valueToDistribute = F.fold coinsToRemove
 
--- Computes how much is left to pay given a particular selection.
---
-remainingFee
-    :: (HasCallStack, Show i, Show o)
-    => FeeEstimator i o
-    -> CoinSelection i o
-    -> Fee
-remainingFee FeeEstimator {estimateFee} s
-    | fee >= diff =
-        Fee (fee `C.distance` diff)
-    | feeDangling >= diff =
-        Fee (feeDangling `C.distance` fee)
-    | otherwise =
-        -- NOTE
-        -- The only case where we may end up with an unbalanced transaction is
-        -- when we have a dangling change output (i.e. adding it costs too much
-        -- and we can't afford it, but not having it result in too many coins
-        -- left for fees).
-        error $ unwords
-            [ "Generated an unbalanced tx! Too much left for fees"
-            , ": fee (raw) =", show fee
-            , ": fee (dangling) =", show feeDangling
-            , ", diff =", show diff
-            , "\nselection =", show s
-            ]
-  where
-    Fee fee = estimateFee s
-    Fee diff = fromMaybe errorUnderfundedSelection (calculateFee s)
-    Fee feeDangling = estimateFee s { change = [diff `C.distance` fee] }
-    errorUnderfundedSelection = error
-        "Cannot calculate remaining fee for an underfunded selection."
-
 -- Splits up the given coin of value __@v@__, distributing its value over the
 -- given coin list of length __@n@__, so that each coin value is increased by
 -- an integral amount within unity of __@v/n@__, producing a new list of coin
@@ -587,3 +640,8 @@ applyN n f = F.foldr (.) id (replicate n f)
 --
 sumEntries :: [CoinMapEntry i] -> Coin
 sumEntries = F.fold . fmap entryValue
+
+-- | Reduce a coin value by a given fee amount. If fees are too big for
+-- a single coin, returns a `Coin 0`.
+payFee :: (Fee, Coin) -> Coin
+payFee (Fee f, c) = fromMaybe C.zero (c `C.sub` f)
