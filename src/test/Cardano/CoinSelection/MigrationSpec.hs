@@ -43,7 +43,7 @@ import Data.ByteString
 import Data.Function
     ( (&) )
 import Data.Word
-    ( Word8 )
+    ( Word16 )
 import Internal.Coin
     ( Coin, coinToIntegral )
 import Numeric.Natural
@@ -164,7 +164,7 @@ spec = do
 prop_onlyChangeOutputs
     :: forall i o . (Ord i, Ord o, Show o)
     => FeeOptions i o
-    -> Word8
+    -> Word16
     -> CoinMap i
     -> Property
 prop_onlyChangeOutputs feeOpts batchSize utxo = do
@@ -176,7 +176,7 @@ prop_onlyChangeOutputs feeOpts batchSize utxo = do
 prop_noLessThanThreshold
     :: forall i o . (Ord i, Ord o)
     => FeeOptions i o
-    -> Word8
+    -> Word16
     -> CoinMap i
     -> Property
 prop_noLessThanThreshold feeOpts batchSize utxo = do
@@ -192,7 +192,7 @@ prop_noLessThanThreshold feeOpts batchSize utxo = do
 prop_inputsGreaterThanOutputs
     :: forall i o . (Ord i, Ord o, Show i, Show o)
     => FeeOptions i o
-    -> Word8
+    -> Word16
     -> CoinMap i
     -> Property
 prop_inputsGreaterThanOutputs feeOpts batchSize utxo = do
@@ -208,7 +208,7 @@ prop_inputsGreaterThanOutputs feeOpts batchSize utxo = do
 prop_inputsAreUnique
     :: forall i o . (Ord i, Ord o)
     => FeeOptions i o
-    -> Word8
+    -> Word16
     -> CoinMap i
     -> Property
 prop_inputsAreUnique feeOpts batchSize utxo = do
@@ -222,7 +222,7 @@ prop_inputsAreUnique feeOpts batchSize utxo = do
 prop_inputsStillInUTxO
     :: forall i o . (Ord i, Ord o)
     => FeeOptions i o
-    -> Word8
+    -> Word16
     -> CoinMap i
     -> Property
 prop_inputsStillInUTxO feeOpts batchSize utxo = do
@@ -237,7 +237,7 @@ prop_inputsStillInUTxO feeOpts batchSize utxo = do
 prop_wellBalanced
     :: forall i o . (Ord i, Ord o, Show i, Show o)
     => FeeOptions i o
-    -> Word8
+    -> Word16
     -> CoinMap i
     -> Property
 prop_wellBalanced feeOpts batchSize utxo = do
@@ -280,7 +280,7 @@ instance Arbitrary (Wrapped (Hash "Tx")) where
 -- Generators
 --------------------------------------------------------------------------------
 
-genBatchSize :: Gen Word8
+genBatchSize :: Gen Word16
 genBatchSize = choose (50, 150)
 
 genFeeOptions :: Coin -> Gen (FeeOptions TxIn Address)
