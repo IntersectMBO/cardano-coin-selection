@@ -23,16 +23,18 @@ module Cardano.CoinSelection.Fee
       -- * Fundamental Types
       Fee (..)
     , FeeEstimator (..)
-    , DustThreshold (..)
 
       -- * Fee Adjustment
     , adjustForFee
     , FeeOptions (..)
     , FeeAdjustmentError (..)
 
+      -- * Dust Processing
+    , DustThreshold (..)
+    , coalesceDust
+
       -- # Internal Functions
     , calculateFee
-    , coalesceDust
     , distributeFee
     , reduceChangeOutputs
     , splitCoin
@@ -130,36 +132,79 @@ data FeeOptions i o = FeeOptions
         :: DustThreshold
     } deriving Generic
 
+-- | Represents the set of possible failures that can occur when adjusting a
+--   'CoinSelection' with the 'adjustForFee' function.
+--
 newtype FeeAdjustmentError
-    = ErrCannotCoverFee Fee
-    -- ^ UTxO exhausted during fee covering
-    -- We record what amount missed to cover the fee
+    = CannotCoverFee Fee
+    -- ^ Indicates that the given map of additional inputs was exhausted while
+    --   attempting to select extra inputs to cover the required fee.
+    --
+    -- Records the shortfall (__/f/__ − __/s/__) between the required fee
+    -- __/f/__ and the total value __/s/__ of currently-selected inputs.
+    --
     deriving (Show, Eq)
 
--- | Given the coin selection result from a policy run, adjust the outputs for
--- fees, potentially returning additional inputs that we need to cover all
--- fees.
+-- | Adjusts the given 'CoinSelection' in order to pay for a __transaction__
+--   __fee__, required in order to publish the selection as a transaction on
+--   a blockchain.
 --
--- We lose the relationship between the transaction outputs and their
--- corresponding inputs/change outputs here. This is a decision we may wish to
--- revisit later. For now however note that since
+-- == Background
 --
---  (a) coin selection tries to establish a particular ratio between
---      payment outputs and change outputs (currently it aims for an average of
---      1:1)
+-- Implementations of 'Cardano.CoinSelection.CoinSelectionAlgorithm' generally
+-- produce coin selections that are /exactly balanced/, satisfying the
+-- following equality:
 --
---  (b) coin selection currently only generates a single change output per
---      payment output, distributing the fee proportionally across all change
---      outputs is roughly equivalent to distributing it proportionally over
---      the payment outputs (roughly, not exactly, because the 1:1 proportion
---      is best effort only, and may in some cases be wildly different).
+-- >>> sumInputs c = sumOutputs c + sumChange c
 --
--- Note that for (a) we don't need the ratio to be 1:1, the above reasoning
--- will remain true for any proportion 1:n. For (b) however, if coin selection
--- starts creating multiple outputs, and this number may vary, then losing the
--- connection between outputs and change outputs will mean that that some
--- outputs may pay a larger percentage of the fee (depending on how many change
--- outputs the algorithm happened to choose).
+-- In order to pay for a transaction fee, the above equality must be
+-- transformed into an /inequality/:
+--
+-- >>> sumInputs c > sumOutputs c + sumChange c
+--
+-- The difference between these two sides represents value to be paid /by the/
+-- /originator/ of the transaction, in the form of a fee:
+--
+-- >>> sumInputs c = sumOutputs c + sumChange c + fee
+--
+-- == The Adjustment Process
+--
+-- In order to generate a fee that is acceptable to the network, this function
+-- adjusts the 'change' and 'inputs' of the given 'CoinSelection', consulting
+-- the 'FeeEstimator' as a guide for how much the current selection would cost
+-- to publish as a transaction on the network.
+--
+-- == Methods of Adjustment
+--
+-- There are two methods of adjustment possible:
+--
+--  1. The __'change'__ set can be /reduced/, either by:
+--
+--      a. completely removing a change value from the set; or by
+--
+--      b. reducing a change value to a lower value.
+--
+--  2. The __'inputs'__ set can be /augmented/, by selecting additional inputs
+--     from the specified 'CoinMap' argument.
+--
+-- == Dealing with Dust Values
+--
+-- If, at any point, a change value is generated that is less than or equal
+-- to the 'DustThreshold', this function will eliminate that change value
+-- from the 'change' set, redistributing the eliminated value over the remaining
+-- change values, ensuring that the total value of all 'change' is preserved.
+--
+-- See 'coalesceDust' for more details.
+--
+-- == Termination
+--
+-- Since adjusting a selection can affect the fee estimate produced by
+-- 'estimateFee', the process of adjustment is an /iterative/ process.
+--
+-- This function terminates when it has generated a 'CoinSelection' that
+-- satisfies the following property:
+--
+-- >>> sumInputs c ≈ sumOutputs c + sumChange c + estimateFee c
 --
 adjustForFee
     :: (Ord i, Show i, Show o, MonadRandom m)
@@ -252,7 +297,7 @@ coverRemainingFee (Fee fee) = go [] where
                 Just entry ->
                     go (entry : acc)
                 Nothing ->
-                    lift $ throwE $ ErrCannotCoverFee $ Fee $
+                    lift $ throwE $ CannotCoverFee $ Fee $
                         fee `C.distance` (sumEntries acc)
 
 -- Pays for the given fee by subtracting it from the given list of change
@@ -412,9 +457,9 @@ distributeFee (Fee feeTotal) coinsUnsafe =
     totalCoinValue :: Coin
     totalCoinValue = F.fold coins
 
--- From the given list of coins, remove dust coins with a value less than or
--- equal to the given threshold value, redistributing their total value over
--- the coins that remain.
+-- | From the given list of coins, remove dust coins with a value less than or
+--   equal to the given threshold value, redistributing their total value over
+--   the coins that remain.
 --
 -- This function satisfies the following properties:
 --

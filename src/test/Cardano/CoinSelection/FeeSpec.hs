@@ -219,7 +219,7 @@ spec = do
             , fUtxo = []
             , fFee = 4
             , fDust = 0
-            }) (Left $ ErrCannotCoverFee $ unsafeFee @Int 1)
+            }) (Left $ CannotCoverFee $ unsafeFee @Int 1)
 
         -- Cannot cover fee even with an extra (too small) inputs
         feeUnitTest (FeeFixture
@@ -229,7 +229,7 @@ spec = do
             , fUtxo = [1]
             , fFee = 5
             , fDust = 0
-            }) (Left $ ErrCannotCoverFee $ unsafeFee @Int 1)
+            }) (Left $ CannotCoverFee $ unsafeFee @Int 1)
 
         -- Can select extra inputs to exactly cover fee, no change back
         feeUnitTest (FeeFixture
