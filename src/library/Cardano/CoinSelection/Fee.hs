@@ -23,16 +23,18 @@ module Cardano.CoinSelection.Fee
       -- * Fundamental Types
       Fee (..)
     , FeeEstimator (..)
-    , DustThreshold (..)
 
       -- * Fee Adjustment
     , adjustForFee
     , FeeOptions (..)
     , FeeAdjustmentError (..)
 
+      -- * Dust Processing
+    , DustThreshold (..)
+    , coalesceDust
+
       -- # Internal Functions
     , calculateFee
-    , coalesceDust
     , distributeFee
     , reduceChangeOutputs
     , splitCoin
@@ -188,6 +190,8 @@ newtype FeeAdjustmentError
 -- to the 'DustThreshold', this function will eliminate that change value
 -- from the 'change' set, redistributing the eliminated value over the remaining
 -- change values, ensuring that the total value of all 'change' is preserved.
+--
+-- See 'coalesceDust' for more details.
 --
 -- == Termination
 --
@@ -450,9 +454,9 @@ distributeFee (Fee feeTotal) coinsUnsafe =
     totalCoinValue :: Coin
     totalCoinValue = F.fold coins
 
--- From the given list of coins, remove dust coins with a value less than or
--- equal to the given threshold value, redistributing their total value over
--- the coins that remain.
+-- | From the given list of coins, remove dust coins with a value less than or
+--   equal to the given threshold value, redistributing their total value over
+--   the coins that remain.
 --
 -- This function satisfies the following properties:
 --
