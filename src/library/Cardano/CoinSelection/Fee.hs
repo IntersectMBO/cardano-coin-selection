@@ -137,8 +137,8 @@ newtype FeeAdjustmentError
     -- ^ Indicates that the given map of additional inputs was exhausted while
     --   attempting to select extra inputs to cover the required fee.
     --
-    -- Records the shortfall between the required fee and the total value
-    -- of currently selected inputs.
+    -- Records the shortfall (__/f/__ − __/s/__) between the required fee
+    -- __/f/__ and the total value __/s/__ of currently-selected inputs.
     --
     deriving (Show, Eq)
 
