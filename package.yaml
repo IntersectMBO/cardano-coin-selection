@@ -28,13 +28,13 @@ library:
   - src/library
   - src/internal
   ghc-options:
+  - -Wall
   - -Wcompat
   - -fwarn-redundant-constraints
   when:
   - condition: flag(release)
     ghc-options:
     - -Werror
-    - -Wall
   default-extensions:
   - NoImplicitPrelude
   dependencies:
@@ -54,6 +54,7 @@ tests:
     default-extensions:
     - NoImplicitPrelude
     ghc-options:
+    - -Wall
     - -Wcompat
     - -fwarn-redundant-constraints
     - -threaded
@@ -63,7 +64,6 @@ tests:
     - condition: flag(release)
       ghc-options:
       - -Werror
-      - -Wall
     dependencies:
     - bytestring
     - cardano-coin-selection
