@@ -131,7 +131,7 @@ data FeeOptions i o = FeeOptions
     } deriving Generic
 
 newtype FeeAdjustmentError
-    = ErrCannotCoverFee Fee
+    = CannotCoverFee Fee
     -- ^ UTxO exhausted during fee covering
     -- We record what amount missed to cover the fee
     deriving (Show, Eq)
@@ -252,7 +252,7 @@ coverRemainingFee (Fee fee) = go [] where
                 Just entry ->
                     go (entry : acc)
                 Nothing ->
-                    lift $ throwE $ ErrCannotCoverFee $ Fee $
+                    lift $ throwE $ CannotCoverFee $ Fee $
                         fee `C.distance` (sumEntries acc)
 
 -- Pays for the given fee by subtracting it from the given list of change
