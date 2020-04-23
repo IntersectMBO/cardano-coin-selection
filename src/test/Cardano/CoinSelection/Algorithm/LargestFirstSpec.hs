@@ -3,7 +3,7 @@
 {-# LANGUAGE TypeApplications #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
-module Cardano.CoinSelection.LargestFirstSpec
+module Cardano.CoinSelection.Algorithm.LargestFirstSpec
     ( spec
     ) where
 
@@ -24,7 +24,7 @@ import Cardano.CoinSelection
     , InputsExhaustedError (..)
     , coinMapToList
     )
-import Cardano.CoinSelection.LargestFirst
+import Cardano.CoinSelection.Algorithm.LargestFirst
     ( largestFirst )
 import Cardano.CoinSelectionSpec
     ( CoinSelProp (..)

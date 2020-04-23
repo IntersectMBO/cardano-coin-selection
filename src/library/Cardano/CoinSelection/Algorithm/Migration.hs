@@ -34,7 +34,7 @@
 -- for the previous ones to be inserted before making new ones (we also say
 -- that a wallet is not "fragmented enough").
 
-module Cardano.CoinSelection.Migration
+module Cardano.CoinSelection.Algorithm.Migration
     (
       -- * Coin Selection for Migration
       selectCoins
@@ -56,7 +56,7 @@ import Cardano.CoinSelection
     , sumChange
     , sumInputs
     )
-import Cardano.CoinSelection.Fee
+import Cardano.Fee
     ( DustThreshold (..), Fee (..), FeeEstimator (..), FeeOptions (..) )
 import Control.Monad.Trans.State
     ( State, evalState, get, put )

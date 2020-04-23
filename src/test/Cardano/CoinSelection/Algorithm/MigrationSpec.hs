@@ -7,7 +7,7 @@
 
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
-module Cardano.CoinSelection.MigrationSpec
+module Cardano.CoinSelection.Algorithm.MigrationSpec
     ( spec
     ) where
 
@@ -22,13 +22,13 @@ import Cardano.CoinSelection
     , sumChange
     , sumInputs
     )
-import Cardano.CoinSelection.Fee
-    ( DustThreshold (..), Fee (..), FeeEstimator (..), FeeOptions (..) )
-import Cardano.CoinSelection.FeeSpec
-    ()
-import Cardano.CoinSelection.Migration
+import Cardano.CoinSelection.Algorithm.Migration
     ( idealBatchSize, selectCoins )
 import Cardano.CoinSelectionSpec
+    ()
+import Cardano.Fee
+    ( DustThreshold (..), Fee (..), FeeEstimator (..), FeeOptions (..) )
+import Cardano.FeeSpec
     ()
 import Cardano.Test.Utilities
     ( Address

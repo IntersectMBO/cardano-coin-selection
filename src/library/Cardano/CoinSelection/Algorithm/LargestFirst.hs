@@ -8,7 +8,7 @@
 -- This module contains an implementation of the __Largest-First__ coin
 -- selection algorithm.
 --
-module Cardano.CoinSelection.LargestFirst (
+module Cardano.CoinSelection.Algorithm.LargestFirst (
     largestFirst
   ) where
 
