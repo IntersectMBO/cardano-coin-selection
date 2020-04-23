@@ -132,8 +132,12 @@ data FeeOptions i o = FeeOptions
 
 newtype FeeAdjustmentError
     = CannotCoverFee Fee
-    -- ^ UTxO exhausted during fee covering
-    -- We record what amount missed to cover the fee
+    -- ^ Indicates that the given map of additional inputs was exhausted while
+    --   attempting to select extra inputs to cover the required fee.
+    --
+    -- Records the shortfall between the required fee and the total value
+    -- of currently selected inputs.
+    --
     deriving (Show, Eq)
 
 -- | Given the coin selection result from a policy run, adjust the outputs for
