@@ -307,9 +307,6 @@ data CoinSelectionFixture i o = CoinSelectionFixture
         -- ^ Value (in Lovelace) & number of requested outputs
     }
 
--- | A dummy error for testing extra validation
-data ErrValidation = ErrValidation deriving (Eq, Show)
-
 -- | Testing-friendly format for 'CoinSelection' results of unit tests.
 data CoinSelectionTestResult = CoinSelectionTestResult
     { rsInputs :: [Integer]
