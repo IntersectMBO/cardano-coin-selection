@@ -16,6 +16,11 @@
 
 module Cardano.CoinSelection.FeeSpec
     ( spec
+
+    -- Internals
+    , FeeParameters
+    , stableEstimator
+    , valueDependentEstimator
     ) where
 
 import Prelude hiding

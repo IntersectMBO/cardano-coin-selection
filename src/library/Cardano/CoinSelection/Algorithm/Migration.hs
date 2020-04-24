@@ -1,4 +1,6 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE MultiWayIf #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -57,7 +59,12 @@ import Cardano.CoinSelection
     , sumInputs
     )
 import Cardano.CoinSelection.Fee
-    ( DustThreshold (..), Fee (..), FeeEstimator (..), FeeOptions (..) )
+    ( DustThreshold (..)
+    , Fee (..)
+    , FeeBalancingPolicy (..)
+    , FeeEstimator (..)
+    , FeeOptions (..)
+    )
 import Control.Monad.Trans.State
     ( State, evalState, get, put )
 import Data.List.NonEmpty
@@ -94,7 +101,7 @@ selectCoins
     -> CoinMap i
         -- ^ UTxO to deplete
     -> [CoinSelection i o]
-selectCoins feeOpts batchSize utxo =
+selectCoins FeeOptions{dustThreshold,feeEstimator,feeBalancingPolicy} batchSize utxo =
     evalState migrate (coinMapToList utxo)
   where
     migrate :: State [CoinMapEntry i] [CoinSelection i o]
@@ -120,7 +127,7 @@ selectCoins feeOpts batchSize utxo =
             in if null chgs then [threshold] else chgs
         }
       where
-        threshold = unDustThreshold $ dustThreshold feeOpts
+        threshold = unDustThreshold dustThreshold
         noDust :: Coin -> Maybe Coin
         noDust c
             | c < threshold = Nothing
@@ -148,8 +155,37 @@ selectCoins feeOpts batchSize utxo =
         -- sign of `diff` making for the right modification.
         -- We then recursively call ourselves for this might reduce the number
         -- of outputs and change the fee.
-        (c : cs) -> adjustForFee $ coinSel
-            { change = modifyFirst (c :| cs) (applyDiff diff) }
+        (c : cs) -> do
+            let coinSel' = coinSel
+                    { change = modifyFirst (c :| cs) (applyDiff diff) }
+            let costOfSurplus
+                    = fromIntegral
+                    $ C.coinToNatural
+                    $ C.distance
+                        (unFee $ estimateFee feeEstimator coinSel')
+                        (unFee $ estimateFee feeEstimator coinSel )
+            if
+                -- Adding the change costs less than not having it, so it's
+                -- worth trying.
+                | costOfSurplus < actualFee ->
+                    adjustForFee coinSel'
+
+                -- Adding the change costs more than not having it, If we don't
+                -- require strict balancing, we can leave the selection as-is.
+                | feeBalancingPolicy == RequireMinimalFee ->
+                    pure coinSel
+
+                -- Adding the change costs more than not having it. So,
+                -- depending on our balancing policy, we may stop the balancing
+                -- right here, or, if we must balance the selection discard the
+                -- whole selection: it can't be balanced with this algorithm.
+                --
+                -- Note that this last extreme case is reached when using an
+                -- unstable fee policy (where values of outputs can influence
+                -- the policy) AND, require transactions to be 100% balanced.
+                -- This is a silly thing to do.
+                | otherwise ->
+                    Nothing
       where
         applyDiff :: Integer -> Coin -> Coin
         applyDiff i c
@@ -161,10 +197,12 @@ selectCoins feeOpts batchSize utxo =
           where
             requiredFee
                 = coinToIntegral $ unFee
-                $ estimateFee (feeEstimator feeOpts) coinSel
-            actualFee
-                = coinToIntegral (sumInputs coinSel)
-                - coinToIntegral (sumChange coinSel)
+                $ estimateFee feeEstimator coinSel
+
+        actualFee :: Integer
+        actualFee
+            = coinToIntegral (sumInputs coinSel)
+            - coinToIntegral (sumChange coinSel)
 
     -- | Apply the given function to the first coin of the list. If the
     -- operation makes the 'Coin' smaller than the dust threshold, the coin is
@@ -175,7 +213,7 @@ selectCoins feeOpts batchSize utxo =
         | otherwise = c' : cs
       where
         c' = op c
-        threshold = unDustThreshold (dustThreshold feeOpts)
+        threshold = unDustThreshold dustThreshold
 
     getNextBatch :: State [a] [a]
     getNextBatch = do
