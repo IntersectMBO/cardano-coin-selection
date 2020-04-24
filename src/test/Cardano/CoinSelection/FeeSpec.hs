@@ -16,6 +16,11 @@
 
 module Cardano.CoinSelection.FeeSpec
     ( spec
+
+    -- Internals
+    , FeeParameters
+    , stableEstimator
+    , valueDependentEstimator
     ) where
 
 import Prelude hiding
@@ -39,6 +44,7 @@ import Cardano.CoinSelection.Fee
     ( DustThreshold (..)
     , Fee (..)
     , FeeAdjustmentError (..)
+    , FeeBalancingPolicy (..)
     , FeeEstimator (..)
     , FeeOptions (..)
     , adjustForFee
@@ -70,6 +76,8 @@ import Crypto.Random.Types
     ( withDRG )
 import Data.Either
     ( isRight )
+import Data.Function
+    ( (&) )
 import Data.Functor.Identity
     ( Identity (runIdentity) )
 import Data.List.NonEmpty
@@ -96,6 +104,7 @@ import Test.QuickCheck
     , arbitraryBoundedIntegral
     , checkCoverage
     , choose
+    , counterexample
     , cover
     , coverTable
     , disjoin
@@ -391,8 +400,10 @@ spec = do
     describe "reduceChangeOutputs" $ do
         it "data coverage is adequate"
             (checkCoverage propReduceChangeOutputsDataCoverage)
-        it "preserves sum"
-            (checkCoverage propReduceChangeOutputsPreservesSum)
+        it "the fee balancing algorithm converges for any coin selection"
+            ( withMaxSuccess 100_000
+            $ propReduceChangeOutputsConverge @TxIn @Address
+            )
 
     describe "splitCoin" $ do
         it "data coverage is adequate"
@@ -441,7 +452,7 @@ propDeterministic (ShowFmt (FeeProp coinSel _ (fee, dust))) =
         resultOne `shouldBe` resultTwo
 
 propReducedChanges
-    :: forall i o . (Show i, Show o, Ord i)
+    :: forall i o . (Ord i, Show i, Show o)
     => SystemDRG
     -> ShowFmt (FeeProp i o)
     -> Property
@@ -716,18 +727,43 @@ propReduceChangeOutputsDataCoverage
                 "fee > sum coins"
             True
 
-propReduceChangeOutputsPreservesSum :: ReduceChangeOutputsData -> Property
-propReduceChangeOutputsPreservesSum
-    (ReduceChangeOutputsData (Fee fee) threshold coins) = property check
+propReduceChangeOutputsConverge
+    :: (Show i, Show o)
+    => CoinSelection i o
+    -> FeeOptions i o
+    -> Property
+propReduceChangeOutputsConverge sel opts = do
+    let Right (sel', remainder) = reduceChangeOutputs opts sel
+    let fee = estimateFee (feeEstimator opts) sel'
+    let prop = case feeBalancingPolicy opts of
+            -- If fees are null and we require balanced selections, then the
+            -- selection must be exactly balanced.
+            RequirePerfectBalance | remainder == Fee C.zero ->
+                (Fee <$> delta sel') == Just fee
+
+            -- Otherwise, either the change outputs are null, or the delta is
+            -- positive because of the dangling output and we'll have to pay for
+            -- it.
+            RequirePerfectBalance ->
+                null (change sel') || (delta sel' >= Just C.zero)
+
+            -- If fees are null and we do not require balanced selections, then
+            -- the selection must leave __at least__ the fee amount.
+            RequireMinimalFee | remainder == Fee C.zero ->
+                (Fee <$> delta sel') >= Just fee
+
+            -- Otherwise, the change outputs are necessarily null.
+            RequireMinimalFee ->
+                null (change sel')
+    property prop
+        & counterexample (unlines
+            [ "new selection:  " <> show sel'
+            , "delta (before): " <> show (delta sel)
+            , "delta (after):  " <> show (delta sel')
+            , "remainder:      " <> show remainder
+            ])
   where
-    coinsRemaining = reduceChangeOutputs threshold (Fee fee) coins
-    -- We can only expect the total sum to be preserved if the supplied coins
-    -- are enough to pay for the fee:
-    check
-        | fee < F.fold coins =
-            F.fold coins == F.fold coinsRemaining `C.add` fee
-        | otherwise =
-            null coinsRemaining
+    delta s = sumInputs s `C.sub` (sumOutputs s `C.add` sumChange s)
 
 --------------------------------------------------------------------------------
 -- splitCoin - Properties
@@ -816,11 +852,13 @@ feeOptions fee dust = FeeOptions
         \_ -> unsafeFee fee
     , dustThreshold =
         unsafeDustThreshold dust
+    , feeBalancingPolicy =
+        RequirePerfectBalance
     }
 
 feeUnitTest
     :: FeeFixture
-    -> Either FeeAdjustmentError FeeOutput
+    -> Either (FeeAdjustmentError TxIn Address) FeeOutput
     -> SpecWith ()
 feeUnitTest (FeeFixture inpsF outsF chngsF utxoF feeF dustF) expected =
     it title $ do
@@ -1013,8 +1051,9 @@ instance Arbitrary (FeeParameters i o) where
         pure $ FeeParameters {feePerTransaction, feePerTransactionEntry}
     shrink = genericShrink
 
-feeEstimatorFromParameters :: FeeParameters i o -> FeeEstimator i o
-feeEstimatorFromParameters
+-- An estimator that solely depends on the number of inputs and outputs.
+stableEstimator :: FeeParameters i o -> FeeEstimator i o
+stableEstimator
     FeeParameters {feePerTransaction, feePerTransactionEntry} =
         FeeEstimator $ \s -> Fee $ maybe C.zero
             (C.add (unFee feePerTransaction))
@@ -1022,11 +1061,37 @@ feeEstimatorFromParameters
                 (unFee feePerTransactionEntry)
                 (length (inputs s) + length (outputs s)))
 
+-- An estimator which depends on the size of inputs and outputs, where the size
+-- is a function of their number and their value. The bigger the coins, the
+-- bigger the fee.
+valueDependentEstimator :: FeeParameters i o -> FeeEstimator i o
+valueDependentEstimator
+    FeeParameters {feePerTransaction, feePerTransactionEntry} =
+        FeeEstimator $ \s -> Fee $ maybe C.zero
+            (C.add (unFee feePerTransaction))
+            (C.mul
+                (unFee feePerTransactionEntry)
+                (length (inputs s) + length (outputs s) + size (change s)))
+  where
+    size :: [Coin] -> Int
+    size = sum . fmap sizeOfOne
+      where
+        sizeOfOne :: Coin -> Int
+        sizeOfOne coin
+            | coin < C.coinFromNatural 1_000   = 1
+            | coin < C.coinFromNatural 10_000  = 2
+            | coin < C.coinFromNatural 100_000 = 3
+            | otherwise                        = 4
+
 instance Arbitrary (FeeOptions i o) where
     arbitrary = do
         dustThreshold <- unsafeDustThreshold @Int <$> choose (0, 10)
-        feeEstimator <- feeEstimatorFromParameters <$> arbitrary
-        return $ FeeOptions {dustThreshold, feeEstimator}
+        feeEstimator <- oneof
+            [ stableEstimator <$> arbitrary
+            , valueDependentEstimator <$> arbitrary
+            ]
+        feeBalancingPolicy <- elements [RequirePerfectBalance, RequireMinimalFee]
+        return $ FeeOptions {dustThreshold, feeEstimator, feeBalancingPolicy}
 
 instance Arbitrary a => Arbitrary (NonEmpty a) where
     arbitrary = do
@@ -1035,4 +1100,4 @@ instance Arbitrary a => Arbitrary (NonEmpty a) where
     shrink = genericShrink
 
 instance Show (FeeOptions i o) where
-    show (FeeOptions _ dust) = show dust
+    show (FeeOptions _ dust policy) = show (dust, policy)

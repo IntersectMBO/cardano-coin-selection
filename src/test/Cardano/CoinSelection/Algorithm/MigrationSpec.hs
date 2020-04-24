@@ -25,9 +25,14 @@ import Cardano.CoinSelection
 import Cardano.CoinSelection.Algorithm.Migration
     ( idealBatchSize, selectCoins )
 import Cardano.CoinSelection.Fee
-    ( DustThreshold (..), Fee (..), FeeEstimator (..), FeeOptions (..) )
+    ( DustThreshold (..)
+    , Fee (..)
+    , FeeBalancingPolicy (..)
+    , FeeEstimator (..)
+    , FeeOptions (..)
+    )
 import Cardano.CoinSelection.FeeSpec
-    ()
+    ( FeeParameters, stableEstimator )
 import Cardano.CoinSelectionSpec
     ()
 import Cardano.Test.Utilities
@@ -113,27 +118,27 @@ spec = do
 
     describe "selectCoins properties" $ do
         it "No coin selection has outputs" $
-            property $ withMaxSuccess 1000 $ prop_onlyChangeOutputs
+            property $ withMaxSuccess 10000 $ prop_onlyChangeOutputs
                 @(Wrapped TxIn) @Address
 
         it "Every coin in the selection change >= minimum threshold coin" $
-            property $ withMaxSuccess 1000 $ prop_noLessThanThreshold
+            property $ withMaxSuccess 10000 $ prop_noLessThanThreshold
                 @(Wrapped TxIn) @Address
 
         it "Total input UTxO value >= sum of selection change coins" $
-            property $ withMaxSuccess 1000 $ prop_inputsGreaterThanOutputs
+            property $ withMaxSuccess 10000 $ prop_inputsGreaterThanOutputs
                 @(Wrapped TxIn) @Address
 
         it "Every selection input is unique" $
-            property $ withMaxSuccess 1000 $ prop_inputsAreUnique
+            property $ withMaxSuccess 10000 $ prop_inputsAreUnique
                 @(Wrapped TxIn) @Address
 
         it "Every selection input is a member of the UTxO" $
-            property $ withMaxSuccess 1000 $ prop_inputsStillInUTxO
+            property $ withMaxSuccess 10000 $ prop_inputsStillInUTxO
                 @(Wrapped TxIn) @Address
 
         it "Every coin selection is well-balanced" $
-            property $ withMaxSuccess 1000 $ prop_wellBalanced
+            property $ withMaxSuccess 10000 $ prop_wellBalanced
                 @(Wrapped TxIn) @Address
 
     describe "selectCoins regressions" $ do
@@ -143,6 +148,7 @@ spec = do
                     , feeEstimator = FeeEstimator $ \s -> unsafeFee @Int
                         $ fromIntegral
                         $ 5 * (length (inputs s) + length (outputs s))
+                    , feeBalancingPolicy = RequirePerfectBalance
                     }
             let batchSize = 1
             let utxo = CoinMap $ Map.fromList
@@ -236,11 +242,16 @@ prop_inputsStillInUTxO feeOpts batchSize utxo = do
 -- expected fees)
 prop_wellBalanced
     :: forall i o . (Ord i, Ord o, Show i, Show o)
-    => FeeOptions i o
+    => FeeParameters i o
     -> Word16
     -> CoinMap i
     -> Property
-prop_wellBalanced feeOpts batchSize utxo = do
+prop_wellBalanced feeParams batchSize utxo = do
+    let feeOpts = FeeOptions
+            { dustThreshold = DustThreshold mempty
+            , feeEstimator = stableEstimator feeParams
+            , feeBalancingPolicy = RequirePerfectBalance
+            }
     let selections = selectCoins feeOpts batchSize utxo
     conjoin
         [ counterexample example (actualFee === expectedFee)
@@ -292,6 +303,7 @@ genFeeOptions dust = do
             in unsafeFee $
                   (C.coinToIntegral dust `div` 100) * x + C.coinToIntegral dust
         , dustThreshold = DustThreshold dust
+        , feeBalancingPolicy = RequirePerfectBalance
         }
 
 -- | Generate a given UTxO with a particular percentage of dust
