@@ -26,7 +26,7 @@ module Cardano.CoinSelection.Fee
       -- * Fee Adjustment
     , adjustForFee
     , FeeOptions (..)
-    , BalancingPolicy (..)
+    , FeeBalancingPolicy (..)
     , FeeAdjustmentError (..)
 
       -- * Dust Processing
@@ -139,10 +139,10 @@ data FeeOptions i o = FeeOptions
         -- if you don't know what to do with this. This would have no effect and
         -- keep all valid coin values that are positive.
 
-    , balancingPolicy
-        :: BalancingPolicy
+    , feeBalancingPolicy
+        :: FeeBalancingPolicy
         -- ^ What do to when we encounter a dangling change output.
-        -- See 'BalancingPolicy'
+        -- See 'FeeBalancingPolicy'
     } deriving Generic
 
 -- | A /dangling/ change output is one that would be too expensive to add. This
@@ -154,7 +154,7 @@ data FeeOptions i o = FeeOptions
 -- and keep the transaction slightly unbalanced. In case where node demands
 -- exactly balanced transactions, we have no choice but to add the dangling
 -- change output and pay for the extra cost induced.
-data BalancingPolicy
+data FeeBalancingPolicy
     = RequirePerfectBalance
         -- ^ Generate selections that are perfectly balanced, with the
         -- trade-off of allowing slightly higher fees.
@@ -419,7 +419,7 @@ reduceChangeOutputs opts s = do
                 --    continue trying to balance the transaction (likely, by
                 --    selecting another input).
                 Just remainder | φ_dangling >= δ_original ->
-                    case balancingPolicy opts of
+                    case feeBalancingPolicy opts of
                         RequireMinimalFee ->
                             pure (s, Fee C.zero)
                         RequirePerfectBalance ->

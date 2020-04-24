@@ -36,10 +36,10 @@ import Cardano.CoinSelection
 import Cardano.CoinSelection.Algorithm.LargestFirst
     ( largestFirst )
 import Cardano.CoinSelection.Fee
-    ( BalancingPolicy (..)
-    , DustThreshold (..)
+    ( DustThreshold (..)
     , Fee (..)
     , FeeAdjustmentError (..)
+    , FeeBalancingPolicy (..)
     , FeeEstimator (..)
     , FeeOptions (..)
     , adjustForFee
@@ -730,7 +730,7 @@ propReduceChangeOutputsConverge
 propReduceChangeOutputsConverge sel opts = do
     let Right (sel', remainder) = reduceChangeOutputs opts sel
     let fee = estimateFee (feeEstimator opts) sel'
-    let prop = case balancingPolicy opts of
+    let prop = case feeBalancingPolicy opts of
             -- If fees are null and we require balanced selections, then the
             -- selection must be exactly balanced.
             RequirePerfectBalance | remainder == Fee C.zero ->
@@ -847,7 +847,7 @@ feeOptions fee dust = FeeOptions
         \_ -> unsafeFee fee
     , dustThreshold =
         unsafeDustThreshold dust
-    , balancingPolicy =
+    , feeBalancingPolicy =
         RequirePerfectBalance
     }
 
@@ -1085,8 +1085,8 @@ instance Arbitrary (FeeOptions i o) where
             [ stableEstimator <$> arbitrary
             , valueDependentEstimator <$> arbitrary
             ]
-        balancingPolicy <- elements [RequirePerfectBalance, RequireMinimalFee]
-        return $ FeeOptions {dustThreshold, feeEstimator, balancingPolicy}
+        feeBalancingPolicy <- elements [RequirePerfectBalance, RequireMinimalFee]
+        return $ FeeOptions {dustThreshold, feeEstimator, feeBalancingPolicy}
 
 instance Arbitrary a => Arbitrary (NonEmpty a) where
     arbitrary = do
