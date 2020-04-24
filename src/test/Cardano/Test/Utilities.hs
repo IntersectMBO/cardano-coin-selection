@@ -50,7 +50,7 @@ import Prelude
 
 import Cardano.CoinSelection
     ( CoinMap (..), CoinMapEntry (..), CoinSelection (..), coinMapToList )
-import Cardano.Fee
+import Cardano.CoinSelection.Fee
     ( DustThreshold (..), Fee (..) )
 import Control.DeepSeq
     ( NFData (..) )

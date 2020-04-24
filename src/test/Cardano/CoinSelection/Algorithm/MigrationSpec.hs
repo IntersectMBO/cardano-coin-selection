@@ -24,11 +24,11 @@ import Cardano.CoinSelection
     )
 import Cardano.CoinSelection.Algorithm.Migration
     ( idealBatchSize, selectCoins )
-import Cardano.CoinSelectionSpec
-    ()
-import Cardano.Fee
+import Cardano.CoinSelection.Fee
     ( DustThreshold (..), Fee (..), FeeEstimator (..), FeeOptions (..) )
-import Cardano.FeeSpec
+import Cardano.CoinSelection.FeeSpec
+    ()
+import Cardano.CoinSelectionSpec
     ()
 import Cardano.Test.Utilities
     ( Address
