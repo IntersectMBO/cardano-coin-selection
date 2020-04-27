@@ -100,9 +100,9 @@ newtype Fee = Fee { unFee :: Coin }
 
 -- | Defines the /maximum/ size of a __dust coin__.
 --
--- Functions that accept a 'DustThreshold' argument will generally not include
--- values that are /less than or equal to/ this threshold in the 'change' sets
--- of generated selections, /coalescing/ such coins together into larger
+-- Functions that accept a 'DustThreshold' argument will generally exclude
+-- values that are /less than or equal to/ this threshold from the 'change'
+-- sets of generated selections, /coalescing/ such coins together into larger
 -- coins that /exceed/ the threshold.
 --
 -- Specifying a dust threshold of __/n/__ causes all coins that are less than
