@@ -98,10 +98,20 @@ newtype Fee = Fee { unFee :: Coin }
     deriving stock (Eq, Generic, Ord)
     deriving Show via (Quiet Fee)
 
--- | Defines the maximum size of a dust coin.
+-- | Defines the /maximum/ size of a __dust coin__.
 --
--- Change values that are less than or equal to this threshold will not be
--- included in coin selections produced by the 'adjustForFee' function.
+-- Functions that accept a 'DustThreshold' argument will generally not include
+-- values that are /less than or equal to/ this threshold in the 'change' sets
+-- of generated selections, /coalescing/ such coins together into larger
+-- coins that /exceed/ the threshold.
+--
+-- Specifying a dust threshold of __/n/__ causes all coins that are less than
+-- or equal to __/n/__ to be treated as dust and coalesced together.
+--
+-- Specifying a dust threshold of __0__ completely /disables/ dust elimination
+-- with the exception of zero-valued coins, which will always be eliminated.
+--
+-- See 'coalesceDust'.
 --
 newtype DustThreshold = DustThreshold { unDustThreshold :: Coin }
     deriving stock (Eq, Generic, Ord)
@@ -130,14 +140,9 @@ data FeeOptions i o = FeeOptions
 
     , dustThreshold
         :: DustThreshold
-        -- ^ Change addresses below the given threshold will be evicted
-        -- from the created transaction. This can be useful if you do not want
-        -- to produce change output below a certain threshold and instead,
-        -- conflate them with other change outputs.
-        --
-        -- Setting the 'dustThreshold' to @mempty@ is a very reasonable choice
-        -- if you don't know what to do with this. This would have no effect and
-        -- keep all valid coin values that are positive.
+        -- ^ The threshold to use for dust elimination. Specifying a threshold
+        -- of zero will disable dust elimination. See 'DustThreshold' for more
+        -- details.
 
     , feeBalancingPolicy
         :: FeeBalancingPolicy
