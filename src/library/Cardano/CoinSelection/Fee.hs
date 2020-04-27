@@ -284,10 +284,21 @@ data FeeAdjustmentError i o
 -- Since adjusting a selection can affect the fee estimate produced by
 -- 'estimateFee', the process of adjustment is an /iterative/ process.
 --
--- This function terminates when it has generated a 'CoinSelection' that
--- satisfies the following property:
+-- The termination post-condition depends on the choice of
+-- 'FeeBalancingPolicy':
 --
--- >>> sumInputs c ≈ sumOutputs c + sumChange c + estimateFee c
+--   - If 'RequireBalancedFee' is specified, this function terminates
+--     only when it has generated a 'CoinSelection' __'s'__ that satisfies the
+--     following property:
+--
+--         >>> sumInputs s = sumOutputs s + sumChange s + estimateFee s
+--
+--   - If 'RequireMinimalFee' policy is specified, the above /equality/
+--     is relaxed to the following /inequality/:
+--
+--         >>> sumInputs s ≥ sumOutputs s + sumChange s + estimateFee s
+--
+-- See 'FeeBalancingPolicy' for more details.
 --
 adjustForFee
     :: (Ord i, MonadRandom m)
