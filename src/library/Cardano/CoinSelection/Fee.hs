@@ -225,7 +225,7 @@ data FeeAdjustmentError i o
     | CoinSelectionUnderfunded (CoinSelection i o)
     -- ^ Indicates that the given coin selection is __underfunded__: the total
     -- value of 'inputs' is less than the total value of 'outputs', as
-    -- calculated by the 'coinMapValue' function.
+    -- calculated by the 'CoinSelection.coinMapValue' function.
     deriving (Show, Eq)
 
 -- | Adjusts the given 'CoinSelection' in order to pay for a __transaction__
