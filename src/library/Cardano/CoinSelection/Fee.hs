@@ -204,11 +204,11 @@ data FeeOptions i o = FeeOptions
 --
 data FeeBalancingPolicy
     = RequireBalancedFee
-        -- ^ Generate selections that are perfectly balanced, with the
+        -- ^ Generate selections with fees that are perfectly balanced, with the
         -- trade-off of allowing slightly higher fees.
     | RequireMinimalFee
         -- ^ Generate selections with the lowest fees possible, with the
-        -- trade-off of allowing slightly imbalanced selections.
+        -- trade-off of allowing slightly imbalanced fees.
     deriving (Generic, Show, Eq)
 
 -- | Represents the set of possible failures that can occur when adjusting a
