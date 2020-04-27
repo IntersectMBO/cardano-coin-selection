@@ -161,15 +161,47 @@ data FeeOptions i o = FeeOptions
         -- See 'FeeBalancingPolicy'
     } deriving Generic
 
--- | A /dangling/ change output is one that would be too expensive to add. This
--- can happen when a change output is small, and including it would result in a
--- higher fee than if it were not included.
+-- | A choice of fee balancing policies for use when adjusting a coin selection.
 --
--- In case where nodes accept slightly unbalanced transactions (i.e. when fees
--- left are more than the minimal possible fees), we may choose to save money
--- and keep the transaction slightly unbalanced. In case where node demands
--- exactly balanced transactions, we have no choice but to add the dangling
--- change output and pay for the extra cost induced.
+-- == Background
+--
+-- A coin selection __'s'__ is said to have a /perfectly-balanced/ fee when it
+-- satisfies the following property:
+--
+-- >>> sumInputs s = sumOutputs s + sumChange s + estimateFee s
+--
+-- Conversely, a selection is said to have an /unbalanced/ fee when it
+-- satisfies the following property:
+--
+-- >>> sumInputs s > sumOutputs s + sumChange s + estimateFee s
+--
+-- In other words, if a coin selection has an /unbalanced/ fee, the /effective/
+-- fee is greater than the minimum fee /actually required/ by the blockchain.
+--
+-- == Balanced Fees vs Minimal Fees
+--
+-- Some blockchains /require /that fees are always /perfectly-balanced/.
+--
+-- However, for blockchains that allow /unbalanced/ fees, it is sometimes
+-- possible to /save money/ by generating a coin selection with an unbalanced
+-- fee. This may seem counterintuitive at first, but consider an individual
+-- change ouput __/c/__ of value __/v/__. If the /marginal fee/ __/f/__
+-- associated with __/c/__ is greater than its value __/v/__, then we will
+-- /save money/ by __not__ including __/c/__ within 'change'.
+--
+-- There are two policy choices available for handling change values with
+-- marginal fees greater than their value:
+--
+--   - For blockchains that __allow__ transactions with /unbalanced/ fees,
+--     specifying the 'RequireMinimalFee' policy will allow money to be saved by
+--     /excluding/ change outputs that have a marginal fee greater than
+--     their value.
+--
+--   - For blockchains that do __not__ allow transactions with /unbalanced/
+--     fees, specifying the 'RequirePerfectBalance' policy will always generate
+--     selections with fees that are perfectly-balanced, even if the resulting
+--     fees are higher than could be achieved by allowing unbalanced fees.
+--
 data FeeBalancingPolicy
     = RequirePerfectBalance
         -- ^ Generate selections that are perfectly balanced, with the
