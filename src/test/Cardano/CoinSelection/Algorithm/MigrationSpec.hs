@@ -148,7 +148,7 @@ spec = do
                     , feeEstimator = FeeEstimator $ \s -> unsafeFee @Int
                         $ fromIntegral
                         $ 5 * (length (inputs s) + length (outputs s))
-                    , feeBalancingPolicy = RequirePerfectBalance
+                    , feeBalancingPolicy = RequireBalancedFee
                     }
             let batchSize = 1
             let utxo = CoinMap $ Map.fromList
@@ -250,7 +250,7 @@ prop_wellBalanced feeParams batchSize utxo = do
     let feeOpts = FeeOptions
             { dustThreshold = DustThreshold mempty
             , feeEstimator = stableEstimator feeParams
-            , feeBalancingPolicy = RequirePerfectBalance
+            , feeBalancingPolicy = RequireBalancedFee
             }
     let selections = selectCoins feeOpts batchSize utxo
     conjoin
@@ -303,7 +303,7 @@ genFeeOptions dust = do
             in unsafeFee $
                   (C.coinToIntegral dust `div` 100) * x + C.coinToIntegral dust
         , dustThreshold = DustThreshold dust
-        , feeBalancingPolicy = RequirePerfectBalance
+        , feeBalancingPolicy = RequireBalancedFee
         }
 
 -- | Generate a given UTxO with a particular percentage of dust

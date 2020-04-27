@@ -738,13 +738,13 @@ propReduceChangeOutputsConverge sel opts = do
     let prop = case feeBalancingPolicy opts of
             -- If fees are null and we require balanced selections, then the
             -- selection must be exactly balanced.
-            RequirePerfectBalance | remainder == Fee C.zero ->
+            RequireBalancedFee | remainder == Fee C.zero ->
                 (Fee <$> delta sel') == Just fee
 
             -- Otherwise, either the change outputs are null, or the delta is
             -- positive because of the dangling output and we'll have to pay for
             -- it.
-            RequirePerfectBalance ->
+            RequireBalancedFee ->
                 null (change sel') || (delta sel' >= Just C.zero)
 
             -- If fees are null and we do not require balanced selections, then
@@ -853,7 +853,7 @@ feeOptions fee dust = FeeOptions
     , dustThreshold =
         unsafeDustThreshold dust
     , feeBalancingPolicy =
-        RequirePerfectBalance
+        RequireBalancedFee
     }
 
 feeUnitTest
@@ -1090,7 +1090,7 @@ instance Arbitrary (FeeOptions i o) where
             [ stableEstimator <$> arbitrary
             , valueDependentEstimator <$> arbitrary
             ]
-        feeBalancingPolicy <- elements [RequirePerfectBalance, RequireMinimalFee]
+        feeBalancingPolicy <- elements [RequireBalancedFee, RequireMinimalFee]
         return $ FeeOptions {dustThreshold, feeEstimator, feeBalancingPolicy}
 
 instance Arbitrary a => Arbitrary (NonEmpty a) where

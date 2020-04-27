@@ -198,12 +198,12 @@ data FeeOptions i o = FeeOptions
 --     their value.
 --
 --   - For blockchains that do __not__ allow transactions with /unbalanced/
---     fees, specifying the 'RequirePerfectBalance' policy will always generate
+--     fees, specifying the 'RequireBalancedFee' policy will always generate
 --     selections with fees that are perfectly-balanced, even if the resulting
 --     fees are higher than could be achieved by allowing unbalanced fees.
 --
 data FeeBalancingPolicy
-    = RequirePerfectBalance
+    = RequireBalancedFee
         -- ^ Generate selections that are perfectly balanced, with the
         -- trade-off of allowing slightly higher fees.
     | RequireMinimalFee
@@ -473,7 +473,7 @@ reduceChangeOutputs opts s = do
                     case feeBalancingPolicy opts of
                         RequireMinimalFee ->
                             pure (s, Fee C.zero)
-                        RequirePerfectBalance ->
+                        RequireBalancedFee ->
                             pure (sDangling, Fee remainder)
 
                 -- If however, adding the dangling change doesn't cost more than
