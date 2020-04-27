@@ -394,17 +394,17 @@ reduceChangeOutputs opts s = do
         -- The outcome depends on whether or not the node allows transactions
         -- to be unbalanced.
         Just δ_original | δ_original > φ_original -> do
-            let extraChng = δ_original `C.distance` φ_original
-            let sDangling = s { change = splitCoin extraChng (change s) }
+            let extraChg = δ_original `C.distance` φ_original
+            let sDangling = s { change = splitCoin extraChg (change s) }
             let Fee φ_dangling = estimateFee (feeEstimator opts) sDangling
             -- We have `δ_dangling = φ_original` by construction of sDangling.
             --
             -- Proof:
             --
             -- δ_dangling = Σi_dangling - (Σo_dangling + Σc_dangling)
-            --            = Σi_original - (Σo_original + Σc_original + extraChng)
-            --            = Σi_original - (Σo_original + Σc_original) - extraChng
-            --            = δ_original - extraChng
+            --            = Σi_original - (Σo_original + Σc_original + extraChg)
+            --            = Σi_original - (Σo_original + Σc_original) - extraChg
+            --            = δ_original - extraChg
             --            = δ_original - (δ_original - φ_original)
             --            = φ_original
             let δ_dangling = φ_original
