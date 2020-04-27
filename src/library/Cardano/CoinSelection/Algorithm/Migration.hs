@@ -100,9 +100,11 @@ selectCoins
     -> CoinMap i
         -- ^ UTxO to deplete
     -> [CoinSelection i o]
-selectCoins FeeOptions{dustThreshold,feeEstimator,feeBalancingPolicy} batchSize utxo =
+selectCoins options batchSize utxo =
     evalState migrate (coinMapToList utxo)
   where
+    FeeOptions {dustThreshold, feeEstimator, feeBalancingPolicy} = options
+
     migrate :: State [CoinMapEntry i] [CoinSelection i o]
     migrate = do
         batch <- getNextBatch
@@ -221,8 +223,8 @@ selectCoins FeeOptions{dustThreshold,feeEstimator,feeBalancingPolicy} batchSize 
         put rest
         pure batch
 
--- | Try to find a fixed "ideal" number of input transactions that would generate
--- relatively balanced transactions.
+-- | Try to find a fixed "ideal" number of input transactions that would
+--   generate relatively balanced transactions.
 --
 -- @since 1.0.0
 idealBatchSize :: CoinSelectionLimit -> Word16
