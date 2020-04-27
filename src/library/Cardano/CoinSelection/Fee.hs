@@ -117,11 +117,22 @@ newtype DustThreshold = DustThreshold { unDustThreshold :: Coin }
     deriving stock (Eq, Generic, Ord)
     deriving Show via (Quiet DustThreshold)
 
--- | Provides a function capable of estimating the fee for a given coin
---   selection.
+-- | Provides a function capable of __estimating__ the transaction fee required
+--   for a given coin selection, according to the rules of a particular
+--   blockchain.
 --
--- The fee estimate can depend on the numbers of inputs, outputs, and change
--- outputs within the coin selection, as well as their magnitudes.
+-- The fee estimate should be a function of the __current__ memberships of the
+-- 'inputs', 'outputs', and 'change' sets.
+--
+-- Depending on the rules of the blockchain under consideration, the fee
+-- estimate may take either (or both) of the following factors into account:
+--
+--   - the number of entries in each set;
+--   - the coin value of each set member.
+--
+-- A fee estimate may differ from the final fee required for a selection, as
+-- fees are generally paid for by /adjusting/ a given selection to make a /new/
+-- selection. See 'adjustForFee' for more details of this process.
 --
 newtype FeeEstimator i o = FeeEstimator
     { estimateFee :: CoinSelection i o -> Fee
