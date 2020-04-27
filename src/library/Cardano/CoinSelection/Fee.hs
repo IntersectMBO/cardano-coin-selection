@@ -279,7 +279,10 @@ senderPaysFee opts utxo sel =
   where
     go
         :: CoinSelection i o
-        -> StateT (CoinMap i) (ExceptT (FeeAdjustmentError i o) m) (CoinSelection i o)
+        -> StateT
+            (CoinMap i)
+            (ExceptT (FeeAdjustmentError i o) m)
+            (CoinSelection i o)
     go coinSel@(CoinSelection inps outs chgs) = do
         -- Substract fee from change outputs, proportionally to their value.
         (coinSel', remFee) <- lift $ except $ reduceChangeOutputs opts coinSel
@@ -409,10 +412,10 @@ reduceChangeOutputs opts s = do
                 -- we've left too much, but adding a change output would be more
                 -- expensive than not having it. Here we have two choices:
                 --
-                -- a) If the node allows unbalanced transaction, we can stop here
-                --    and do nothing. We'll leave slightly more than what's needed
-                --    for fees, but having an extra change output isn't worth it
-                --    anyway.
+                -- a) If the node allows unbalanced transaction, we can stop
+                --    here and do nothing. We'll leave slightly more than what's
+                --    needed for fees, but having an extra change output isn't
+                --    worth it anyway.
                 --
                 -- b) If we __must__ balance the transaction, then we can choose
                 --    to pay the extra cost by adding the change output and
