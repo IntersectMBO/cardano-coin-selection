@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
@@ -40,6 +41,7 @@ module Cardano.CoinSelection.Algorithm.Migration
     (
       -- * Coin Selection for Migration
       selectCoins
+    , BatchSize (..)
     , idealBatchSize
     ) where
 
@@ -70,6 +72,8 @@ import Data.Maybe
     ( fromMaybe, mapMaybe )
 import Data.Word
     ( Word16 )
+import GHC.Generics
+    ( Generic )
 import Internal.Coin
     ( Coin, coinFromIntegral, coinToIntegral )
 
@@ -95,12 +99,12 @@ selectCoins
     :: forall i o . (Ord i, Ord o)
     => FeeOptions i o
         -- ^ Fee computation and threshold definition
-    -> Word16
+    -> BatchSize
         -- ^ Maximum number of inputs we can select per transaction
     -> CoinMap i
         -- ^ UTxO to deplete
     -> [CoinSelection i o]
-selectCoins options batchSize utxo =
+selectCoins options (BatchSize batchSize) utxo =
     evalState migrate (coinMapToList utxo)
   where
     FeeOptions {dustThreshold, feeEstimator, feeBalancingPolicy} = options
@@ -223,12 +227,15 @@ selectCoins options batchSize utxo =
         put rest
         pure batch
 
+newtype BatchSize = BatchSize Word16
+    deriving (Eq, Generic, Show)
+
 -- | Try to find a fixed "ideal" number of input transactions that would
 --   generate relatively balanced transactions.
 --
 -- @since 1.0.0
-idealBatchSize :: CoinSelectionLimit -> Word16
-idealBatchSize coinselOpts = fixPoint 1
+idealBatchSize :: CoinSelectionLimit -> BatchSize
+idealBatchSize coinselOpts = BatchSize $ fixPoint 1
   where
     fixPoint :: Word16 -> Word16
     fixPoint !n

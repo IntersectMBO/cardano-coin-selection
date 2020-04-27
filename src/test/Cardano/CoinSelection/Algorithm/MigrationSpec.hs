@@ -23,7 +23,7 @@ import Cardano.CoinSelection
     , sumInputs
     )
 import Cardano.CoinSelection.Algorithm.Migration
-    ( idealBatchSize, selectCoins )
+    ( BatchSize (..), idealBatchSize, selectCoins )
 import Cardano.CoinSelection.Fee
     ( DustThreshold (..)
     , Fee (..)
@@ -47,8 +47,6 @@ import Data.ByteString
     ( ByteString )
 import Data.Function
     ( (&) )
-import Data.Word
-    ( Word16 )
 import Internal.Coin
     ( Coin, coinToIntegral )
 import Numeric.Natural
@@ -59,6 +57,7 @@ import Test.QuickCheck
     ( Arbitrary (..)
     , Gen
     , Property
+    , arbitrarySizedIntegral
     , choose
     , conjoin
     , counterexample
@@ -150,7 +149,7 @@ spec = do
                         $ 5 * (length (inputs s) + length (outputs s))
                     , feeBalancingPolicy = RequireBalancedFee
                     }
-            let batchSize = 1
+            let batchSize = BatchSize 1
             let utxo = CoinMap $ Map.fromList
                     [ ( TxIn
                         { txinId = Hash "|\243^\SUBg\242\231\&1\213\203"
@@ -170,7 +169,7 @@ spec = do
 prop_onlyChangeOutputs
     :: forall i o . (Ord i, Ord o, Show o)
     => FeeOptions i o
-    -> Word16
+    -> BatchSize
     -> CoinMap i
     -> Property
 prop_onlyChangeOutputs feeOpts batchSize utxo = do
@@ -182,7 +181,7 @@ prop_onlyChangeOutputs feeOpts batchSize utxo = do
 prop_noLessThanThreshold
     :: forall i o . (Ord i, Ord o)
     => FeeOptions i o
-    -> Word16
+    -> BatchSize
     -> CoinMap i
     -> Property
 prop_noLessThanThreshold feeOpts batchSize utxo = do
@@ -198,7 +197,7 @@ prop_noLessThanThreshold feeOpts batchSize utxo = do
 prop_inputsGreaterThanOutputs
     :: forall i o . (Ord i, Ord o, Show i, Show o)
     => FeeOptions i o
-    -> Word16
+    -> BatchSize
     -> CoinMap i
     -> Property
 prop_inputsGreaterThanOutputs feeOpts batchSize utxo = do
@@ -214,7 +213,7 @@ prop_inputsGreaterThanOutputs feeOpts batchSize utxo = do
 prop_inputsAreUnique
     :: forall i o . (Ord i, Ord o)
     => FeeOptions i o
-    -> Word16
+    -> BatchSize
     -> CoinMap i
     -> Property
 prop_inputsAreUnique feeOpts batchSize utxo = do
@@ -228,7 +227,7 @@ prop_inputsAreUnique feeOpts batchSize utxo = do
 prop_inputsStillInUTxO
     :: forall i o . (Ord i, Ord o)
     => FeeOptions i o
-    -> Word16
+    -> BatchSize
     -> CoinMap i
     -> Property
 prop_inputsStillInUTxO feeOpts batchSize utxo = do
@@ -243,7 +242,7 @@ prop_inputsStillInUTxO feeOpts batchSize utxo = do
 prop_wellBalanced
     :: forall i o . (Ord i, Ord o, Show i, Show o)
     => FeeParameters i o
-    -> Word16
+    -> BatchSize
     -> CoinMap i
     -> Property
 prop_wellBalanced feeParams batchSize utxo = do
@@ -287,12 +286,16 @@ instance Arbitrary (Wrapped TxIn) where
 instance Arbitrary (Wrapped (Hash "Tx")) where
     arbitrary = Wrapped . Hash <$> (BS.pack <$> vectorOf 32 arbitrary)
 
+instance Arbitrary BatchSize where
+    arbitrary = BatchSize <$> arbitrarySizedIntegral
+    shrink (BatchSize s) = BatchSize <$> shrink s
+
 --------------------------------------------------------------------------------
 -- Generators
 --------------------------------------------------------------------------------
 
-genBatchSize :: Gen Word16
-genBatchSize = choose (50, 150)
+genBatchSize :: Gen BatchSize
+genBatchSize = BatchSize <$> choose (50, 150)
 
 genFeeOptions :: Coin -> Gen (FeeOptions TxIn Address)
 genFeeOptions dust = do
