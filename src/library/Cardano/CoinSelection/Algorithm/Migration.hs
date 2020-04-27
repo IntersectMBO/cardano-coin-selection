@@ -40,10 +40,7 @@ module Cardano.CoinSelection.Algorithm.Migration
     (
       -- * Coin Selection for Migration
       selectCoins
-
-      -- # Internal Functions
     , idealBatchSize
-
     ) where
 
 import Prelude
@@ -224,12 +221,10 @@ selectCoins FeeOptions{dustThreshold,feeEstimator,feeBalancingPolicy} batchSize 
         put rest
         pure batch
 
---------------------------------------------------------------------------------
--- Internal Functions
---------------------------------------------------------------------------------
-
--- Try to find a fixed "ideal" number of input transactions that would generate
+-- | Try to find a fixed "ideal" number of input transactions that would generate
 -- relatively balanced transactions.
+--
+-- @since 1.0.0
 idealBatchSize :: CoinSelectionLimit -> Word16
 idealBatchSize coinselOpts = fixPoint 1
   where
