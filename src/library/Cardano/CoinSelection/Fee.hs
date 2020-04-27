@@ -238,17 +238,17 @@ data FeeAdjustmentError i o
 -- produce coin selections that are /exactly balanced/, satisfying the
 -- following equality:
 --
--- >>> sumInputs c = sumOutputs c + sumChange c
+-- >>> sumInputs s = sumOutputs s + sumChange s
 --
 -- In order to pay for a transaction fee, the above equality must be
 -- transformed into an /inequality/:
 --
--- >>> sumInputs c > sumOutputs c + sumChange c
+-- >>> sumInputs s > sumOutputs s + sumChange s
 --
 -- The difference between these two sides represents value to be paid /by the/
 -- /originator/ of the transaction, in the form of a fee:
 --
--- >>> sumInputs c = sumOutputs c + sumChange c + fee
+-- >>> sumInputs s = sumOutputs s + sumChange s + fee
 --
 -- == The Adjustment Process
 --
