@@ -59,6 +59,7 @@ import qualified Prelude
 --
 -- Use 'coinToNatural' to convert a coin into a natural number.
 --
+-- @since 1.0.0
 newtype Coin = Coin { unCoin :: Natural }
     deriving stock (Eq, Generic, Ord)
     deriving Show via (Quiet Coin)
@@ -74,6 +75,7 @@ coinFromIntegral i
 
 -- | Creates a coin from a natural number.
 --
+-- @since 1.0.0
 coinFromNatural :: Natural -> Coin
 coinFromNatural = Coin
 
@@ -84,6 +86,7 @@ coinToIntegral (Coin i) = Prelude.fromIntegral i
 
 -- | Converts the given coin into a natural number.
 --
+-- @since 1.0.0
 coinToNatural :: Coin -> Natural
 coinToNatural = unCoin
 

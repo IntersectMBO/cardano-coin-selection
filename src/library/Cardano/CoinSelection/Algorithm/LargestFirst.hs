@@ -176,6 +176,7 @@ import qualified Internal.Coin as C
 --
 --      See: __'InputLimitExceededError'__.
 --
+-- @since 1.0.0
 largestFirst
     :: (Ord i, Ord o, Monad m)
     => CoinSelectionAlgorithm i o m

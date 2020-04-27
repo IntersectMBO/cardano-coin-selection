@@ -206,6 +206,7 @@ import qualified Internal.Coin as C
 -- entries that it is less likely for a randomly-chosen UTxO entry to push the
 -- total above the upper bound.
 --
+-- @since 1.0.0
 randomImprove
     :: (Ord i, Ord o, MonadRandom m)
     => CoinSelectionAlgorithm i o m

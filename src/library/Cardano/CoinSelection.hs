@@ -103,6 +103,7 @@ import qualified Data.Map.Strict as Map
 --
 -- The total value of a 'CoinMap' is given by the 'coinMapValue' function.
 --
+-- @since 1.0.0
 newtype CoinMap a = CoinMap { unCoinMap :: Map a Coin }
     deriving (Eq, Generic)
     deriving Show via (Quiet (CoinMap a))
@@ -118,6 +119,7 @@ instance Ord a => Semigroup (CoinMap a) where
 
 -- | An entry for a 'CoinMap'.
 --
+-- @since 1.0.0
 data CoinMapEntry a = CoinMapEntry
     { entryKey
         :: a
@@ -131,6 +133,7 @@ data CoinMapEntry a = CoinMapEntry
 --
 -- See 'CoinMapEntry'.
 --
+-- @since 1.0.0
 coinMapFromList :: Ord a => [CoinMapEntry a] -> CoinMap a
 coinMapFromList = CoinMap
     . Map.fromListWith (<>)
@@ -140,11 +143,13 @@ coinMapFromList = CoinMap
 --
 -- See 'CoinMapEntry'.
 --
+-- @since 1.0.0
 coinMapToList :: CoinMap a -> [CoinMapEntry a]
 coinMapToList = fmap (uncurry CoinMapEntry) . Map.toList . unCoinMap
 
 -- | Calculates the total coin value associated with a 'CoinMap'.
 --
+-- @since 1.0.0
 coinMapValue :: CoinMap a -> Coin
 coinMapValue = mconcat . fmap entryValue . coinMapToList
 
@@ -159,6 +164,7 @@ coinMapValue = mconcat . fmap entryValue . coinMapToList
 -- /outputs/), will generate a 'CoinSelectionResult' (with /remaining inputs/
 -- and a /coin selection/).
 --
+-- @since 1.0.0
 newtype CoinSelectionAlgorithm i o m = CoinSelectionAlgorithm
     { selectCoins
         :: CoinSelectionParameters i o
@@ -197,6 +203,7 @@ newtype CoinSelectionAlgorithm i o m = CoinSelectionAlgorithm
 -- the total value of 'outputsRequested', as given by the 'coinMapValue'
 -- function.
 --
+-- @since 1.0.0
 data CoinSelectionParameters i o = CoinSelectionParameters
     { inputsAvailable :: CoinMap i
         -- ^ The set of inputs available for selection.
@@ -211,6 +218,7 @@ data CoinSelectionParameters i o = CoinSelectionParameters
 --
 -- See 'CoinSelectionAlgorithm'.
 --
+-- @since 1.0.0
 data CoinSelectionResult i o = CoinSelectionResult
     { coinSelection :: CoinSelection i o
         -- ^ The generated coin selection.
@@ -240,6 +248,7 @@ data CoinSelectionResult i o = CoinSelectionResult
 -- The 'CoinSelectionAlgorithm' type provides a common interface for generating
 -- coin selections.
 --
+-- @since 1.0.0
 data CoinSelection i o = CoinSelection
     { inputs :: CoinMap i
       -- ^ The set of inputs.
@@ -261,20 +270,27 @@ instance (Ord i, Ord o) => Monoid (CoinSelection i o) where
     mempty = CoinSelection mempty mempty mempty
 
 -- | Calculate the total sum of all 'inputs' for the given 'CoinSelection'.
+--
+-- @since 1.0.0
 sumInputs :: CoinSelection i o -> Coin
 sumInputs = coinMapValue . inputs
 
 -- | Calculate the total sum of all 'outputs' for the given 'CoinSelection'.
+--
+-- @since 1.0.0
 sumOutputs :: CoinSelection i o -> Coin
 sumOutputs =  coinMapValue . outputs
 
 -- | Calculate the total sum of all 'change' for the given 'CoinSelection'.
+--
+-- @since 1.0.0
 sumChange :: CoinSelection i o -> Coin
 sumChange = mconcat . change
 
 -- | Defines an __inclusive upper bound__ on the /number/ of inputs that
 --   a 'CoinSelectionAlgorithm' is allowed to select.
 --
+-- @since 1.0.0
 newtype CoinSelectionLimit = CoinSelectionLimit
     { calculateLimit
         :: Word16 -> Word16
@@ -287,6 +303,7 @@ newtype CoinSelectionLimit = CoinSelectionLimit
 --
 -- See 'selectCoins'.
 --
+-- @since 1.0.0
 data CoinSelectionError
     = InputValueInsufficient
         InputValueInsufficientError
@@ -302,6 +319,7 @@ data CoinSelectionError
 --   value of 'outputsRequested', making it /impossible/ to cover all payments,
 --   /regardless/ of which algorithm is chosen.
 --
+-- @since 1.0.0
 data InputValueInsufficientError =
     InputValueInsufficientError
     { inputValueAvailable :: Coin
@@ -315,6 +333,7 @@ data InputValueInsufficientError =
 --   /than/ required by the algorithm. The number required depends on the
 --   particular algorithm implementation.
 --
+-- @since 1.0.0
 data InputCountInsufficientError =
     InputCountInsufficientError
     { inputCountAvailable :: Natural
@@ -331,6 +350,7 @@ data InputCountInsufficientError =
 -- greater than or equal to the total value of 'outputsRequested', due to
 -- differences in the way that algorithms select inputs.
 --
+-- @since 1.0.0
 data InputsExhaustedError =
     InputsExhaustedError
     deriving (Eq, Show)
@@ -341,6 +361,7 @@ data InputsExhaustedError =
 --
 -- See 'calculateLimit'.
 --
+-- @since 1.0.0
 newtype InputLimitExceededError =
     InputLimitExceededError
     { calculatedInputLimit :: Word16 }
