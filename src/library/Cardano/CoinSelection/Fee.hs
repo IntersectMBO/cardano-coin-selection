@@ -98,20 +98,41 @@ newtype Fee = Fee { unFee :: Coin }
     deriving stock (Eq, Generic, Ord)
     deriving Show via (Quiet Fee)
 
--- | Defines the maximum size of a dust coin.
+-- | Defines the /maximum/ size of a __dust coin__.
 --
--- Change values that are less than or equal to this threshold will not be
--- included in coin selections produced by the 'adjustForFee' function.
+-- Functions that accept a 'DustThreshold' argument will generally exclude
+-- values that are /less than or equal to/ this threshold from the 'change'
+-- sets of generated selections, /coalescing/ such coins together into larger
+-- coins that /exceed/ the threshold.
+--
+-- Specifying a dust threshold of __/n/__ causes all coins that are less than
+-- or equal to __/n/__ to be treated as dust and coalesced together.
+--
+-- Specifying a dust threshold of __0__ completely /disables/ dust elimination
+-- with the exception of zero-valued coins, which will always be eliminated.
+--
+-- See 'coalesceDust'.
 --
 newtype DustThreshold = DustThreshold { unDustThreshold :: Coin }
     deriving stock (Eq, Generic, Ord)
     deriving Show via (Quiet DustThreshold)
 
--- | Provides a function capable of estimating the fee for a given coin
---   selection.
+-- | Provides a function capable of __estimating__ the transaction fee required
+--   for a given coin selection, according to the rules of a particular
+--   blockchain.
 --
--- The fee estimate can depend on the numbers of inputs, outputs, and change
--- outputs within the coin selection, as well as their magnitudes.
+-- The fee estimate should be a function of the __current__ memberships of the
+-- 'inputs', 'outputs', and 'change' sets.
+--
+-- Depending on the rules of the blockchain under consideration, the fee
+-- estimate may take either (or both) of the following factors into account:
+--
+--   - the number of entries in each set;
+--   - the coin value of each set member.
+--
+-- A fee estimate may differ from the final fee required for a selection, as
+-- fees are generally paid for by /adjusting/ a given selection to make a /new/
+-- selection. See 'adjustForFee' for more details of this process.
 --
 newtype FeeEstimator i o = FeeEstimator
     { estimateFee :: CoinSelection i o -> Fee
@@ -130,14 +151,9 @@ data FeeOptions i o = FeeOptions
 
     , dustThreshold
         :: DustThreshold
-        -- ^ Change addresses below the given threshold will be evicted
-        -- from the created transaction. This can be useful if you do not want
-        -- to produce change output below a certain threshold and instead,
-        -- conflate them with other change outputs.
-        --
-        -- Setting the 'dustThreshold' to @mempty@ is a very reasonable choice
-        -- if you don't know what to do with this. This would have no effect and
-        -- keep all valid coin values that are positive.
+        -- ^ The threshold to use for dust elimination. Specifying a threshold
+        -- of zero will disable dust elimination. See 'DustThreshold' for more
+        -- details.
 
     , feeBalancingPolicy
         :: FeeBalancingPolicy
@@ -145,22 +161,54 @@ data FeeOptions i o = FeeOptions
         -- See 'FeeBalancingPolicy'
     } deriving Generic
 
--- | A /dangling/ change output is one that would be too expensive to add. This
--- can happen when a change output is small, and including it would result in a
--- higher fee than if it were not included.
+-- | A choice of fee balancing policies for use when adjusting a coin selection.
 --
--- In case where nodes accept slightly unbalanced transactions (i.e. when fees
--- left are more than the minimal possible fees), we may choose to save money
--- and keep the transaction slightly unbalanced. In case where node demands
--- exactly balanced transactions, we have no choice but to add the dangling
--- change output and pay for the extra cost induced.
+-- == Background
+--
+-- A coin selection __'s'__ is said to have a /perfectly-balanced/ fee when it
+-- satisfies the following property:
+--
+-- >>> sumInputs s = sumOutputs s + sumChange s + estimateFee s
+--
+-- Conversely, a selection is said to have an /unbalanced/ fee when it
+-- satisfies the following property:
+--
+-- >>> sumInputs s > sumOutputs s + sumChange s + estimateFee s
+--
+-- In other words, if a coin selection has an /unbalanced/ fee, the /effective/
+-- fee is greater than the minimum fee /actually required/ by the blockchain.
+--
+-- == Balanced Fees vs Minimal Fees
+--
+-- Some blockchains /require /that fees are always /perfectly-balanced/.
+--
+-- However, for blockchains that allow /unbalanced/ fees, it is sometimes
+-- possible to /save money/ by generating a coin selection with an unbalanced
+-- fee. This may seem counterintuitive at first, but consider an individual
+-- change ouput __/c/__ of value __/v/__. If the /marginal fee/ __/f/__
+-- associated with __/c/__ is greater than its value __/v/__, then we will
+-- /save money/ by __not__ including __/c/__ within 'change'.
+--
+-- There are two policy choices available for handling change values with
+-- marginal fees greater than their value:
+--
+--   - For blockchains that __allow__ transactions with /unbalanced/ fees,
+--     specifying the 'RequireMinimalFee' policy will allow money to be saved by
+--     /excluding/ change outputs that have a marginal fee greater than
+--     their value.
+--
+--   - For blockchains that do __not__ allow transactions with /unbalanced/
+--     fees, specifying the 'RequireBalancedFee' policy will always generate
+--     selections with fees that are perfectly-balanced, even if the resulting
+--     fees are higher than could be achieved by allowing unbalanced fees.
+--
 data FeeBalancingPolicy
-    = RequirePerfectBalance
-        -- ^ Generate selections that are perfectly balanced, with the
+    = RequireBalancedFee
+        -- ^ Generate selections with fees that are perfectly balanced, with the
         -- trade-off of allowing slightly higher fees.
     | RequireMinimalFee
         -- ^ Generate selections with the lowest fees possible, with the
-        -- trade-off of allowing slightly imbalanced selections.
+        -- trade-off of allowing slightly imbalanced fees.
     deriving (Generic, Show, Eq)
 
 -- | Represents the set of possible failures that can occur when adjusting a
@@ -175,9 +223,9 @@ data FeeAdjustmentError i o
     -- __/f/__ and the total value __/s/__ of currently-selected inputs.
 
     | CoinSelectionUnderfunded (CoinSelection i o)
-    -- ^ Indicates that given the coin selection is __underfunded__: the total
+    -- ^ Indicates that the given coin selection is __underfunded__: the total
     -- value of 'inputs' is less than the total value of 'outputs', as
-    -- calculated by the 'coinMapValue' function.
+    -- calculated by the 'CoinSelection.coinMapValue' function.
     deriving (Show, Eq)
 
 -- | Adjusts the given 'CoinSelection' in order to pay for a __transaction__
@@ -190,17 +238,17 @@ data FeeAdjustmentError i o
 -- produce coin selections that are /exactly balanced/, satisfying the
 -- following equality:
 --
--- >>> sumInputs c = sumOutputs c + sumChange c
+-- >>> sumInputs s = sumOutputs s + sumChange s
 --
 -- In order to pay for a transaction fee, the above equality must be
 -- transformed into an /inequality/:
 --
--- >>> sumInputs c > sumOutputs c + sumChange c
+-- >>> sumInputs s > sumOutputs s + sumChange s
 --
 -- The difference between these two sides represents value to be paid /by the/
 -- /originator/ of the transaction, in the form of a fee:
 --
--- >>> sumInputs c = sumOutputs c + sumChange c + fee
+-- >>> sumInputs s = sumOutputs s + sumChange s + fee
 --
 -- == The Adjustment Process
 --
@@ -236,10 +284,21 @@ data FeeAdjustmentError i o
 -- Since adjusting a selection can affect the fee estimate produced by
 -- 'estimateFee', the process of adjustment is an /iterative/ process.
 --
--- This function terminates when it has generated a 'CoinSelection' that
--- satisfies the following property:
+-- The termination post-condition depends on the choice of
+-- 'FeeBalancingPolicy':
 --
--- >>> sumInputs c ≈ sumOutputs c + sumChange c + estimateFee c
+--   - If 'RequireBalancedFee' is specified, this function terminates
+--     only when it has generated a 'CoinSelection' __'s'__ that satisfies the
+--     following property:
+--
+--         >>> sumInputs s = sumOutputs s + sumChange s + estimateFee s
+--
+--   - If 'RequireMinimalFee' policy is specified, the above /equality/
+--     is relaxed to the following /inequality/:
+--
+--         >>> sumInputs s ≥ sumOutputs s + sumChange s + estimateFee s
+--
+-- See 'FeeBalancingPolicy' for more details.
 --
 adjustForFee
     :: (Ord i, MonadRandom m)
@@ -279,7 +338,10 @@ senderPaysFee opts utxo sel =
   where
     go
         :: CoinSelection i o
-        -> StateT (CoinMap i) (ExceptT (FeeAdjustmentError i o) m) (CoinSelection i o)
+        -> StateT
+            (CoinMap i)
+            (ExceptT (FeeAdjustmentError i o) m)
+            (CoinSelection i o)
     go coinSel@(CoinSelection inps outs chgs) = do
         -- Substract fee from change outputs, proportionally to their value.
         (coinSel', remFee) <- lift $ except $ reduceChangeOutputs opts coinSel
@@ -391,17 +453,17 @@ reduceChangeOutputs opts s = do
         -- The outcome depends on whether or not the node allows transactions
         -- to be unbalanced.
         Just δ_original | δ_original > φ_original -> do
-            let extraChng = δ_original `C.distance` φ_original
-            let sDangling = s { change = splitCoin extraChng (change s) }
+            let extraChg = δ_original `C.distance` φ_original
+            let sDangling = s { change = splitCoin extraChg (change s) }
             let Fee φ_dangling = estimateFee (feeEstimator opts) sDangling
             -- We have `δ_dangling = φ_original` by construction of sDangling.
             --
             -- Proof:
             --
             -- δ_dangling = Σi_dangling - (Σo_dangling + Σc_dangling)
-            --            = Σi_original - (Σo_original + Σc_original + extraChng)
-            --            = Σi_original - (Σo_original + Σc_original) - extraChng
-            --            = δ_original - extraChng
+            --            = Σi_original - (Σo_original + Σc_original + extraChg)
+            --            = Σi_original - (Σo_original + Σc_original) - extraChg
+            --            = δ_original - extraChg
             --            = δ_original - (δ_original - φ_original)
             --            = φ_original
             let δ_dangling = φ_original
@@ -409,10 +471,10 @@ reduceChangeOutputs opts s = do
                 -- we've left too much, but adding a change output would be more
                 -- expensive than not having it. Here we have two choices:
                 --
-                -- a) If the node allows unbalanced transaction, we can stop here
-                --    and do nothing. We'll leave slightly more than what's needed
-                --    for fees, but having an extra change output isn't worth it
-                --    anyway.
+                -- a) If the node allows unbalanced transaction, we can stop
+                --    here and do nothing. We'll leave slightly more than what's
+                --    needed for fees, but having an extra change output isn't
+                --    worth it anyway.
                 --
                 -- b) If we __must__ balance the transaction, then we can choose
                 --    to pay the extra cost by adding the change output and
@@ -422,7 +484,7 @@ reduceChangeOutputs opts s = do
                     case feeBalancingPolicy opts of
                         RequireMinimalFee ->
                             pure (s, Fee C.zero)
-                        RequirePerfectBalance ->
+                        RequireBalancedFee ->
                             pure (sDangling, Fee remainder)
 
                 -- If however, adding the dangling change doesn't cost more than
