@@ -21,6 +21,9 @@
 -- For a guide to __algorithms provided by this library__, see the
 -- "Cardano.CoinSelection.Algorithm" module.
 --
+-- To adjust coin selections in order to __pay for transaction fees__, see
+-- the "Cardano.CoinSelection.Fee" module.
+--
 module Cardano.CoinSelection
     (
       -- * Coin Selections
