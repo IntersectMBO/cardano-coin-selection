@@ -161,8 +161,7 @@ data FeeOptions i o = FeeOptions
 
     , feeBalancingPolicy
         :: FeeBalancingPolicy
-        -- ^ What do to when we encounter a dangling change output.
-        -- See 'FeeBalancingPolicy'
+        -- ^ Which fee balancing policy to use.
     } deriving Generic
 
 -- | A choice of fee balancing policies for use when adjusting a coin selection.
