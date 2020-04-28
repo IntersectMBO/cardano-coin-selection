@@ -18,6 +18,9 @@
 -- The 'CoinSelectionAlgorithm' type provides a __common interface__ to
 -- algorithms that generate coin selections.
 --
+-- For a guide to __algorithms provided by this library__, see the
+-- "Cardano.CoinSelection.Algorithm" module.
+--
 module Cardano.CoinSelection
     (
       -- * Coin Selections
@@ -163,6 +166,9 @@ coinMapValue = mconcat . fmap entryValue . coinMapToList
 -- 'CoinSelectionParameters' object (with /available inputs/ and /requested/
 -- /outputs/), will generate a 'CoinSelectionResult' (with /remaining inputs/
 -- and a /coin selection/).
+--
+-- For implementations provided by this library, see
+-- "Cardano.CoinSelection.Algorithm".
 --
 -- @since 1.0.0
 newtype CoinSelectionAlgorithm i o m = CoinSelectionAlgorithm
