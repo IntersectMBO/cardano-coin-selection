@@ -1,13 +1,3 @@
-## [1.0.0] - 2020-04-23 
+## [1.0.0] - 2020-04-29
 
-### Added
-
-- TODO
-
-### Changed
-
-N/A
-
-### Removed
-
-N/A
+Initial release.
