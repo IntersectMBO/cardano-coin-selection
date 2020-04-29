@@ -43,7 +43,6 @@ library:
   - cryptonite
   - deepseq
   - quiet
-  - quiet
   - text
   - transformers
 
