@@ -64,6 +64,7 @@ tests:
       ghc-options:
       - -Werror
     dependencies:
+    - QuickCheck
     - bytestring
     - cardano-coin-selection
     - containers
@@ -72,9 +73,8 @@ tests:
     - fmt
     - hspec
     - memory
-    - QuickCheck
-    - random
     - quiet
+    - random
     - text
     - transformers
     - vector
