@@ -1,16 +1,11 @@
 <a href="https://hackage.haskell.org/package/cardano-coin-selection"><img src="https://img.shields.io/hackage/v/cardano-coin-selection?style=for-the-badge" /></a>
 <a href="https://github.com/input-output-hk/cardano-coin-selection/releases"><img src="https://img.shields.io/github/v/release/input-output-hk/cardano-coin-selection?color=%239b59b6&label=RELEASE&sort=semver&style=for-the-badge"/></a>
-<a href="https://travis-ci.org/input-output-hk/cardano-coin-selection"><img src="https://img.shields.io/travis/input-output-hk/cardano-coin-selection/master.svg?label=BUILD&style=for-the-badge"/></a>
-<a href="https://input-output-hk.github.io/cardano-coin-selection/coverage/hpc_index.html"><img src="https://input-output-hk.github.io/cardano-coin-selection/coverage/badge.svg" /></a>
+<a href="https://github.com/input-output-hk/cardano-coin-selection/actions?query=workflow%3ATest"><img src="https://img.shields.io/github/workflow/status/input-output-hk/cardano-coin-selection/Test?style=for-the-badge" /></a>
 
 ## Cardano Coin Selection
 
 This repository provides a [Haskell](https://www.haskell.org/) library of
 algorithms for coin selection and fee balancing.
-
-## Documentation
-
-API documentation is available [here](https://input-output-hk.github.io/cardano-coin-selection/haddock).
 
 ## Contributing
 
