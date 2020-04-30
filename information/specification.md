@@ -190,7 +190,7 @@ Selection](#self-organisation-in-coin-selection).
 
 One simple strategy for *generating change* might be to mimic what a shop
 assistant does when accepting a payment in the real world, which is to minimize
-the number of coins and banknotes that they return to the customer.  This is
+the *number* of coins and banknotes that they return to the customer.  This is
 beneficial for the shop, as it reduces the chances of them running out of
 change, and beneficial for the customer, as it reduces the amount of change
 that they have to carry around in their wallet.
