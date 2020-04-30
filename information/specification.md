@@ -345,13 +345,14 @@ the target amount.
 # Interface
 
 All coin selection algorithms used by Cardano Wallet implement a
-_common interface_. This section describes that interface.
+_common interface_.
 
-Essentially, a coin selection algorithm is a _mathematical function_
-that when applied to a [requested output list](#requested-output-list) and
-an [initial UTxO set](#initial-utxo-set), will produce a
-[coin selection](#coin-selection): the basis for a [transaction](#transaction)
-in a UTxO-based blockchain.
+This section describes that interface.
+
+Essentially, a coin selection algorithm is a _mathematical function_ that when
+applied to a [requested output list](#requested-output-list) and an [initial
+UTxO set](#initial-utxo-set), will produce a [coin selection](#coin-selection):
+the basis for a [transaction](#transaction) in a UTxO-based blockchain.
 
 This section describes:
 
@@ -359,7 +360,8 @@ This section describes:
   * the [results](#results) they produce when successful;
   * the [error conditions](#failure-modes) that may occur on failure;
   * the [properties](#properties) that apply to all coin selection
-    algorithms, that describe relationships between parameters and results.
+    algorithms, that describe mathematical relationships between parameters and
+    results.
 
 In this section, the terms _coin selection algorithm_ and _coin selection
 function_ will be used interchangeably.
