@@ -100,12 +100,13 @@ of _coins and banknotes_.
 
 When making a payment to someone, we typically select a combination of coins
 and banknotes from a wallet that, when added together, have enough value to
-cover the amount required.  Ideally, we'd always be able to select _just
-enough_ to cover the exact amount.  However, given that coins and banknotes
-have fixed values (and cannot be subdivided), it's often impossible to select
-the exact amount required. In such cases, we typically give the recipient
-_more_ than the required amount, and then receive the excess value back as
-_change_.
+cover the amount required.
+
+Ideally, we'd always be able to select _just enough_ to cover the exact amount.
+However, given that coins and banknotes have fixed values (and cannot be
+subdivided without destroying their value), it's often impossible to select the
+exact amount required. In such cases, we typically give the recipient _more_
+than the required amount, and then receive the excess value back as _change_.
 
 > #### Example
 >
@@ -115,7 +116,7 @@ _change_.
 > **five** _one-euro_ coins, and **one** _ten-euro_ note.
 >
 > Note that there is _no_ combination of coins (or notes) in her wallet that
-> when added together give a total of €2.50, but there are several possible
+> when added together give a total of €2.50, but there _are_ several possible
 > combinations that _exceed_ the total.
 >
 > To solve this problem, Alice selects _one_ of these combinations: **three**
