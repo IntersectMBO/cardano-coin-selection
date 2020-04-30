@@ -22,8 +22,10 @@ This draft has several **limitations**, to be addressed in future versions:
     * [Coin Selection in the Physical World](#coin-selection-in-the-physical-world)
     * [Coin Selection in Cardano](#coin-selection-in-cardano)
   * [Why is Coin Selection Non-Trivial?](#why-is-coin-selection-non-trivial)
-    * [Issues](#issues)
-    * [Goals](#goals)
+    * [The Transaction Size Limitation](#the-transaction-size-limitation)
+    * [The Problem of Dust](#the-problem-of-dust)
+    * [The Problem of Concurrency](#the-problem-of-concurrency)
+  * [Desirable Properties of Coin Selection Algorithms](#desirable-properties-of-coin-selection-algorithms)
 * [Definitions](#definitions)
   * [Address](#address)
   * [Coin Value](#coin-value)
@@ -149,57 +151,75 @@ payments, and computing the set of change to be paid back to the wallet.
 
 ## Why is Coin Selection Non-Trivial?
 
-### Issues
-
 There are a number of issues which make the problem of coin selection more
 complicated than it would initially appear.
 
- * Each [transaction](#transaction) has a _maximum size_, as defined by the
-   protocol. The size of a transaction increases as we add more
-   [inputs](#transaction-input) or [outputs](#transaction-output).
+### The Transaction Size Limitation
 
-   Therefore, there's a practical limit on the number of coins we can select
-   for any given transaction.
+Each [transaction](#transaction) has a _maximum size_, as defined by the
+protocol. The size of a transaction increases as we add more
+[inputs](#transaction-input) or [outputs](#transaction-output).
 
- * The most obvious strategy for coin selection, which consists of trying to
-   get as close to the requested value as possible, will tend (over time) to
-   create a lot of [dust outputs](#dust-output), outputs with small associated
-   values that are not worth including in a transaction.
+Therefore, there's a practical limit on the number of coins we can select for
+any given transaction.
 
-   Dust outputs are a problem, because even if the total value of dust in a
-   wallet is more than enough to cover a given target amount, if we attempt to
-   include that dust in a given transaction, we may run out of space (by
-   reaching the transaction size limit) before we can cover the target amount.
+### The Problem of Dust
 
- * The most obvious strategy for paying change, which consists of making a
-   single [change output](#change-output) with the exact excess value, will
-   tend (over time) to reduce the size of a [UTxO set](#utxo-set). This is bad
-   for two reasons:
+One simple strategy for *selecting coins* might be to mimic what we do when
+making a payment with coins and banknotes in the physical world. By giving the
+recipient an amount that's as close as possible to the amount they're asking
+for, we can minimize the amount of change they need to return to us.
 
-    1. Having a small UTxO set limits the number of payments that we can make
-       in parallel.
+However, trying to replicate this strategy with a UTxO-based wallet has an
+undesirable effect: minimizing the total value of selected coins will also
+minimize the value of change returned to the wallet. When repeated over time,
+this strategy will tend to cause an accumulation of tiny outputs in the
+wallet's [UTxO set](#utxo-set) known as [**dust**](#dust-output).
 
-    2. The approach of coalescing all change into a single output is widely
-       considered to have negative privacy implications. The discussion of
-       privacy issues is beyond the scope of this article.
-
-### Goals
-
-There are several desirable properties that we would like a coin selection
-algorithm to have.
-
-In particular, a coin selection algorithm should:
-
-  * employ strategies to limit the amount of [dust](#dust-output) that
-    accumulates in the [UTxO set](#utxo-set).
-
-  * over the course of time, aim to generate and maintain a [UTxO
-    set](#utxo-set) with _useful_ outputs: that is, outputs that allow us to
-    process future payments with a reasonably small number of
-    [inputs](#transaction-input).
+Dust outputs are a problem, because even if the total value of dust in a wallet
+is more than enough to cover a given target amount, if we attempt to include
+that dust in a given transaction, we may run out of space (by reaching the
+transaction size limit) before we can cover the target amount.
 
 For more information on dust avoidance, see [Self Organisation in Coin
 Selection](#self-organisation-in-coin-selection).
+
+### The Problem of Concurrency
+
+One simple strategy for *generating change* might be to mimic what a shop
+assistant does when accepting a payment in the real world, which is to minimize
+the number of coins and banknotes that they return to the customer.  This is
+beneficial for the shop, as it reduces the chances of them running out of
+change, and beneficial for the customer, as it reduces the amount of change
+that they have to carry around in their wallet.
+
+Analogously, when generating change for a UTxO-based wallet, we might be
+tempted to use the simple strategy of just creating a single [change
+output](#change-output) with the exact excess value.
+
+However, using this strategy has an undesirable effect: the repeated act of
+minimizing the number of change outputs will tend (over time) to reduce the
+number of entries in a wallet's [UTxO set](#utxo-set). This is bad for two
+reasons:
+
+1.  Having a small [UTxO set](#utxo-set) limits the number of payments that
+    we can make in parallel.
+
+2.  The approach of coalescing all change into a single output is widely
+    considered to have negative privacy implications.
+
+## Desirable Properties of Coin Selection Algorithms
+
+In light of the issues described in the section above, we'd ideally like coin
+selection algorithms to have the following properties:
+
+  * A coin selection algorithm should employ strategies to limit the amount of
+    [dust](#dust-output) that accumulates in the [UTxO set](#utxo-set).
+
+  * Over the course of time, a coin selection algorithm should aim to generate
+    and maintain a [UTxO set](#utxo-set) with _useful_ outputs: that is,
+    outputs that allow us to process future payments with a reasonably small
+    number of [inputs](#transaction-input).
 
 # Definitions
 
