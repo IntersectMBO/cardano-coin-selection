@@ -180,7 +180,8 @@ wallet's [UTxO set](#utxo-set) known as [**dust**](#dust-output).
 Dust outputs are a problem, because even if the total value of dust in a wallet
 is more than enough to cover a given target amount, if we attempt to include
 that dust in a given transaction, we may run out of space (by reaching the
-transaction size limit) before we can cover the target amount.
+[transaction size limit](#the-transaction-size-limitation)) before we can cover
+the target amount.
 
 For more information on dust avoidance, see [Self Organisation in Coin
 Selection](#self-organisation-in-coin-selection).
