@@ -365,7 +365,7 @@ function_ will be used interchangeably.
 
 ## Parameters
 
-A coin selection function accepts the following parameters:
+All coin selection functions accept the following parameters:
 
  1. #### Requested Output List
 
@@ -390,7 +390,7 @@ A coin selection function accepts the following parameters:
 
 ## Results
 
-A coin selection function produces the following result values:
+All coin selection functions produce the following result values:
 
  1. #### Coin Selection
 
