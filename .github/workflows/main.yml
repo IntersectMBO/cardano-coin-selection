@@ -40,7 +40,6 @@ jobs:
     - name: 🏷️ Variables
       id: variables
       run: |
-        stack setup
         echo ::set-output name=pkg_name::$(cat *.cabal | grep "name:" | sed "s/name:\s*\(.*\)/\1/")
 
     - name: 📸 Build Snapshot
@@ -48,26 +47,14 @@ jobs:
       run: |
         stack --no-terminal test --bench --only-snapshot
 
-    - name: ✍  Check hlint and stylish
-      run: |
-        curl -sSL https://raw.github.com/ndmitchell/hlint/master/misc/run.sh | sh -s .
-        curl -sSL https://raw.github.com/jaspervdj/stylish-haskell/master/scripts/latest.sh | sh -s $(find . -type f -name "*.hs" ! -path "*.stack-work*") -i
-        if [ -z "$(git status --porcelain)" ]; then
-            echo "No style errors detected."
-        else
-            echo "Style errors detected:"
-            git diff
-            exit 1
-        fi
-
     - name: 🔨 Build & Test
       run: |
-        stack --no-terminal test --bench --no-run-benchmarks --haddock --no-haddock-deps --coverage --flag $PKG_NAME:release
+        stack --no-terminal test --bench --haddock --no-haddock-deps --no-run-benchmarks --flag $PKG_NAME:release
+        mkdir -p dist/haddock && mv $(stack path --local-install-root)/doc/* dist/haddock
+        sed -i 's@href="[^"]*/doc/\([^"]*.html\)"@href="\1"@g' dist/haddock/index.html
         wget -O Makefile https://raw.githubusercontent.com/input-output-hk/adrestia/master/.haskell/coverage/Makefile
         mkdir -p .coverage && touch .coverage/template.overlay
-        DESTDIR=dist/coverage make report  && DESTDIR=dist/coverage make badge
-        mkdir -p dist/haddock && mv $(stack path --local-install-root)/doc/* dist/haddock
-        sed -i 's@href="[^"]*/doc/\([^"]*.html\)"@href="\1"@' dist/haddock/index.html
+        DESTDIR=dist/coverage make report && DESTDIR=dist/coverage make badge
       env:
         PKG_NAME: ${{ steps.variables.outputs.pkg_name }}
 
