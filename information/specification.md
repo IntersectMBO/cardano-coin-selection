@@ -93,26 +93,32 @@ to pay money to one or more recipients.
 
 ### Coin Selection in the Physical World
 
-In the world of _physical_ money, wallets hold value in the form of _coins and
-banknotes_.  When making a payment, we typically select a combination of coins
+In the familiar world of _physical_ money, our wallets hold value in the form
+of _coins and banknotes_.
+
+When making a payment to someone, we typically select a combination of coins
 and banknotes from a wallet that, when added together, have enough value to
 cover the amount required.  Ideally, we'd always be able to select _just
 enough_ to cover the exact amount.  However, given that coins and banknotes
-have fixed values (and cannot be subdivided), it's often _impossible_ to select
+have fixed values (and cannot be subdivided), it's often impossible to select
 the exact amount required. In such cases, we typically give the recipient
 _more_ than the required amount, and then receive the excess value back as
 _change_.
 
 > #### Example
 >
-> Alice wishes to pay for her lunch. The total price comes to €2.50 (2 euros
-> and 50 cents). In her wallet, she has **five** _one-euro_ coins, and **one**
-> _ten-euro_ note. Note that there is _no_ combination of coins (or notes) in
-> her wallet that when added together give a total of €2.50, but there are
-> several possible combinations that _exceed_ the total.  To solve this
-> problem, Alice selects _one_ of these combinations: **three** _one-euro_
-> coins. She uses the coins to make the payment, and then receives **one**
-> 50-cent coin as change.
+> Alice wishes to pay for her lunch.
+>
+> The total price comes to €2.50 (2 euros and 50 cents). In her wallet, she has
+> **five** _one-euro_ coins, and **one** _ten-euro_ note.
+>
+> Note that there is _no_ combination of coins (or notes) in her wallet that
+> when added together give a total of €2.50, but there are several possible
+> combinations that _exceed_ the total.
+>
+> To solve this problem, Alice selects _one_ of these combinations: **three**
+> _one-euro_ coins. She uses the coins to make the payment, and then receives
+> **one** 50-cent coin as change.
 
 ### Coin Selection in Cardano
 
@@ -129,6 +135,7 @@ values. Collectively, the set of unspent transaction outputs is known as the
 When using a Cardano wallet to make a payment, the wallet software must select
 a combination of unspent outputs from the wallet's [UTxO set](#utxo-set), so
 that the total value of selected outputs is enough to cover the target amount.
+
 Just as with physical coins and notes, unspent outputs from the UTxO set
 _cannot_ be subdivided, and must either be spent completely in a given
 transaction, or not be spent at all. Similarly to a transaction with physical
