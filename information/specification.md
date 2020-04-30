@@ -349,8 +349,9 @@ _common interface_. This section describes that interface.
 
 Essentially, a coin selection algorithm is a _mathematical function_
 that when applied to a [requested output list](#requested-output-list) and
-a [initial UTxO set](#initial-utxo-set), will produce a
-[coin selection](#coin-selection).
+an [initial UTxO set](#initial-utxo-set), will produce a
+[coin selection](#coin-selection): the basis for a [transaction](#transaction)
+in a UTxO-based blockchain.
 
 This section describes:
 
@@ -394,7 +395,10 @@ All coin selection functions produce the following result values:
 
  1. #### Coin Selection
 
-    The _coin selection_ is a record with three fields:
+    A _coin selection_ is the basis for a [transaction](#transaction) in a
+    UTxO-based blockchain.
+
+    It is a record with three fields:
 
       * A set of **_inputs_**, equivalent to a subset of the
         [initial UTxO set](#initial-utxo-set).
