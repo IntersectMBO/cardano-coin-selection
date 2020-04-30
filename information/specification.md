@@ -328,9 +328,17 @@ and belongs to the wallet.
 ### Dust Output
 
 A _dust output_ is a [transaction output](#transaction-output) with an
-associated [coin value](#coin-value) that is _too small_ to be worth including
-in a transaction, because doing so would incur a fee increase that
-significantly negates the value of including it.
+associated [coin value](#coin-value) that is:
+
+  * small in comparison to payments typically made by the user of the wallet;
+  * small in comparison to the marginal fee associated with including it in
+    a transaction.
+
+Dust outputs are a problem, because even if the total value of dust in a wallet
+is more than enough to cover a given payment amount, if we attempt to include
+that dust in a given transaction, we may run out of space (by reaching the
+[transaction size limit](#the-transaction-size-limitation)) before we can cover
+the target amount.
 
 # Interface
 
