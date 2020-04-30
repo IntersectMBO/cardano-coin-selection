@@ -311,8 +311,8 @@ This term is commonly used in two ways:
 From the point of view of a coin selection algorithm, each member of a UTxO set
 can be represented as a pair of the form (**_u_**, **_v_**), where:
 
-  * **_u_** is a unique reference to an [unspent transaction
-    output](#unspent-transaction-output).
+  * **_u_** is a unique reference to an
+    [unspent transaction output](#unspent-transaction-output).
   * **_v_** is the [coin value](#coin-value) associated with **_u_**.
 
 Typically, the format of each unique reference **_u_** is equivalent to the
