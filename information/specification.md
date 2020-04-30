@@ -225,6 +225,8 @@ selection algorithms to have the following properties:
 
 # Definitions
 
+This section defines common terms that are used throughout this document.
+
 ### Address
 
 An _address_ is a unique identifier that represents a destination for a payment.
