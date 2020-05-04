@@ -57,13 +57,11 @@ This draft has several **limitations**, to be addressed in future versions:
     * [Maximum Input Count Exceeded](#maximum-input-count-exceeded)
 * [Implementations](#implementations)
   * [Largest-First](#largest-first)
-    * [Cardinality](#cardinality)
     * [State](#state)
       * [Available UTxO List](#available-utxo-list)
       * [Unpaid Output List](#unpaid-output-list)
       * [Accumulated Coin Selection](#accumulated-coin-selection)
     * [Computation](#computation)
-    * [Termination](#termination)
   * [Random-Improve](#random-improve)
     * [Motivating Principles](#motivating-principles)
       * [Principle 1: Dust Management](#principle-1-dust-management)
@@ -610,29 +608,18 @@ produce a result. In such cases, Cardano Wallet will fall back to the
 
 ## Largest-First
 
-The **Largest-First** coin selection algorithm processes
-[outputs](#requested-output-list) in _descending order of coin value_, from
-_largest_ to _smallest_.
+The **Largest-First** coin selection algorithm selects entries from the UTxO
+set in _descending order of value_, from largest to smallest.
 
-For each output, it repeatedly selects the _largest remaining_ unspent UTxO
-entry until the value of selected entries is greater than or equal to the
-value of that output.
+When applied to a list of [requested outputs](#requested-output-list), the
+algorithm repeatedly selects UTxO entries from the [initial UTxO
+set](#initial-utxo-set) until the total value of selected entries is greater
+than or equal to the total value of requested outputs.
 
 The name of the algorithm is taken from the idea that the **largest** UTxO
-entry is always considered **first**.
-
-### Cardinality
-
-The Largest-First algorithm imposes the following cardinality restriction:
-
-  * Each entry from the [initial UTxO set](#initial-utxo-set) is used to pay
-    for _at most one_ output from the [requested output
-    list](#requested-output-list).
-
-As a result of this restriction, the algorithm will fail with a [UTxO Not
-Fragmented Enough](#utxo-not-fragmented-enough) error if the number of entries
-in the [initial UTxO set](#initial-utxo-set) is _smaller than_ the number of
-entries in the [requested output list](#requested-output-list).
+entry is always selected **first**. A given UTxO entry **_u_** of value
+**_v_** can be selected if and only if there is no other unselected entry
+with a value greater than **_v_**.
 
 ### State
 
@@ -650,74 +637,56 @@ state:
     Entries are incrementally removed from the _head_ of the list as the
     algorithm proceeds, until the list is empty.
 
- 2. #### Unpaid Output List
+ 2. #### Selected UTxO Set
 
-    This is initially equal to the [requested output
-    list](#requested-output-list), sorted into _descending order of coin
-    value_.
-
-    The _head_ of the list is always the unpaid output with the _largest coin
-    value_.
-
-    Entries are incrementally removed from the _head_ of the list as the
-    algorithm proceeds, until the list is empty.
-
- 3. #### Accumulated Coin Selection
-
-    The accumulated coin selection is a [coin selection](#coin-selection) where
-    all fields are initially equal to the _empty set_.
+    This is initially equal to the empty set.
 
 ### Computation
 
 The algorithm proceeds according to the following sequence of steps:
 
- * **Step 1**
+  * **Step 1**
 
-   Remove a single _unpaid output_ from the head of the [unpaid output
-   list](#unpaid-output-list).
+    If the [available UTxO list](#available-utxo-list) is _empty_:
 
- * **Step 2**
+      * Terminate with a [UTxO Balance
+        Insufficient](#utxo-balance-insufficient) error.
 
-   Repeatedly remove UTxO entries from the head of the [available UTxO
-   list](#available-utxo-list) until the total value of entries removed is
-   _greater than or equal to_ the value of the _removed output_.
+    If the [available UTxO list](#available-utxo-list) is _not empty_:
 
- * **Step 3**
+      * Remove an UTxO entry from the head of the [available UTxO
+        list](#available-utxo-list) and add it to the [selected UTxO
+        set](#selected-utxo-set).
 
-   Use the _removed UTxO entries_ to pay for the _removed output_.
+  * **Step 2**
 
-   This is achieved by:
+    Compare the total value v<sub>_selected_</sub> of the [selected UTxO
+    set](#selected-utxo-set) to the total value v<sub>_requested_</sub> of the
+    [requested output list](#requested-output-list):
 
-    * adding the _removed UTxO entries_ to the _inputs_ field of the
-      [accumulated coin selection](#accumulated-coin-selection).
-    * adding the _removed output_ to the _outputs_ field of the
-      [accumulated coin selection](#accumulated-coin-selection).
+      * If v<sub>_selected_</sub> < v<sub>_requested_</sub> then go to
+        step 1.
+      * If v<sub>_selected_</sub> ≥ v<sub>_requested_</sub> then go to
+        step 3.
 
- * **Step 4**
+  * **Step 3**
 
-   If the _total value_ of the _removed UTxO entries_ is greater than the
-   value of the _removed output_, generate a coin whose value is equal to
-   the exact difference, and add it to the _change values_ field of the
-   [accumulated coin selection](#accumulated-coin-selection).
+    Return a [coin selection](#coin-selection) result where:
 
- * **Step 5**
+      * The _inputs_ field is equal to the [selected UTxO
+        set](#selected-utxo-set).
 
-   If the _unpaid output list_ is empty, **terminate** here.
+      * The _outputs_ field is equal to the [requested output
+        list](#requested-output-list).
 
-   Otherwise, return to **Step 1**.
+      * If v<sub>_selected_</sub> > v<sub>_requested_</sub> then:
 
-### Termination
+        * The _change_ field is a set with a single [coin](#coin-value) whose
+          value is equal to (v<sub>_selected_</sub> − v<sub>_requested_</sub>).
 
-The algorithm terminates _successfully_ if the [available UTxO
-list](#available-utxo-list) is not depleted before the [unpaid output
-list](#unpaid-output-list) can be fully depleted (i.e., if all the outputs have
-been paid for).
+      * If v<sub>_selected_</sub> = v<sub>_requested_</sub> then:
 
-The [accumulated coin selection](#accumulated-coin-selection) is returned
-to the caller as the [coin selection](#coin-selection) result.
-
-The [available UTxO list](#available-utxo-list) is returned to the caller
-as the [remaining UTxO set](#remaining-utxo-set) result.
+        * The _change_ field is the empty set.
 
 ## Random-Improve
 
