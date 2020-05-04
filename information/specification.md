@@ -608,11 +608,11 @@ produce a result. In such cases, Cardano Wallet will fall back to the
 
 ## Largest-First
 
-The **Largest-First** coin selection algorithm selects entries from the UTxO
-set in _descending order of value_, from largest to smallest.
+The **Largest-First** coin selection algorithm considers UTxO set entries
+in _descending order of value_, from largest to smallest.
 
 When applied to a list of [requested outputs](#requested-output-list), the
-algorithm repeatedly selects UTxO entries from the [initial UTxO
+algorithm repeatedly selects entries from the [initial UTxO
 set](#initial-utxo-set) until the total value of selected entries is greater
 than or equal to the total value of requested outputs.
 
