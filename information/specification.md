@@ -233,7 +233,7 @@ Addresses are typically owned (and generated) by individual wallets.
 
 In general, coin selection algorithms are agnostic to the type of addresses
 used to identify payment recipients. Any address type may be used, so long as
-the set of possible addresses is well-ordered.
+the set of possible addresses is totally-ordered.
 
 ### Coin Value
 
@@ -263,7 +263,7 @@ A _transaction input_ is a _unique reference_ to a single
 
 In general, coin selection algorithms are agnostic to the type of references
 used to identify outputs from previous transactions. Any type may be used, so
-long as the set of possible references is well-ordered, and so long as it is
+long as the set of possible references is totally-ordered, and so long as it is
 possible to determine the [coin value](#coin-value) associated with any given
 reference.
 
@@ -322,7 +322,7 @@ can be represented as a pair of the form (**_u_**, **_v_**), where:
 
 In general, coin selection algorithms are agnostic to the type of references
 used to identify unspent outputs from previous transactions. Any type may be
-used, so long as the set of possible references is well-ordered.
+used, so long as the set of possible references is totally-ordered.
 
 In practice however, the type of each unique reference **_u_** is equivalent
 to the type of a [transaction input](#transaction-input), as transaction inputs
