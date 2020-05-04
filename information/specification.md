@@ -153,7 +153,7 @@ payments, and computing the set of change to be paid back to the wallet.
 ## Why is Coin Selection Non-Trivial?
 
 There are a number of issues which make the problem of coin selection more
-complicated than it would initially appear.
+complicated than would initially appear.
 
 ### The Transaction Size Limitation
 
@@ -168,8 +168,8 @@ any given transaction.
 
 One simple strategy for *selecting coins* might be to mimic what we do when
 making a payment with coins and banknotes in the physical world. By giving the
-recipient an amount that's as close as possible to the amount they're asking
-for, we can minimize the amount of change they need to return to us.
+recipient an amount that's as close as possible to the amount they're expecting,
+we can minimize the amount of change they need to return to us.
 
 However, trying to replicate this strategy with a UTxO-based wallet has an
 undesirable effect: minimizing the total value of selected coins will also
@@ -204,24 +204,23 @@ minimizing the number of change outputs will tend (over time) to reduce the
 number of entries in a wallet's [UTxO set](#utxo-set). This is bad for two
 reasons:
 
-1.  Having a small [UTxO set](#utxo-set) limits the number of payments that
-    we can make in parallel.
+1.  Having a small [UTxO set](#utxo-set) limits the number of future payments
+    that we can make in parallel.
 
 2.  The approach of coalescing all change into a single output is widely
     considered to have negative privacy implications.
 
 ## Desirable Properties of Coin Selection Algorithms
 
-In light of the issues described in the section above, we'd ideally like coin
-selection algorithms to have the following properties:
+In light of the issues described above, we'd ideally like for our coin selection
+algorithms to be able to:
 
-  * A coin selection algorithm should employ strategies to limit the amount of
-    [dust](#dust-output) that accumulates in the [UTxO set](#utxo-set).
+  * limit, over the course of time, the amount of [dust](#dust-output) that
+    accumulates in the [UTxO set](#utxo-set).
 
-  * Over the course of time, a coin selection algorithm should aim to generate
-    and maintain a [UTxO set](#utxo-set) with _useful_ outputs: that is,
-    outputs that allow us to process future payments with a reasonably small
-    number of [inputs](#transaction-input).
+  * maintain, over the course of time, a [UTxO set](#utxo-set) with _useful_
+    outputs: that is, outputs that allow us to process future payments with a
+    reasonably small number of [inputs](#transaction-input).
 
 # Definitions
 
@@ -347,12 +346,10 @@ the target amount.
 All coin selection algorithms used by Cardano Wallet implement a
 _common interface_.
 
-This section describes that interface.
-
-Essentially, a coin selection algorithm is a _mathematical function_ that when
-applied to a [requested output list](#requested-output-list) and an [initial
-UTxO set](#initial-utxo-set), will produce a [coin selection](#coin-selection):
-the basis for a [transaction](#transaction) in a UTxO-based blockchain.
+A coin selection algorithm is a _mathematical function_ that when applied to a
+[requested output list](#requested-output-list) and an [initial UTxO
+set](#initial-utxo-set), will produce a [coin selection](#coin-selection): the
+basis for a [transaction](#transaction) in a UTxO-based blockchain.
 
 This section describes:
 
