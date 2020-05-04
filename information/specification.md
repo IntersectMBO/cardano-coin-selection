@@ -689,21 +689,20 @@ The algorithm proceeds according to the following sequence of steps:
 
     Return a [coin selection](#coin-selection) result where:
 
-      * The _inputs_ field is equal to the [selected UTxO
+      * The _inputs_ set is equal to the [selected UTxO
         set](#selected-utxo-set).
 
-      * The _outputs_ field is equal to the [requested output
-        list](#requested-output-list).
+      * The _outputs_ set is equal to the [requested output
+        set](#requested-output-list).
 
       * If **_v_**<sub>selected</sub> > **_v_**<sub>requested</sub> then:
 
-        * The _change_ field is a set with a single [coin](#coin-value) whose
-          value is equal to (**_v_<sub>selected</sub>** −
-          **_v_<sub>requested</sub>**).
+        * The _change_ set contains just a single [coin](#coin-value) of value
+          (**_v_<sub>selected</sub>** − **_v_<sub>requested</sub>**).
 
       * If **_v_**<sub>selected</sub> = **_v_**<sub>requested</sub> then:
 
-        * The _change_ field is the empty set.
+        * The _change_ set is empty.
 
 ## Random-Improve
 
