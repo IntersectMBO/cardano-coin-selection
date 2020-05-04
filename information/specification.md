@@ -617,9 +617,10 @@ set](#initial-utxo-set) until the total value of selected entries is _greater
 than or equal to_ the total value of requested outputs.
 
 The name of the algorithm is taken from the idea that the **largest** UTxO
-entry is always selected **first**. A given UTxO entry **_u_** of value
-**_v_** can be selected if and only if there is no other unselected entry
-with a value greater than **_v_**.
+entry is always selected **first**. A given UTxO entry **_u_<sub>1</sub>** with
+value **_v_<sub>1</sub>** can be selected if and only if there is no other
+unselected entry **_u_<sub>2</sub>** with value **_v_<sub>2</sub>** where
+**_v_<sub>2</sub>** > **_v_<sub>1</sub>**.
 
 ### State
 
