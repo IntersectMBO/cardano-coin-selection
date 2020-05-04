@@ -661,28 +661,28 @@ The algorithm proceeds according to the following sequence of steps:
 
   * **Step 2**
 
-    Compare the total size **s** of the [selected UTxO
+    Compare the total size **_s_** of the [selected UTxO
     set](#selected-utxo-set) with the [maximum input
-    count](#maximum-input-count) **s<sub>_max_</sub>**.
+    count](#maximum-input-count) **_s_**<sub>max</sub>.
 
-      * If **s** > **s<sub>_max_</sub>** then:
+      * If **_s_** > **_s_**<sub>max</sub> then:
 
         * Terminate with a [Maximum Input Count
           Exceeded](#maximum-input-count-exceeded) error.
 
-      * If **s** ≤ **s<sub>_max_</sub>** then:
+      * If **_s_** ≤ **_s_**<sub>max</sub> then:
 
         * Go to step 3.
 
   * **Step 3**
 
-    Compare the total value v<sub>_selected_</sub> of the [selected UTxO
-    set](#selected-utxo-set) to the total value v<sub>_requested_</sub> of the
-    [requested output list](#requested-output-list):
+    Compare the total value **_v_**<sub>selected</sub> of the [selected UTxO
+    set](#selected-utxo-set) to the total value **_v_**<sub>requested</sub> of
+    the [requested output list](#requested-output-list):
 
-      * If v<sub>_selected_</sub> < v<sub>_requested_</sub> then go to
+      * If **_v_**<sub>selected</sub> < **_v_**<sub>requested</sub> then go to
         step 1.
-      * If v<sub>_selected_</sub> ≥ v<sub>_requested_</sub> then go to
+      * If **_v_**<sub>selected</sub> ≥ **_v_**<sub>requested</sub> then go to
         step 4.
 
   * **Step 4**
@@ -695,12 +695,13 @@ The algorithm proceeds according to the following sequence of steps:
       * The _outputs_ field is equal to the [requested output
         list](#requested-output-list).
 
-      * If v<sub>_selected_</sub> > v<sub>_requested_</sub> then:
+      * If **_v_**<sub>selected</sub> > **_v_**<sub>requested</sub> then:
 
         * The _change_ field is a set with a single [coin](#coin-value) whose
-          value is equal to (v<sub>_selected_</sub> − v<sub>_requested_</sub>).
+          value is equal to (**_v_<sub>selected</sub>** −
+          **_v_<sub>requested</sub>**).
 
-      * If v<sub>_selected_</sub> = v<sub>_requested_</sub> then:
+      * If **_v_**<sub>selected</sub> = **_v_**<sub>requested</sub> then:
 
         * The _change_ field is the empty set.
 
