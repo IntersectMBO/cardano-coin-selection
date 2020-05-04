@@ -235,7 +235,7 @@ Addresses are typically owned (and generated) by individual wallets.
 
 In general, coin selection algorithms are agnostic to the type of addresses
 used to identify payment recipients. Any address type may be used, so long as
-the set of possible values is well-ordered.
+the set of possible addresses is well-ordered.
 
 ### Coin Value
 
@@ -265,7 +265,7 @@ A _transaction input_ is a _unique reference_ to a single
 
 In general, coin selection algorithms are agnostic to the type of references
 used to identify outputs from previous transactions. Any type may be used, so
-long as the set of possible values is well-ordered, and so long as it is
+long as the set of possible references is well-ordered, and so long as it is
 possible to determine the [coin value](#coin-value) associated with any given
 reference.
 
@@ -308,7 +308,7 @@ outputs](#unspent-transaction-output).
 
 This term is commonly used in two ways:
 
-  * To describe the _complete set_ of all unspent transaction outputs on a
+  * To describe the _complete set_ of all unspent transaction outputs within a
     _blockchain_.
 
   * To describe the _subset_ of unspent transaction outputs associated with
@@ -319,13 +319,16 @@ From the point of view of a coin selection algorithm, each member of a UTxO set
 can be represented as a pair of the form (**_u_**, **_v_**), where:
 
   * **_u_** is a unique reference to an
-    [unspent transaction output](#unspent-transaction-output).
+    [unspent output](#unspent-transaction-output) from a previous transaction.
   * **_v_** is the [coin value](#coin-value) associated with **_u_**.
 
-Typically, the format of each unique reference **_u_** is equivalent to the
-format of a [transaction input](#transaction-input). However, coin selection
-algorithms are generally _agnostic_ to this format, and only care that such
-references are _unique_.
+In general, coin selection algorithms are agnostic to the type of references
+used to identify unspent outputs from previous transactions. Any type may be
+used, so long as the set of possible references is well-ordered.
+
+In practice however, the type of each unique reference **_u_** is equivalent
+to the type of a [transaction input](#transaction-input), as transaction inputs
+are simply references to unspent outputs from previous transactions.
 
 ### Change Output
 
