@@ -517,23 +517,23 @@ set](#remaining-utxo-set), but _not both_.
 
 The following laws hold:
 
-  * UTxO<sub>_selected_</sub> ⊆ UTxO<sub>_initial_</sub>
-  * UTxO<sub>_remaining_</sub> ⊂ UTxO<sub>_initial_</sub>
-  * UTxO<sub>_remaining_</sub> ∩ UTxO<sub>_selected_</sub> = ∅
-  * UTxO<sub>_remaining_</sub> ⋃ UTxO<sub>_selected_</sub> =
-    UTxO<sub>_initial_</sub>
+  * U<sub>_selected_ </sub> ⊆ U<sub>_initial_ </sub>
+  * U<sub>_remaining_</sub> ⊂ U<sub>_initial_ </sub>
+  * U<sub>_remaining_</sub> ∩ U<sub>_selected_</sub> = ∅
+  * U<sub>_remaining_</sub> ⋃ U<sub>_selected_</sub> =
+    U<sub>_initial_</sub>
 
 Where:
 
-  * **UTxO<sub>_initial_</sub>**
+  * **U<sub>_initial_</sub>**
 
     is the [initial UTxO set](#initial-utxo-set).
 
-  * **UTxO<sub>_remaining_</sub>**
+  * **U<sub>_remaining_</sub>**
 
     is the [remaining UTxO set](#remaining-utxo-set).
 
-  * **UTxO<sub>_selected_</sub>**
+  * **U<sub>_selected_</sub>**
 
     is the value of the _inputs_ field of the [coin selection](#coin-selection)
     result.
