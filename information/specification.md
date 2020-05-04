@@ -460,7 +460,7 @@ selection functions and the _results_ they are allowed to produce.
 
 ### Coverage of Payments
 
-This property states that the total value of the [coin
+This property states that the total value of _inputs_ in the resulting [coin
 selection](#coin-selection) result is sufficient to _cover_ the total value of
 the [requested output list](#requested-output-list).
 
