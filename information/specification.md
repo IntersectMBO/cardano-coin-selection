@@ -263,7 +263,14 @@ input #3  >---+          +---> output #2
 A _transaction input_ is a _unique reference_ to a single
 [output](#transaction-output) from a previous transaction.
 
-This reference consists of a pair of values (**_h_**, **_n_**), where:
+In general, coin selection algorithms are agnostic to the type of references
+used to identify outputs from previous transactions. Any type may be used, so
+long as the set of possible values is well-ordered, and so long as it is
+possible to determine the [coin value](#coin-value) associated with any given
+reference.
+
+In the case of Cardano and other UTxO-based blockchains, this reference
+generally consists of a pair of values (**_h_**, **_n_**), where:
 
   * **_h_** is a _unique identifier_ for an existing transaction **_t_**;
   * **_n_** is a 0-based integer index into the output list of transaction
