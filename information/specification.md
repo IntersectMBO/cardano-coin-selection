@@ -613,8 +613,8 @@ in _descending order of value_, from largest to smallest.
 
 When applied to a list of [requested outputs](#requested-output-list), the
 algorithm repeatedly selects entries from the [initial UTxO
-set](#initial-utxo-set) until the total value of selected entries is greater
-than or equal to the total value of requested outputs.
+set](#initial-utxo-set) until the total value of selected entries is _greater
+than or equal to_ the total value of requested outputs.
 
 The name of the algorithm is taken from the idea that the **largest** UTxO
 entry is always selected **first**. A given UTxO entry **_u_** of value
@@ -635,7 +635,7 @@ state:
     coin value_.
 
     Entries are incrementally removed from the _head_ of the list as the
-    algorithm proceeds, until the list is empty.
+    algorithm proceeds, until enough value has been selected.
 
  2. #### Selected UTxO Set
 
@@ -660,6 +660,21 @@ The algorithm proceeds according to the following sequence of steps:
 
   * **Step 2**
 
+    Compare the total size **s** of the [selected UTxO
+    set](#selected-utxo-set) with the [maximum input
+    count](#maximum-input-count) **s<sub>_max_</sub>**.
+
+      * If **s** > **s<sub>_max_</sub>** then:
+
+        * Terminate with a [Maximum Input Count
+          Exceeded](#maximum-input-count-exceeded) error.
+
+      * If **s** ≤ **s<sub>_max_</sub>** then:
+
+        * Go to step 3.
+
+  * **Step 3**
+
     Compare the total value v<sub>_selected_</sub> of the [selected UTxO
     set](#selected-utxo-set) to the total value v<sub>_requested_</sub> of the
     [requested output list](#requested-output-list):
@@ -667,9 +682,9 @@ The algorithm proceeds according to the following sequence of steps:
       * If v<sub>_selected_</sub> < v<sub>_requested_</sub> then go to
         step 1.
       * If v<sub>_selected_</sub> ≥ v<sub>_requested_</sub> then go to
-        step 3.
+        step 4.
 
-  * **Step 3**
+  * **Step 4**
 
     Return a [coin selection](#coin-selection) result where:
 
