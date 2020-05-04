@@ -507,12 +507,12 @@ Where:
 ### Conservation of UTxO
 
 This property states that every entry in the [initial UTxO
-set](#initial-utxo-set) is included in _either_ the [coin
-selection](#coin-selection) inputs, _or_ in the [remaining UTxO
+set](#initial-utxo-set) is included in _either_ the inputs set of the generated
+[coin selection](#coin-selection), _or_ in the [remaining UTxO
 set](#remaining-utxo-set), but _not both_.
 
   * If a UTxO entry _is_ selected by the coin selection algorithm, it is
-    included in the [coin selection](#coin-selection) inputs.
+    included in the [coin selection](#coin-selection) inputs set.
 
   * If a UTxO entry is _not_ selected by the coin selection algorithm, it is
     included in the [remaining UTxO set](#remaining-utxo-set).
