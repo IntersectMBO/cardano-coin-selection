@@ -425,17 +425,19 @@ All coin selection functions produce the following result values:
       * A set of **_inputs_**, equivalent to a subset of the
         [initial UTxO set](#initial-utxo-set).
 
-        Represents the value that has been selected from the initial UTxO set
-        in order to cover the total payment value.
+        From the point of view of a _wallet_, this represents the value that
+        has been selected from the wallet in order to cover the total payment
+        value.
 
       * A set of **_outputs_** (see [transaction output](#transaction-output)).
 
         Represents the set of payments to be made to recipient addresses.
 
-      * A set of **_change values_**, where each change value is simply a
-        [coin value](#coin-value).
+      * A set of **_change values_** (see [change output](#change-output)),
+        where each change value is simply a [coin value](#coin-value).
 
-        Represents the change to be returned to the wallet.
+        From the point of view of a _wallet_, this represents the change to be
+        returned to the wallet.
 
  2. #### Remaining UTxO Set
 
