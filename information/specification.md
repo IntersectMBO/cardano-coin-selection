@@ -239,7 +239,7 @@ the set of possible values is well-ordered.
 
 ### Coin Value
 
-A _coin value_ is a positive integer value that represents a number of
+A _coin value_ is a non-negative integer value that represents a number of
 [Lovelace](https://cardanodocs.com/cardano/monetary-policy/).
 
 One [Ada](https://cardanodocs.com/cardano/monetary-policy/) is _exactly_ equal
