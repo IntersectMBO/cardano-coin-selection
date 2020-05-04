@@ -286,20 +286,20 @@ A _transaction output_ consists of a pair of values (**_a_**, **_v_**), where:
 ### Spent Transaction Output
 
 A _spent transaction output_ is an [output](#transaction-output) from an
-existing transaction that has already been referenced as an
+existing [transaction](#transaction) that has already been referenced as an
 [input](#transaction-input) within a later transaction on the blockchain.
 
-In effect, the coin value associated with that transaction output has been
-_spent_, and cannot be reused.
+In effect, the [coin value](#coin-value) associated with that transaction
+output has been _spent_, and cannot be reused.
 
 ### Unspent Transaction Output
 
 An _unspent transaction output_ is an [output](#transaction-output) from an
-existing transaction that has not yet been referenced as an
+existing [transaction](#transaction) that has not yet been referenced as an
 [input](#transaction-input) within a later transaction.
 
-In effect, the coin value associated with that transaction output has _not yet_
-been spent, and is still available.
+In effect, the [coin value](#coin-value) associated with that transaction
+output has _not yet_ been spent, and is still available.
 
 ### UTxO Set
 
