@@ -464,16 +464,16 @@ the [requested output set](#requested-output-set).
 
 In particular:
 
-  * V<sub>_selected_</sub> ≥ V<sub>_requested_</sub>
+  * **_v_**<sub>selected</sub> ≥ **_v_**<sub>requested</sub>
 
 Where:
 
-  * V<sub>_requested_</sub>
+  * **_v_**<sub>requested</sub>
 
     is the total value of the [requested output set](#requested-output-set)
 
 
-  * V<sub>_selected_</sub>
+  * **_v_**<sub>selected</sub>
 
     is the total value of the _inputs_ field of the [coin
     selection](#coin-selection) result.
@@ -484,20 +484,21 @@ This property states that the correct amount of _change_ was generated.
 
 In particular:
 
-  * V<sub>_selected_</sub> = V<sub>_requested_</sub> + V<sub>_change_</sub>
+  * **_v_**<sub>selected</sub>
+  = **_v_**<sub>requested</sub> + **_v_**<sub>change</sub>
 
 Where:
 
-  * V<sub>_change_</sub>
+  * **_v_**<sub>change</sub>
 
     is the total value of the _change_ field of the [coin
     selection](#coin-selection) result.
 
-  * V<sub>_requested_</sub>
+  * **_v_**<sub>requested</sub>
 
     is the total value of the [requested output set](#requested-output-set)
 
-  * V<sub>_selected_</sub>
+  * **_v_**<sub>selected</sub>
 
     is the total value of the _inputs_ field of the [coin
     selection](#coin-selection) result.
@@ -517,23 +518,23 @@ set](#remaining-utxo-set), but _not both_.
 
 The following laws hold:
 
-  * U<sub>_selected_ </sub> ⊆ U<sub>_initial_ </sub>
-  * U<sub>_remaining_</sub> ⊂ U<sub>_initial_ </sub>
-  * U<sub>_remaining_</sub> ∩ U<sub>_selected_</sub> = ∅
-  * U<sub>_remaining_</sub> ⋃ U<sub>_selected_</sub> =
-    U<sub>_initial_</sub>
+  * **_U_**<sub>selected </sub> ⊆ **_U_**<sub>initial </sub>
+  * **_U_**<sub>remaining</sub> ⊂ **_U_**<sub>initial </sub>
+  * **_U_**<sub>remaining</sub> ∩ **_U_**<sub>selected</sub> = ∅
+  * **_U_**<sub>remaining</sub> ⋃ **_U_**<sub>selected</sub> =
+    **_U_**<sub>initial  </sub>
 
 Where:
 
-  * **U<sub>_initial_</sub>**
+  * **_U_**<sub>initial</sub>
 
     is the [initial UTxO set](#initial-utxo-set).
 
-  * **U<sub>_remaining_</sub>**
+  * **_U_**<sub>remaining</sub>
 
     is the [remaining UTxO set](#remaining-utxo-set).
 
-  * **U<sub>_selected_</sub>**
+  * **_U_**<sub>selected</sub>
 
     is the value of the _inputs_ field of the [coin selection](#coin-selection)
     result.
@@ -698,7 +699,7 @@ The algorithm proceeds according to the following sequence of steps:
       * If **_v_**<sub>selected</sub> > **_v_**<sub>requested</sub> then:
 
         * The _change_ set contains just a single [coin](#coin-value) of value
-          (**_v_<sub>selected</sub>** − **_v_<sub>requested</sub>**).
+          (**_v_**<sub>selected</sub> − **_v_**<sub>requested</sub>).
 
       * If **_v_**<sub>selected</sub> = **_v_**<sub>requested</sub> then:
 
@@ -744,8 +745,8 @@ selection algorithms, over time, are able to create UTxO sets that have
 _useful_ outputs: outputs that will allow us to process future payments with a
 _reasonably small_ number of inputs.
 
-If for each payment request of value **v** we create a change output of
-_roughly_ the same value **v**, then we will end up with a distribution of
+If for each payment request of value **_v_** we create a change output of
+_roughly_ the same value **_v_**, then we will end up with a distribution of
 change values that matches the typical value distribution of payment
 requests.
 
@@ -794,9 +795,9 @@ In this phase, the algorithm iterates through each of the [requested
 outputs](#requested-output-set) in descending order of coin value, from
 largest to smallest.
 
-For each output of value **v**, the algorithm repeatedly selects entries at
+For each output of value **_v_**, the algorithm repeatedly selects entries at
 **random** from the [available UTxO set](#available-utxo-set), until the _total
-value_ of selected entries is greater than or equal to **v**. The selected
+value_ of selected entries is greater than or equal to **_v_**. The selected
 entries are then _associated with_ that output, and _removed_ from the
 [available UTxO set](#available-utxo-set).
 
@@ -825,24 +826,26 @@ For each output of value **_v_**, the algorithm:
  1.  **Calculates a _target range_** for the total value of inputs used to
      pay for that output, defined by the triplet:
 
-     (_minimum_, _ideal_, _maximum_) = (_v_, _2v_, _3v_)
+     (_minimum_, _ideal_, _maximum_) =
+     (**_v_**, <span>2</span>**_v_**, <span>3</span>**_v_**)
 
  2.  **Attempts to improve upon the existing UTxO selection** for that output,
      by repeatedly selecting additional entries at random from the [available
      UTxO set](#available-utxo-set), stopping when the selection can be
      improved upon no further.
 
-     A selection with value _v1_ is considered to be an _improvement_ over a
-     selection with value _v0_ if **all** of the following conditions are
-     satisfied:
+     A selection with value **_v_<sub>1</sub>** is considered to be an
+     _improvement_ over a selection with value **_v_<sub>0</sub>** if **all**
+     of the following conditions are satisfied:
 
       * **Condition 1**: we have moved closer to the _ideal_ value:
 
-        abs (_ideal_ − _v1_) < abs (_ideal_ − _v0_)
+        abs (_ideal_ − **_v_<sub>1</sub>**) <
+        abs (_ideal_ − **_v_<sub>0</sub>**)
 
       * **Condition 2**: we have not exceeded the _maximum_ value:
 
-        _v1_ ≤ _maximum_
+        **_v_<sub>1</sub>** ≤ _maximum_
 
       * **Condition 3**: when counting cumulatively across all outputs
         considered so far, we have not selected more than the _maximum_ number
@@ -850,8 +853,8 @@ For each output of value **_v_**, the algorithm:
         Count](#maximum-input-count).
 
  3.  **Creates a _change value_** for the output, equal to the total value
-     of the _improved UTxO selection_ for that output minus the value _v_ of
-     that output.
+     of the _improved UTxO selection_ for that output minus the value **_v_**
+     of that output.
 
  4.  **Updates the [accumulated coin
      selection](#accumulated-coin-selection-1)**:
