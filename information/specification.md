@@ -228,13 +228,14 @@ This section defines common terms that are used throughout this document.
 
 ### Address
 
-An _address_ is a unique identifier that represents a destination for a payment.
+An _address_ is a unique identifier that represents a payment recipient, a
+destination for a payment.
 
 Addresses are typically owned (and generated) by individual wallets.
 
-In general, coin selection algorithms are agnostic to the choice of address
-format. Therefore, the details of individual address formats are not described
-within this document.
+In general, coin selection algorithms are agnostic to the type of addresses
+used to identify payment recipients. Any address type may be used, so long as
+the set of possible values is well-ordered.
 
 ### Coin Value
 
