@@ -746,25 +746,25 @@ The **Random-Improve** coin selection algorithm works in _two phases_:
     with a set of UTxO entries whose _total value_ is enough to pay for that
     ouput.
 
-  * In the **second phase**, the algorithm iterates through the UTxO selections
-    made for each output in the previous phase and attempts to conservatively
-    _expand_ each selection with _additional_ entries from the [initial UTxO
-    set](#initial-utxo-set), with the goal of producing a final selection for
-    each output whose total value is _approximately twice_ the value of the
-    output.
+  * In the **second phase**, the algorithm attempts to _expand_ each
+    existing UTxO selection with _additional_ values taken at random from the
+    [initial UTxO set](#initial-utxo-set), to the point where the total value
+    of each selection is as close as possible to _twice_ the value of its
+    associated output.
 
-For each output of value **_v_**<sub>output</sub> and accompanying UTxO
-selection of value **_v_**<sub>selection</sub>, the algorithm generates a
-_single_ change output of value **_v_**<sub>change</sub>, where:
+After the above phases are complete, for each output of value
+**_v_**<sub>output</sub> and accompanying UTxO selection of value
+**_v_**<sub>selection</sub>, the algorithm generates a _single_ change output
+of value **_v_**<sub>change</sub>, where:
 
 > **_v_**<sub>change</sub>
 >   = **_v_**<sub>selection</sub>
 >   − **_v_**<sub>output</sub>
 
-Since the goal of the second phase is to produce a final selection whose value
-is _approximately twice_ the value of the corresponding output, the value of the
-generated change output will therefore be _approximately equal_ to the value of
-the output itself (to the extent that the algorithm meets its goal):
+Since the goal of the second phase was to expand each selection to the point
+where its total value is _approximately twice_ the value of its associated
+output, this corresponds to a change output whose value is _approximately
+equal_ to the value of the output itself:
 
 > **_v_**<sub>change</sub>
 >   = **_v_**<sub>selection</sub>
