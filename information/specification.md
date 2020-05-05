@@ -518,10 +518,10 @@ set](#remaining-utxo-set), but _not both_.
 
 The following laws hold:
 
-  * **_U_**<sub>selected </sub> ⊆ **_U_**<sub>initial </sub>
-  * **_U_**<sub>remaining</sub> ⊂ **_U_**<sub>initial </sub>
-  * **_U_**<sub>remaining</sub> ∩ **_U_**<sub>selected</sub> = ∅
-  * **_U_**<sub>remaining</sub> ⋃ **_U_**<sub>selected</sub> =
+  * **_U_**<sub>initial  </sub> ⊃ **_U_**<sub>remaining</sub>
+  * **_U_**<sub>initial  </sub> ⊇ **_U_**<sub>selected </sub>
+  * **_U_**<sub>remaining</sub> ∩ **_U_**<sub>selected </sub> = ∅
+  * **_U_**<sub>remaining</sub> ⋃ **_U_**<sub>selected </sub> =
     **_U_**<sub>initial  </sub>
 
 Where:
