@@ -737,17 +737,46 @@ The algorithm proceeds according to the following sequence of steps:
 
 ## Random-Improve
 
-The **Random-Improve** coin selection algorithm works in _two phases_.
+The **Random-Improve** coin selection algorithm works in _two phases_:
 
-In the _first_ phase, the algorithm iterates through each of the [requested
-outputs](#requested-output-set) in _descending order of coin value_, from
-_largest_ to _smallest_. For each output, the algorithm repeatedly selects
-entries at **random** from the [initial UTxO set](#initial-utxo-set), until the
-_total value_ of selected entries is enough to pay for that output.
+  * In the **first phase**, the algorithm iterates through each of the
+    [requested outputs](#requested-output-set) in _descending order of coin
+    value_, from _largest_ to _smallest_. For each output, the algorithm
+    repeatedly selects entries _at random_ from the [initial UTxO
+    set](#initial-utxo-set), until each requested output has been associated
+    with a set of UTxO entries whose _total value_ is enough to pay for that
+    ouput.
 
-In the _second_ phase, the algorithm attempts to **improve** upon each of the
-UTxO selections made in the previous phase, by conservatively expanding the
-selection made for each output, in order to generate improved change values.
+  * In the **second phase**, the algorithm iterates through the UTxO selections
+    made for each output in the previous phase and attempts to conservatively
+    _expand_ each selection with additional entries from the [initial UTxO
+    set](#initial-utxo-set), with the goal of producing a final selection for
+    each output whose total value is _approximately twice_ the value of the
+    output.
+
+For each output of value **_v_**<sub>output</sub> and accompanying UTxO
+selection of value **_v_**<sub>selection</sub>, the algorithm generates a
+_single_ change output of value **_v_**<sub>change</sub>, where:
+
+> **_v_**<sub>change</sub>
+>   = **_v_**<sub>selection</sub>
+>   − **_v_**<sub>output</sub>
+
+Since the goal of the second phase is to produce a final selection whose value
+is _approximately twice_ the value of the corresponding output, the value of the
+generated change output will therefore be _approximately equal_ to the value of
+the output itself (to the degree that the algorithm meets its goal):
+
+> **_v_**<sub>change</sub>
+>   = **_v_**<sub>selection</sub>
+>   − **_v_**<sub>output</sub>
+>
+> **_v_**<sub>change</sub>
+>   ≈ <span>2</span>**_v_**<sub>output</sub>
+>   − **_v_**<sub>output</sub>
+>
+> **_v_**<sub>change</sub>
+>   ≈ **_v_**<sub>output</sub>
 
 The name of the algorithm is taken from the two-phase process of selecting
 UTxO entries at **random**, and then attempting to **improve** upon the
