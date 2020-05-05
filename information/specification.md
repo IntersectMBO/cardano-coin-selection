@@ -630,8 +630,8 @@ that it performs better at [minimising dust](#goals) and maintaining a UTxO set
 with [useful outputs](#goals). (See [Self Organisation in Coin
 Selection](#self-organisation-in-coin-selection) for more details.)
 
-However, in rare cases, the [Random-Improve](#random-improve) may fail to
-produce a result. In such cases, Cardano Wallet will fall back to the
+However, in rare cases, the [Random-Improve](#random-improve) algorithm may
+fail to produce a result. In such cases, Cardano Wallet will fall back to the
 [Largest-First](#largest-first) algorithm.
 
 ## Largest-First
