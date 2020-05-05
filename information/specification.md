@@ -667,16 +667,16 @@ The algorithm proceeds according to the following sequence of steps:
 
   * **Step 2**
 
-    Compare the total size **_s_** of the [selected UTxO
+    Compare the total size **_n_**<sub>selected</sub> of the [selected UTxO
     set](#selected-utxo-set) with the [maximum input
-    count](#maximum-input-count) **_s_**<sub>max</sub>.
+    count](#maximum-input-count) **_n_**<sub>max</sub>.
 
-      * If **_s_** > **_s_**<sub>max</sub> then:
+      * If **_n_**<sub>selected</sub> > **_n_**<sub>max</sub> then:
 
         * Terminate with a [Maximum Input Count
           Exceeded](#maximum-input-count-exceeded) error.
 
-      * If **_s_** ≤ **_s_**<sub>max</sub> then:
+      * If **_n_**<sub>selected</sub> ≤ **_n_**<sub>max</sub> then:
 
         * Go to step 3.
 
