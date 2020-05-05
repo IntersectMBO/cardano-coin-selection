@@ -763,8 +763,8 @@ of value **_v_**<sub>change</sub>, where:
 
 Since the goal of the second phase was to expand each selection to the point
 where its total value is _approximately twice_ the value of its associated
-output, this corresponds to a change output whose value is _approximately
-equal_ to the value of the output itself:
+output, this corresponds to a change output whose target value is
+_approximately equal_ to the value of the output itself:
 
 > **_v_**<sub>change</sub>
 >   = **_v_**<sub>selection</sub>
