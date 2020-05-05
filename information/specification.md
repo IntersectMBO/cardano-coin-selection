@@ -27,9 +27,12 @@ parameter types, result types, and error types used by this interface, and a
 description of the properties that all conforming implementations are expected
 to satisfy.
 
-Finally, the [Implementations](#implementations) section gives detailed
-descriptions of each of the individual coin selection algorithms used in
-Cardano Wallet, with step-by-step descriptions of the computations involved.
+The [Algorithms](#algorithms) section gives detailed descriptions of each of
+the individual coin selection algorithms used in Cardano Wallet, along with
+step-by-step descriptions of the computations involved.
+
+The [Reference Implementations](#reference-implementations) section provides
+links to reference implementations of each algorithm in various languages.
 
 # Contents
 
@@ -72,7 +75,7 @@ Cardano Wallet, with step-by-step descriptions of the computations involved.
     * [UTxO Not Fragmented Enough](#utxo-not-fragmented-enough)
     * [UTxO Fully Depleted](#utxo-fully-depleted)
     * [Maximum Input Count Exceeded](#maximum-input-count-exceeded)
-* [Implementations](#implementations)
+* [Algorithms](#algorithms)
   * [Largest-First](#largest-first)
     * [State](#state)
       * [Available UTxO List](#available-utxo-list)
@@ -92,10 +95,17 @@ Cardano Wallet, with step-by-step descriptions of the computations involved.
       * [Phase 1: Random Selection](#phase-1-random-selection)
       * [Phase 2: Improvement](#phase-2-improvement)
     * [Termination](#termination-1)
+* [Reference Implementations](#reference-implementations)
+  * [Largest-First](#largest-first-1)
+  * [Random-Improve](#random-improve-1)
 * [External Resources](#external-resources)
   * [Self Organisation in Coin Selection](#self-organisation-in-coin-selection)
 
 # Background
+
+This section introduces the fundamental concepts behind coin selection,
+provides a discussion of why coin selection is a non-trivial problem, and
+describes desirable properties of coin selection algorithms.
 
 ## What is Coin Selection?
 
@@ -602,12 +612,13 @@ There are a number of ways in which a coin selection algorithm can fail:
     the resulting selection beyond an acceptable limit, specified by the
     [maximum input count](#maximum-input-count) parameter.
 
-# Implementations
+# Algorithms
 
-This section describes the coin selection algorithms used by Cardano Wallet.
+This section describes the coin selection algorithms used by Cardano Wallet,
+along with step-by-step descriptions of the computations involved.
 
-These algorithms implement a [common interface](#interface), as described
-above.
+All algorithms implement a _common interface_, as described in the
+[Interface](#interface) section.
 
 There are two main algorithms used by Cardano Wallet:
 
@@ -895,6 +906,28 @@ to the caller as the [coin selection](#coin-selection) result.
 
 The [available UTxO set](#available-utxo-set) is returned to the caller as the
 [remaining UTxO set](#remaining-utxo-set) result.
+
+# Reference Implementations
+
+## Largest-First
+
+Reference implementations of the [Largest-First](#largest-first) algorithm are
+available in the following languages:
+
+| _Language_ | _Documentation_ | _Source_ |
+| -- | -- | -- |
+| **Haskell** | [Documentation](https://input-output-hk.github.io/cardano-coin-selection/haddock/cardano-coin-selection-1.0.0/Cardano-CoinSelection-Algorithm-LargestFirst.html) | [Source](https://input-output-hk.github.io/cardano-coin-selection/haddock/cardano-coin-selection-1.0.0/src/Cardano.CoinSelection.Algorithm.LargestFirst.html) |
+
+## Random-Improve
+
+Reference implementations of the [Random-Improve](#random-improve) algorithm
+are available in the following languages:
+
+| _Language_ | _Documentation_ | _Source_ |
+| -- | -- | -- |
+| **Haskell** | [Documentation](https://input-output-hk.github.io/cardano-coin-selection/haddock/cardano-coin-selection-1.0.0/Cardano-CoinSelection-Algorithm-RandomImprove.html) | [Source](https://input-output-hk.github.io/cardano-coin-selection/haddock/cardano-coin-selection-1.0.0/src/Cardano.CoinSelection.Algorithm.RandomImprove.html) |
+
+
 
 # External Resources
 
