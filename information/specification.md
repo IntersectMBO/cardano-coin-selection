@@ -1,19 +1,3 @@
-# Coin Selection Specification: Draft 1
-
-| Caution!                                                                                            |
-|-----------------------------------------------------------------------------------------------------|
-| This is a draft version of the specification.<br>Several details may differ from the final version. |
-
-# Limitations
-
-This draft has several **limitations**, to be addressed in future versions:
-
-* There is currently no description of the algorithm used for **migration** of
-  funds from one wallet to another.
-* Descriptions of **fee balancing** algorithms are not yet included.
-* Not all **properties** of coin selection algorithms are included.
-* There are currently no **worked examples** or **test vectors**.
-
 # Contents
 
 * [Purpose](#purpose)
