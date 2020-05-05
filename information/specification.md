@@ -965,8 +965,6 @@ are available in the following languages:
 | -- | -- | -- |
 | **Haskell** | [Documentation](https://input-output-hk.github.io/cardano-coin-selection/haddock/cardano-coin-selection-1.0.0/Cardano-CoinSelection-Algorithm-RandomImprove.html) | [Source](https://input-output-hk.github.io/cardano-coin-selection/haddock/cardano-coin-selection-1.0.0/src/Cardano.CoinSelection.Algorithm.RandomImprove.html) |
 
-
-
 # External Resources
 
 ## Self Organisation in Coin Selection
