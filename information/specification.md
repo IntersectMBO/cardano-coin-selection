@@ -520,6 +520,9 @@ The following laws hold:
 
   * **_U_**<sub>initial  </sub> ⊃ **_U_**<sub>remaining</sub>
   * **_U_**<sub>initial  </sub> ⊇ **_U_**<sub>selected </sub>
+
+And:
+
   * **_U_**<sub>remaining</sub> ∩ **_U_**<sub>selected </sub> = ∅
   * **_U_**<sub>remaining</sub> ⋃ **_U_**<sub>selected </sub> =
     **_U_**<sub>initial  </sub>
