@@ -764,7 +764,7 @@ _single_ change output of value **_v_**<sub>change</sub>, where:
 Since the goal of the second phase is to produce a final selection whose value
 is _approximately twice_ the value of the corresponding output, the value of the
 generated change output will therefore be _approximately equal_ to the value of
-the output itself (to the degree that the algorithm meets its goal):
+the output itself (to the extent that the algorithm meets its goal):
 
 > **_v_**<sub>change</sub>
 >   = **_v_**<sub>selection</sub>
