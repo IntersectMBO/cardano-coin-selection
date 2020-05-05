@@ -1,16 +1,39 @@
 ```
+CIP:           ?
 Title:         Coin Selection Algorithms for Cardano
 Author:        Jonathan Knowles <jonathan.knowles@iohk.io>
-Comments-URI:
+Comments-URI:  ?
 Status:        Draft
 Type:          Informational
 Created:       2020-05-04
 License:       Apache-2.0
 ```
 
+# Abstract
+
+This article describes, in _human-readable terms_, the coin selection
+algorithms used by [Cardano
+Wallet](https://github.com/input-output-hk/cardano-wallet/) and other parts of
+the Cardano ecosystem.
+
+The [Background](#background) section introduces the fundamental concepts
+behind coin selection, provides a discussion of why coin selection is
+a non-trivial problem, and describes desirable properties of coin selection
+algorithms.
+
+The [Interface](#interface) section gives a description of the common interface
+unifying all coin selection algorithms used within Cardano Wallet, the standard
+parameter types, result types, and error types used by this interface, and a
+description of the properties that all conforming implementations are expected
+to satisfy.
+
+Finally, the [Implementations](#implementations) section gives detailed
+descriptions of each of the individual coin selection algorithms used in
+Cardano Wallet, with step-by-step descriptions of the computations involved.
+
 # Contents
 
-* [Purpose](#purpose)
+* [Abstract](#abstract)
 * [Background](#background)
   * [What is Coin Selection?](#what-is-coin-selection)
     * [Coin Selection in the Physical World](#coin-selection-in-the-physical-world)
@@ -71,12 +94,6 @@ License:       Apache-2.0
     * [Termination](#termination-1)
 * [External Resources](#external-resources)
   * [Self Organisation in Coin Selection](#self-organisation-in-coin-selection)
-
-# Purpose
-
-The purpose of this article is to describe, in _human-readable terms_, the coin
-selection algorithms used by Cardano Wallet and other parts of the Cardano
-ecosystem.
 
 # Background
 
