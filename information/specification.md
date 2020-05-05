@@ -778,10 +778,6 @@ the output itself (to the degree that the algorithm meets its goal):
 > **_v_**<sub>change</sub>
 >   ≈ **_v_**<sub>output</sub>
 
-The name of the algorithm is taken from the two-phase process of selecting
-UTxO entries at **random**, and then attempting to **improve** upon the
-selections.
-
 ### Motivating Principles
 
 There are several motivating principles behind the design of the algorithm.
