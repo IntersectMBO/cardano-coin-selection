@@ -805,6 +805,20 @@ _roughly_ the same value **_v_**, then we will end up with a distribution of
 change values that matches the typical value distribution of payment
 requests.
 
+> :bulb: **Example**
+>
+> Alice often buys bread and other similar items that cost around €1.00 each.
+>
+> When she instructs her wallet software to make a payment for around
+> €1.00, the software attempts to select a set of unspent transaction outputs
+> with a total value of around €2.00.
+>
+> As she frequently makes payments for similar amounts, transactions created by
+> her wallet will also frequently produce change outputs of around €1.00.
+>
+> Over time, her wallet will self-organize to contain multiple coins of around
+> €1.00, which are useful for the kinds of payments that Alice frequently makes.
+
 #### Principle 3: Performance Management
 
 Searching the UTxO set for additional entries to _improve_ our change outputs
