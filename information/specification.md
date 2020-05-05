@@ -117,7 +117,7 @@ subdivided without destroying their value), it's often impossible to select the
 exact amount required. In such cases, we typically give the recipient _more_
 than the required amount, and then receive the excess value back as _change_.
 
-> #### Example
+> :bulb: **Example**
 >
 > Alice wishes to pay for her lunch.
 >
