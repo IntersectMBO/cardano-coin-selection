@@ -18,8 +18,7 @@ the Cardano ecosystem.
 
 The [Background](#background) section introduces the fundamental concepts
 behind coin selection, provides a discussion of why coin selection is
-a non-trivial problem, and describes desirable properties of coin selection
-algorithms.
+a non-trivial problem, and describes the goals of coin selection algorithms.
 
 The [Interface](#interface) section gives a description of the common interface
 unifying all coin selection algorithms used within Cardano Wallet, the standard
@@ -45,7 +44,7 @@ links to reference implementations of each algorithm in various languages.
     * [The Transaction Size Limitation](#the-transaction-size-limitation)
     * [The Problem of Dust](#the-problem-of-dust)
     * [The Problem of Concurrency](#the-problem-of-concurrency)
-  * [Desirable Properties of Coin Selection Algorithms](#desirable-properties-of-coin-selection-algorithms)
+  * [Goals of Coin Selection Algorithms](#goals-of-coin-selection-algorithms)
 * [Definitions](#definitions)
   * [Address](#address)
   * [Coin Value](#coin-value)
@@ -105,7 +104,7 @@ links to reference implementations of each algorithm in various languages.
 
 This section introduces the fundamental concepts behind coin selection,
 provides a discussion of why coin selection is a non-trivial problem, and
-describes desirable properties of coin selection algorithms.
+describes important goals of coin selection algorithms.
 
 ## What is Coin Selection?
 
@@ -229,7 +228,7 @@ reasons:
 2.  The approach of coalescing all change into a single output is widely
     considered to have negative privacy implications.
 
-## Desirable Properties of Coin Selection Algorithms
+## Goals of Coin Selection Algorithms
 
 In light of the issues described above, we'd ideally like for our coin selection
 algorithms to be able to:
@@ -795,10 +794,10 @@ amount of dust that accumulates in the UTxO set.
 
 #### Principle 2: Change Management
 
-As mentioned in the [Goals](#goals) section, it is desirable that coin
-selection algorithms, over time, are able to create UTxO sets that have
-_useful_ outputs: outputs that will allow us to process future payments with a
-_reasonably small_ number of inputs.
+As mentioned in the [Goals](#goals-of-coin-selection-algorithms) section, it is
+desirable that coin selection algorithms, over time, are able to create UTxO
+sets that have _useful_ outputs: outputs that will allow us to process future
+payments with a _reasonably small_ number of inputs.
 
 If for each payment request of value **_v_** we create a change output of
 _roughly_ the same value **_v_**, then we will end up with a distribution of
