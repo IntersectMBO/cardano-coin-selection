@@ -420,6 +420,9 @@ All coin selection functions accept the following parameters:
     algorithm is permitted to select from the [initial UTxO
     set](#initial-utxo-set).
 
+    This parameter is necessary for blockchains that impose an upper limit on
+    the size of transactions.
+
 ## Results
 
 All coin selection functions produce the following result values:
@@ -594,10 +597,10 @@ There are a number of ways in which a coin selection algorithm can fail:
 
   * #### Maximum Input Count Exceeded
 
-    This failure occurs if the _number_ of UTxO entries needed to pay for the
-    outputs in the [requested output set](#requested-output-set) exceeds the
-    upper limit specified by the [maximum input count](#maximum-input-count)
-    parameter.
+    This failure occurs when another input must be selected by the algorithm in
+    order to continue making progress, but doing so will increase the size of
+    the resulting selection beyond an acceptable limit, specified by the
+    [maximum input count](#maximum-input-count) parameter.
 
 # Implementations
 
