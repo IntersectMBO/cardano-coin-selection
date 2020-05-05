@@ -601,7 +601,7 @@ There are a number of ways in which a coin selection algorithm can fail:
 
 # Implementations
 
-This section will describe the coin selection algorithms used by Cardano Wallet.
+This section describes the coin selection algorithms used by Cardano Wallet.
 
 These algorithms implement a [common interface](#interface), as described
 above.
