@@ -813,7 +813,7 @@ requests.
 > with a total value of around €2.00.
 >
 > As she frequently makes payments for similar amounts, transactions created by
-> her wallet will also frequently produce change outputs of around €1.00.
+> her wallet will also frequently produce change coins of around €1.00 in value.
 >
 > Over time, her wallet will self-organize to contain multiple coins of around
 > €1.00, which are useful for the kinds of payments that Alice frequently makes.
