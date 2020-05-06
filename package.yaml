@@ -44,7 +44,7 @@ library:
   - deepseq
   - quiet
   - text
-  - transformers
+  - transformers >= 0.5.6.0
 
 tests:
   unit:
@@ -76,5 +76,5 @@ tests:
     - quiet
     - random
     - text
-    - transformers
+    - transformers >= 0.5.6.0
     - vector
