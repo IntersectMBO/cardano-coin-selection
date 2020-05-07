@@ -1,10 +1,12 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TypeApplications #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Cardano.CoinSelection.Algorithm.LargestFirstSpec
-    ( spec
+    ( isValidLargestFirstError
+    , spec
     ) where
 
 import Prelude
@@ -236,3 +238,17 @@ propInputDecreasingOrder (CoinSelProp utxo txOuts) =
         $ selectCoins largestFirst
         $ CoinSelectionParameters utxo txOuts selectionLimit
     selectionLimit = CoinSelectionLimit $ const 100
+
+--------------------------------------------------------------------------------
+-- Utilities
+--------------------------------------------------------------------------------
+
+-- Returns true if (and only if) the given error value is one that can be
+-- thrown by the Largest-First algorithm.
+--
+isValidLargestFirstError :: CoinSelectionError -> Bool
+isValidLargestFirstError = \case
+    InputLimitExceeded     _ -> True
+    InputValueInsufficient _ -> True
+    InputCountInsufficient _ -> False
+    InputsExhausted        _ -> False
