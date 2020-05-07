@@ -233,7 +233,7 @@ data CoinSelectionResult i o = CoinSelectionResult
         -- ^ The generated coin selection.
     , inputsRemaining :: CoinMap i
         -- ^ The set of inputs that were __not__ selected.
-    }
+    } deriving (Eq, Show)
 
 -- | A __coin selection__ is the basis for a /transaction/.
 --
