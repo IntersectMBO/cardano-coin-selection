@@ -205,9 +205,6 @@ spec = do
 
     describe "Coin selection: largest-first algorithm: properties" $ do
 
-        it "forall (UTxO, NonEmpty TxOut), there's at least as many selected \
-            \inputs as there are requested outputs"
-            (property $ propAtLeast @TxIn @Address)
         it "forall (UTxO, NonEmpty TxOut), for all selected input, there's no \
             \bigger input in the UTxO that is not already in the selected \
             \inputs"
@@ -216,21 +213,6 @@ spec = do
 --------------------------------------------------------------------------------
 -- Properties
 --------------------------------------------------------------------------------
-
-propAtLeast
-    :: Ord i
-    => CoinSelProp i o
-    -> Property
-propAtLeast (CoinSelProp utxo txOuts) =
-    isRight selection ==>
-        let Right (CoinSelectionResult s _) = selection in
-        prop s
-  where
-    prop (CoinSelection inps _ _) =
-        length inps `shouldSatisfy` (>= length txOuts)
-    selection = runIdentity $ runExceptT $ selectCoins largestFirst
-        $ CoinSelectionParameters utxo txOuts selectionLimit
-    selectionLimit = CoinSelectionLimit $ const 100
 
 propInputDecreasingOrder
     :: Ord i
