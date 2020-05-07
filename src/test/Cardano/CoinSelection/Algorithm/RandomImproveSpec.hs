@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TypeApplications #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
@@ -23,6 +24,8 @@ import Cardano.CoinSelection
     )
 import Cardano.CoinSelection.Algorithm.LargestFirst
     ( largestFirst )
+import Cardano.CoinSelection.Algorithm.LargestFirstSpec
+    ( isValidLargestFirstError )
 import Cardano.CoinSelection.Algorithm.RandomImprove
     ( randomImprove )
 import Cardano.CoinSelectionSpec
@@ -40,13 +43,13 @@ import Crypto.Random
 import Crypto.Random.Types
     ( withDRG )
 import Data.Either
-    ( isLeft, isRight )
+    ( isRight )
 import Data.Functor.Identity
     ( Identity (..) )
 import Test.Hspec
-    ( Spec, before, describe, it, shouldSatisfy )
+    ( Spec, before, describe, it, shouldBe, shouldSatisfy )
 import Test.QuickCheck
-    ( Property, property, (===), (==>) )
+    ( Property, counterexample, property, (==>) )
 
 import qualified Data.List as L
 
@@ -245,20 +248,52 @@ propFragmentation drg (CoinSelProp utxo txOuts) = do
     params = CoinSelectionParameters utxo txOuts selectionLimit
 
 propErrors
-    :: (Ord i, Ord o)
+    :: (Ord i, Ord o, Show i, Show o)
     => SystemDRG
     -> CoinSelProp i o
     -> Property
-propErrors drg (CoinSelProp utxo txOuts) = do
-    isLeft selection1 && isLeft selection2 ==>
-        let (Left s1, Left s2) = (selection1, selection2)
-        in prop (s1, s2)
+propErrors drg (CoinSelProp utxo txOuts) =
+    case resultRandomImprove of
+        Right _ ->
+            -- Largest-First should always succeed if Random-Improve succeeds.
+            counterexample "case: Success"
+                $ property
+                $ resultLargestFirst `shouldSatisfy` isRight
+        Left (InputValueInsufficient _) ->
+            -- Largest-First should fail in exactly the same way when the total
+            -- value available is insufficient.
+            counterexample "case: InputValueInsufficient"
+                $ property
+                $ resultLargestFirst `shouldBe` resultRandomImprove
+        Left (InputCountInsufficient _) ->
+            -- Largest-First can still succeed in this case, so just check for
+            -- a valid result.
+            counterexample "case: InputCountInsufficient"
+                $ property
+                $ resultLargestFirst `shouldSatisfy` isValidLargestFirstResult
+        Left (InputsExhausted _) ->
+            -- Largest-First can still succeed in this case, so just check for
+            -- a valid result.
+            counterexample "case: InputsExhausted"
+                $ property
+                $ resultLargestFirst `shouldSatisfy` isValidLargestFirstResult
+        Left (InputLimitExceeded _) ->
+            -- Largest-First can still succeed in this case, so just check for
+            -- a valid result.
+            counterexample "case: InputLimitExceeded"
+                $ property
+                $ resultLargestFirst `shouldSatisfy` isValidLargestFirstResult
   where
-    prop (err1, err2) =
-        err1 === err2
-    (selection1,_) = withDRG drg $
+    isValidLargestFirstResult = \case
+        Right _ ->
+            -- We assume that this is a valid result, based on the assumption
+            -- that test coverage for Largest-First is sufficient.
+            True
+        Left x ->
+            isValidLargestFirstError x
+    resultRandomImprove = fst $ withDRG drg $
         runExceptT $ selectCoins randomImprove params
-    selection2 = runIdentity $ runExceptT $
+    resultLargestFirst = runIdentity $ runExceptT $
         selectCoins largestFirst params
     selectionLimit = CoinSelectionLimit $ const 1
     params = CoinSelectionParameters utxo txOuts selectionLimit
