@@ -1,4 +1,6 @@
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 
 -- |
@@ -15,29 +17,28 @@ module Cardano.CoinSelection.Algorithm.LargestFirst (
 import Prelude
 
 import Cardano.CoinSelection
-    ( CoinMapEntry (..)
+    ( CoinMap (..)
+    , CoinMapEntry (..)
     , CoinSelection (..)
     , CoinSelectionAlgorithm (..)
     , CoinSelectionError (..)
     , CoinSelectionLimit (..)
     , CoinSelectionParameters (..)
     , CoinSelectionResult (..)
-    , InputCountInsufficientError (..)
     , InputLimitExceededError (..)
     , InputValueInsufficientError (..)
-    , InputsExhaustedError (..)
     , coinMapFromList
     , coinMapToList
     , coinMapValue
     )
-import Control.Monad
-    ( foldM )
 import Control.Monad.Trans.Except
     ( ExceptT (..), throwE )
+import Data.Function
+    ( (&) )
 import Data.Ord
     ( Down (..) )
-import Internal.Coin
-    ( Coin )
+import Data.Word
+    ( Word16 )
 
 import qualified Data.Foldable as F
 import qualified Data.List as L
@@ -178,103 +179,67 @@ import qualified Internal.Coin as C
 --
 -- @since 1.0.0
 largestFirst
-    :: (Ord i, Ord o, Monad m)
+    :: (Ord i, Monad m)
     => CoinSelectionAlgorithm i o m
 largestFirst = CoinSelectionAlgorithm payForOutputs
 
 payForOutputs
-    :: (Ord i, Ord o, Monad m)
+    :: forall i o m . (Ord i, Monad m)
     => CoinSelectionParameters i o
     -> ExceptT CoinSelectionError m (CoinSelectionResult i o)
-payForOutputs params =
-    case foldM payForOutput (utxoDescending, mempty) outputsDescending of
-        Just (utxoRemaining, selection) ->
-            pure $ CoinSelectionResult selection $ coinMapFromList utxoRemaining
-        Nothing ->
-            throwE errorCondition
+payForOutputs params
+    | amountAvailable < amountRequired =
+        throwE
+            $ InputValueInsufficient
+            $ InputValueInsufficientError amountAvailable amountRequired
+    | length inputsSelected > inputCountMax =
+        throwE
+            $ InputLimitExceeded
+            $ InputLimitExceededError
+            $ fromIntegral inputCountMax
+    | otherwise =
+        pure CoinSelectionResult {coinSelection, inputsRemaining}
   where
-    errorCondition
-      | amountAvailable < amountRequested =
-          InputValueInsufficient $
-              InputValueInsufficientError
-                  amountAvailable amountRequested
-      | utxoCount < outputCount =
-          InputCountInsufficient $
-              InputCountInsufficientError
-                  utxoCount outputCount
-      | utxoCount <= inputCountMax =
-          InputsExhausted
-              InputsExhaustedError
-      | otherwise =
-          InputLimitExceeded $
-              InputLimitExceededError $
-                  fromIntegral inputCountMax
     amountAvailable =
         coinMapValue $ inputsAvailable params
-    amountRequested =
+    amountRequired =
         coinMapValue $ outputsRequested params
-    inputCountMax = fromIntegral
-        $ calculateLimit (limit params)
-        $ fromIntegral outputCount
-    outputCount =
-        fromIntegral $ length $ coinMapToList $ outputsRequested params
-    outputsDescending =
-        L.sortOn (Down . entryValue) $ coinMapToList $ outputsRequested params
-    utxoCount =
-        fromIntegral $ L.length $ coinMapToList $ inputsAvailable params
-    utxoDescending =
-        take (fromIntegral inputCountMax)
-            $ L.sortOn (Down . entryValue)
-            $ coinMapToList
-            $ inputsAvailable params
+    coinSelection = CoinSelection
+        { inputs =
+            inputsSelected
+        , outputs =
+            outputsRequested params
+        , change = filter (> C.zero)
+            $ F.toList
+            $ coinMapValue inputsSelected `C.sub` amountRequired
+        }
+    inputsAvailableDescending :: [CoinMapEntry i]
+    inputsAvailableDescending = inputsAvailable params
+        & coinMapToList
+        & L.sortOn (Down . entryValue)
+    inputCountMax :: Int
+    inputCountMax = outputsRequested params
+        & coinMapToList
+        & length
+        & fromIntegral @Int @Word16
+        & calculateLimit (limit params)
+        & fromIntegral @Word16 @Int
+    inputsSelected :: CoinMap i
+    inputsSelected = inputsAvailableDescending
+        & fmap entryValue
+        & scanl1 (<>)
+        & takeUntil (>= amountRequired)
+        & zip inputsAvailableDescending
+        & fmap fst
+        & coinMapFromList
+    inputsRemaining :: CoinMap i
+    inputsRemaining = inputsAvailableDescending
+        & drop (length inputsSelected)
+        & coinMapFromList
 
--- | Attempts to pay for a /single transaction output/ by selecting the
---   /smallest possible/ number of entries from the /head/ of the given
---   UTxO list.
---
--- Returns a /reduced/ list of UTxO entries, and a coin selection that is
--- /updated/ to include the payment.
---
--- If the total value of entries in the given UTxO list is /less than/ the
--- required output amount, this function will return 'Nothing'.
---
-payForOutput
-    :: forall i o . (Ord i, Ord o)
-    => ([CoinMapEntry i], CoinSelection i o)
-    -> CoinMapEntry o
-    -> Maybe ([CoinMapEntry i], CoinSelection i o)
-payForOutput (utxoAvailable, currentSelection) out =
-    coverTarget utxoAvailable mempty
-  where
-    coverTarget
-        :: [CoinMapEntry i]
-        -> [CoinMapEntry i]
-        -> Maybe ([CoinMapEntry i], CoinSelection i o)
-    coverTarget utxoRemaining utxoSelected
-        | valueSelected >= valueTarget = Just
-            -- We've selected enough to cover the target, so stop here.
-            ( utxoRemaining
-            , currentSelection <> CoinSelection
-                { inputs  = coinMapFromList utxoSelected
-                , outputs = coinMapFromList [out]
-                , change  = filter (> C.zero)
-                    (F.toList $ valueSelected `C.sub` valueTarget)
-                }
-            )
-        | otherwise =
-            -- We haven't yet selected enough to cover the target, so attempt
-            -- to select a little more and then continue.
-            case utxoRemaining of
-                utxoEntry : utxoRemaining' ->
-                    coverTarget utxoRemaining' (utxoEntry : utxoSelected)
-                [] ->
-                    -- The UTxO has been exhausted, so stop here.
-                    Nothing
-      where
-        valueTarget
-            = entryValue out
-        valueSelected
-            = sumEntries utxoSelected
+--------------------------------------------------------------------------------
+-- Utilities
+--------------------------------------------------------------------------------
 
-sumEntries :: [CoinMapEntry a] -> Coin
-sumEntries entries = mconcat $ entryValue <$> entries
+takeUntil :: (a -> Bool) -> [a] -> [a]
+takeUntil p = foldr (\x ys -> x : if p x then [] else ys) []
