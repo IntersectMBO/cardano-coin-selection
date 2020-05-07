@@ -18,10 +18,8 @@ import Cardano.CoinSelection
     , CoinSelectionLimit (..)
     , CoinSelectionParameters (..)
     , CoinSelectionResult (..)
-    , InputCountInsufficientError (..)
     , InputLimitExceededError (..)
     , InputValueInsufficientError (..)
-    , InputsExhaustedError (..)
     , coinMapToList
     )
 import Cardano.CoinSelection.Algorithm.LargestFirst
@@ -105,8 +103,8 @@ spec = do
 
         coinSelectionUnitTest largestFirst ""
             (Right $ CoinSelectionTestResult
-                { rsInputs = [6,10,5]
-                , rsChange = [5,4]
+                { rsInputs = [6,10]
+                , rsChange = [4]
                 , rsOutputs = [11,1]
                 })
             (CoinSelectionFixture
@@ -126,7 +124,7 @@ spec = do
                 })
 
         coinSelectionUnitTest largestFirst
-            "UTxO balance not sufficient, and not fragmented enough"
+            "UTxO balance not sufficient"
             (Left $ InputValueInsufficient $ InputValueInsufficientError
                 (unsafeCoin @Int 39) (unsafeCoin @Int 43))
             (CoinSelectionFixture
@@ -136,8 +134,12 @@ spec = do
                 })
 
         coinSelectionUnitTest largestFirst
-            "UTxO balance sufficient, but not fragmented enough"
-            (Left $ InputCountInsufficient $ InputCountInsufficientError 3 4)
+            "UTxO balance sufficient"
+            (Right $ CoinSelectionTestResult
+                { rsInputs = [12,17,20]
+                , rsChange = [6]
+                , rsOutputs = [1,1,1,40]
+                })
             (CoinSelectionFixture
                 { maxNumOfInputs = 100
                 , utxoInputs = [12,20,17]
@@ -145,9 +147,12 @@ spec = do
                 })
 
         coinSelectionUnitTest largestFirst
-            "UTxO balance sufficient, fragmented enough, but single output \
-            \depletes all UTxO entries"
-            (Left (InputsExhausted InputsExhaustedError))
+            "UTxO balance sufficient"
+            (Right $ CoinSelectionTestResult
+                { rsInputs = [12,17,20]
+                , rsChange = [8]
+                , rsOutputs = [1,40]
+                })
             (CoinSelectionFixture
                 { maxNumOfInputs = 100
                 , utxoInputs = [12,20,17]
@@ -155,9 +160,12 @@ spec = do
                 })
 
         coinSelectionUnitTest largestFirst
-            "UTxO balance sufficient, fragmented enough, but single output \
-            \depletes all UTxO entries"
-            (Left (InputsExhausted InputsExhaustedError))
+            "UTxO balance sufficient"
+            (Right $ CoinSelectionTestResult
+                { rsInputs = [10,20,20]
+                , rsChange = [3]
+                , rsOutputs = [6,41]
+                })
             (CoinSelectionFixture
                 { maxNumOfInputs = 100
                 , utxoInputs = [20,20,10,5]
@@ -165,8 +173,7 @@ spec = do
                 })
 
         coinSelectionUnitTest largestFirst
-            "UTxO balance sufficient, fragmented enough, but maximum input \
-            \count exceeded"
+            "UTxO balance sufficient, but maximum input count exceeded"
             (Left $ InputLimitExceeded $ InputLimitExceededError 9)
             (CoinSelectionFixture
                 { maxNumOfInputs = 9
@@ -175,8 +182,7 @@ spec = do
                 })
 
         coinSelectionUnitTest largestFirst
-            "UTxO balance sufficient, fragmented enough, but maximum input \
-            \count exceeded"
+            "UTxO balance sufficient, but maximum input count exceeded"
             (Left $ InputLimitExceeded $ InputLimitExceededError 9)
             (CoinSelectionFixture
                 { maxNumOfInputs = 9
@@ -185,9 +191,12 @@ spec = do
                 })
 
         coinSelectionUnitTest largestFirst
-            "UTxO balance sufficient, fragmented enough, but maximum input \
-            \count exceeded"
-            (Left $ InputLimitExceeded $ InputLimitExceededError 2)
+            "UTxO balance sufficient"
+            (Right $ CoinSelectionTestResult
+                { rsInputs = [6,10]
+                , rsChange = [4]
+                , rsOutputs = [1,11]
+                })
             (CoinSelectionFixture
                 { maxNumOfInputs = 2
                 , utxoInputs = [1,2,10,6,5]
