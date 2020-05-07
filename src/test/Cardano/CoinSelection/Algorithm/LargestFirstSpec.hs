@@ -209,7 +209,7 @@ spec = do
 --------------------------------------------------------------------------------
 
 propAtLeast
-    :: (Ord i, Ord o)
+    :: Ord i
     => CoinSelProp i o
     -> Property
 propAtLeast (CoinSelProp utxo txOuts) =
@@ -224,7 +224,7 @@ propAtLeast (CoinSelProp utxo txOuts) =
     selectionLimit = CoinSelectionLimit $ const 100
 
 propInputDecreasingOrder
-    :: (Ord i, Ord o)
+    :: Ord i
     => CoinSelProp i o
     -> Property
 propInputDecreasingOrder (CoinSelProp utxo txOuts) =
