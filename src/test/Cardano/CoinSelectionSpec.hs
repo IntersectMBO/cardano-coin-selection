@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE NumericUnderscores #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
@@ -46,6 +47,8 @@ import Cardano.Test.Utilities
     ( Address (..), Hash (..), ShowFmt (..), TxIn (..), unsafeCoin )
 import Control.Arrow
     ( (&&&) )
+import Control.Monad
+    ( replicateM )
 import Control.Monad.Trans.Except
     ( runExceptT )
 import Data.Function
@@ -63,12 +66,11 @@ import Fmt
 import Internal.Coin
     ( Coin, coinToIntegral )
 import Test.Hspec
-    ( Spec, SpecWith, describe, it, shouldBe )
+    ( Spec, SpecWith, describe, it, shouldBe, shouldSatisfy )
 import Test.QuickCheck
     ( Arbitrary (..)
     , Confidence (..)
     , Gen
-    , NonEmptyList (..)
     , Property
     , arbitraryBoundedIntegral
     , checkCoverage
@@ -82,6 +84,8 @@ import Test.QuickCheck
     , property
     , scale
     , vectorOf
+    , withMaxSuccess
+    , (.&&.)
     )
 import Test.QuickCheck.Monadic
     ( monadicIO )
@@ -124,6 +128,12 @@ spec = do
         it "monoidal append preserves value" $
             checkCoverage $
                 prop_coinSelection_mappendPreservesTotalValue @Int @Int
+
+    describe "CoinSelectionData properties" $ do
+        it "CoinSelectionData coverage is adequate" $
+            checkCoverage
+                $ withMaxSuccess 10_000
+                $ prop_CoinSelectionData_coverage @Int @Int
 
   where
     lowerConfidence :: Confidence
@@ -280,6 +290,20 @@ prop_coinSelection_mappendPreservesTotalValue s1 s2 = property $ do
     sumChange  s1 <> sumChange  s2 `shouldBe` sumChange  (s1 <> s2)
     change     s1 <> change     s2 `shouldBe` change     (s1 <> s2)
 
+prop_CoinSelectionData_coverage
+    :: CoinSelectionData i o
+    -> Property
+prop_CoinSelectionData_coverage (CoinSelectionData inps outs) = property
+    $ cover 90 (amountAvailable >= amountRequested)
+        "amountAvailable ≥ amountRequested"
+    $
+    (amountAvailable `shouldSatisfy` (> C.zero))
+    .&&.
+    (amountRequested `shouldSatisfy` (> C.zero))
+  where
+    amountAvailable = coinMapValue inps
+    amountRequested = coinMapValue outs
+
 --------------------------------------------------------------------------------
 -- Coin Selection - Unit Tests
 --------------------------------------------------------------------------------
@@ -401,9 +425,24 @@ instance (Arbitrary i, Arbitrary o, Ord i, Ord o) =>
     shrink (CoinSelectionData inps outs) = uncurry CoinSelectionData <$> zip
         (shrink inps)
         (coinMapFromList <$> filter (not . null) (shrink (coinMapToList outs)))
-    arbitrary = CoinSelectionData
-        <$> (coinMapFromList . getNonEmpty <$> arbitrary)
-        <*> (coinMapFromList . getNonEmpty <$> arbitrary)
+    arbitrary =
+        CoinSelectionData <$> genInps <*> genOuts
+      where
+        -- Incorporate a bias towards being able to pay for all outputs.
+        genInps = genCoinMap 256
+        genOuts = genCoinMap 4
+
+        genCoinMap :: forall k . (Arbitrary k, Ord k) => Int -> Gen (CoinMap k)
+        genCoinMap maxEntryCount = do
+            count <- choose (1, maxEntryCount)
+            coinMapFromList <$> replicateM count genCoinMapEntry
+
+        genCoinMapEntry :: forall k . Arbitrary k => Gen (CoinMapEntry k)
+        genCoinMapEntry = CoinMapEntry <$> arbitrary <*> genCoin
+
+        -- Generate coins with a reasonably high chance of size collisions.
+        genCoin :: Gen Coin
+        genCoin = unsafeCoin @Int <$> choose (1, 16)
 
 instance Arbitrary Address where
     shrink _ = []
