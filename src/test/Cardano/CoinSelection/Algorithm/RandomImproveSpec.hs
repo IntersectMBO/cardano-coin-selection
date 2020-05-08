@@ -29,7 +29,7 @@ import Cardano.CoinSelection.Algorithm.LargestFirstSpec
 import Cardano.CoinSelection.Algorithm.RandomImprove
     ( randomImprove )
 import Cardano.CoinSelectionSpec
-    ( CoinSelProp (..)
+    ( CoinSelectionData (..)
     , CoinSelectionFixture (..)
     , CoinSelectionTestResult (..)
     , coinSelectionUnitTest
@@ -230,9 +230,9 @@ spec = do
 propFragmentation
     :: (Ord i, Ord o)
     => SystemDRG
-    -> CoinSelProp i o
+    -> CoinSelectionData i o
     -> Property
-propFragmentation drg (CoinSelProp utxo txOuts) = do
+propFragmentation drg (CoinSelectionData utxo txOuts) = do
     isRight selection1 && isRight selection2 ==>
         let Right (CoinSelectionResult s1 _) = selection1 in
         let Right (CoinSelectionResult s2 _) = selection2 in
@@ -250,9 +250,9 @@ propFragmentation drg (CoinSelProp utxo txOuts) = do
 propErrors
     :: (Ord i, Ord o, Show i, Show o)
     => SystemDRG
-    -> CoinSelProp i o
+    -> CoinSelectionData i o
     -> Property
-propErrors drg (CoinSelProp utxo txOuts) =
+propErrors drg (CoinSelectionData utxo txOuts) =
     case resultRandomImprove of
         Right _ ->
             -- Largest-First should always succeed if Random-Improve succeeds.

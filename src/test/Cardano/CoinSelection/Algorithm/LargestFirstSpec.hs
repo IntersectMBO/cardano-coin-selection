@@ -27,7 +27,7 @@ import Cardano.CoinSelection
 import Cardano.CoinSelection.Algorithm.LargestFirst
     ( largestFirst )
 import Cardano.CoinSelectionSpec
-    ( CoinSelProp (..)
+    ( CoinSelectionData (..)
     , CoinSelectionFixture (..)
     , CoinSelectionTestResult (..)
     , coinSelectionUnitTest
@@ -214,9 +214,9 @@ spec = do
 
 propInputDecreasingOrder
     :: Ord i
-    => CoinSelProp i o
+    => CoinSelectionData i o
     -> Property
-propInputDecreasingOrder (CoinSelProp utxo txOuts) =
+propInputDecreasingOrder (CoinSelectionData utxo txOuts) =
     isRight selection ==>
         let Right (CoinSelectionResult s _) = selection in
         prop s

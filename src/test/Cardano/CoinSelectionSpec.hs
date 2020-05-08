@@ -15,7 +15,7 @@ module Cardano.CoinSelectionSpec
     -- * Export used to test various coin selection implementations
     , CoinSelectionFixture (..)
     , CoinSelectionTestResult (..)
-    , CoinSelProp (..)
+    , CoinSelectionData (..)
     , coinSelectionUnitTest
     ) where
 
@@ -284,17 +284,17 @@ prop_coinSelection_mappendPreservesTotalValue s1 s2 = property $ do
 -- Coin Selection - Unit Tests
 --------------------------------------------------------------------------------
 
--- | Data for running
-data CoinSelProp i o = CoinSelProp
-    { csUtxO :: CoinMap i
-        -- ^ Available UTxO for the selection
-    , csOuts :: CoinMap o
-        -- ^ Requested outputs for the payment
+-- | Data for coin selection properties.
+data CoinSelectionData i o = CoinSelectionData
+    { csdInputsAvailable
+        :: CoinMap i
+    , csdOutputsRequested
+        :: CoinMap o
     } deriving Show
 
-instance (Buildable i, Buildable o) => Buildable (CoinSelProp i o) where
-    build (CoinSelProp utxo outs) = mempty
-        <> nameF "utxo" (blockListF $ coinMapToList utxo)
+instance (Buildable i, Buildable o) => Buildable (CoinSelectionData i o) where
+    build (CoinSelectionData inps outs) = mempty
+        <> nameF "inps" (blockListF $ coinMapToList inps)
         <> nameF "outs" (blockListF $ coinMapToList outs)
 
 -- | A fixture for testing the coin selection
@@ -396,12 +396,12 @@ instance Arbitrary a => Arbitrary (NonEmpty a) where
         NE.fromList <$> vectorOf n arbitrary
 
 instance (Arbitrary i, Arbitrary o, Ord i, Ord o) =>
-    Arbitrary (CoinSelProp i o)
+    Arbitrary (CoinSelectionData i o)
   where
-    shrink (CoinSelProp utxo outs) = uncurry CoinSelProp <$> zip
-        (shrink utxo)
+    shrink (CoinSelectionData inps outs) = uncurry CoinSelectionData <$> zip
+        (shrink inps)
         (coinMapFromList <$> filter (not . null) (shrink (coinMapToList outs)))
-    arbitrary = CoinSelProp
+    arbitrary = CoinSelectionData
         <$> (coinMapFromList . getNonEmpty <$> arbitrary)
         <*> (coinMapFromList . getNonEmpty <$> arbitrary)
 
