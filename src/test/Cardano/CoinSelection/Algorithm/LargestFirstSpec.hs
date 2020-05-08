@@ -179,6 +179,58 @@ spec = do
                 })
 
         coinSelectionUnitTest largestFirst
+            "Expect success: fewer inputs than outputs: case #1"
+            (Right $ CoinSelectionTestResult
+                { rsInputs = [100]
+                , rsOutputs = [1,2,3,4]
+                , rsChange = [90]
+                })
+            (CoinSelectionFixture
+                { maxNumOfInputs = 1000
+                , utxoInputs = [100,100]
+                , txOutputs = [1,2,3,4]
+                })
+
+        coinSelectionUnitTest largestFirst
+            "Expect success: fewer inputs than outputs: case #2"
+            (Right $ CoinSelectionTestResult
+                { rsInputs = [100]
+                , rsOutputs = [1,2,3,4]
+                , rsChange = [90]
+                })
+            (CoinSelectionFixture
+                { maxNumOfInputs = 1000
+                , utxoInputs = [100,10]
+                , txOutputs = [1,2,3,4]
+                })
+
+        coinSelectionUnitTest largestFirst
+            "Expect success: fewer inputs than outputs: case #3"
+            (Right $ CoinSelectionTestResult
+                { rsInputs = [10]
+                , rsOutputs = [1,2,3,4]
+                , rsChange = []
+                })
+            (CoinSelectionFixture
+                { maxNumOfInputs = 1000
+                , utxoInputs = [10,10]
+                , txOutputs = [1,2,3,4]
+                })
+
+        coinSelectionUnitTest largestFirst
+            "Expect success: fewer inputs than outputs: case #4"
+            (Right $ CoinSelectionTestResult
+                { rsInputs = [100]
+                , rsOutputs = replicate 100 1
+                , rsChange = []
+                })
+            (CoinSelectionFixture
+                { maxNumOfInputs = 1
+                , utxoInputs = [100]
+                , txOutputs = replicate 100 1
+                })
+
+        coinSelectionUnitTest largestFirst
             "UTxO balance not sufficient: case #1"
             (Left $ InputValueInsufficient $ InputValueInsufficientError
                 (unsafeCoin @Int 39) (unsafeCoin @Int 40))
