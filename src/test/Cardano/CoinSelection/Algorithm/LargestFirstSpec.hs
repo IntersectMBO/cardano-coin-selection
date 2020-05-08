@@ -48,13 +48,14 @@ import Data.Function
 import Data.Functor.Identity
     ( Identity (runIdentity) )
 import Test.Hspec
-    ( Spec, describe, it, shouldSatisfy )
+    ( Spec, describe, it, shouldBe, shouldSatisfy )
 import Test.QuickCheck
-    ( Property, property, withMaxSuccess, (.&&.), (==>) )
+    ( Property, checkCoverage, cover, property, withMaxSuccess, (.&&.), (==>) )
 
 import qualified Data.List as L
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
+import qualified Internal.Coin as C
 
 spec :: Spec
 spec = do
@@ -218,6 +219,12 @@ spec = do
                 $ withMaxSuccess 10_000
                 $ propSelectionMinimal @Int @Int)
 
+        it "The algorithm produces the correct set of change."
+            (checkCoverage
+                $ property
+                $ withMaxSuccess 10_000
+                $ propChangeCorrect @Int @Int)
+
 --------------------------------------------------------------------------------
 -- Properties
 --------------------------------------------------------------------------------
@@ -268,6 +275,33 @@ propSelectionMinimal (CoinSelectionData inpsAvailable outsRequested) =
             & L.sortOn entryValue
             & L.drop 1
             & coinMapFromList
+    result = runIdentity
+        $ runExceptT
+        $ selectCoins largestFirst
+        $ CoinSelectionParameters inpsAvailable outsRequested
+        $ CoinSelectionLimit $ const 1000
+
+-- Verify that the algorithm generates the correct set of change.
+propChangeCorrect
+    :: Ord i => CoinSelectionData i o -> Property
+propChangeCorrect (CoinSelectionData inpsAvailable outsRequested) =
+    isRight result ==>
+        let Right (CoinSelectionResult selection _) = result in
+        prop selection
+  where
+    prop (CoinSelection inpsSelected _ changeGenerated) =
+        cover 8 (amountSelected > amountRequired)
+            "amountSelected > amountRequired" $
+        cover 1 (amountSelected == amountRequired)
+            "amountSelected = amountRequired" $
+        if amountSelected > amountRequired then
+            changeGenerated `shouldBe`
+                [amountSelected `C.distance` amountRequired]
+        else
+            changeGenerated `shouldSatisfy` null
+      where
+        amountSelected = coinMapValue inpsSelected
+        amountRequired = coinMapValue outsRequested
     result = runIdentity
         $ runExceptT
         $ selectCoins largestFirst
