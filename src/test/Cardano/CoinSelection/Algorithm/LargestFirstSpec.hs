@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE NumericUnderscores #-}
 {-# LANGUAGE TypeApplications #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
@@ -22,7 +23,9 @@ import Cardano.CoinSelection
     , CoinSelectionResult (..)
     , InputLimitExceededError (..)
     , InputValueInsufficientError (..)
+    , coinMapFromList
     , coinMapToList
+    , coinMapValue
     )
 import Cardano.CoinSelection.Algorithm.LargestFirst
     ( largestFirst )
@@ -40,12 +43,14 @@ import Control.Monad.Trans.Except
     ( runExceptT )
 import Data.Either
     ( isRight )
+import Data.Function
+    ( (&) )
 import Data.Functor.Identity
     ( Identity (runIdentity) )
 import Test.Hspec
     ( Spec, describe, it, shouldSatisfy )
 import Test.QuickCheck
-    ( Property, property, (==>) )
+    ( Property, property, withMaxSuccess, (.&&.), (==>) )
 
 import qualified Data.List as L
 import qualified Data.Map.Strict as Map
@@ -208,6 +213,11 @@ spec = do
             \inputs"
             (property $ propInputDecreasingOrder @TxIn @Address)
 
+        it "The algorithm selects just enough inputs and no more."
+            (property
+                $ withMaxSuccess 10_000
+                $ propSelectionMinimal @Int @Int)
+
 --------------------------------------------------------------------------------
 -- Properties
 --------------------------------------------------------------------------------
@@ -234,6 +244,35 @@ propInputDecreasingOrder (CoinSelectionData utxo txOuts) =
         $ selectCoins largestFirst
         $ CoinSelectionParameters utxo txOuts selectionLimit
     selectionLimit = CoinSelectionLimit $ const 100
+
+-- Confirm that a selection is minimal by removing the smallest entry from the
+-- inputs and verifying that the reduced input total is no longer enough to pay
+-- for the total value of all outputs.
+propSelectionMinimal
+    :: Ord i => CoinSelectionData i o -> Property
+propSelectionMinimal (CoinSelectionData inpsAvailable outsRequested) =
+    isRight result ==>
+        let Right (CoinSelectionResult selection _) = result in
+        prop selection
+  where
+    prop (CoinSelection inputsSelected _ _) =
+        (coinMapValue inputsSelected
+            `shouldSatisfy` (>= coinMapValue outsRequested))
+        .&&.
+        (coinMapValue inputsReduced
+            `shouldSatisfy` (< coinMapValue outsRequested))
+      where
+        -- The set of selected inputs with the smallest entry removed.
+        inputsReduced = inputsSelected
+            & coinMapToList
+            & L.sortOn entryValue
+            & L.drop 1
+            & coinMapFromList
+    result = runIdentity
+        $ runExceptT
+        $ selectCoins largestFirst
+        $ CoinSelectionParameters inpsAvailable outsRequested
+        $ CoinSelectionLimit $ const 1000
 
 --------------------------------------------------------------------------------
 -- Utilities
