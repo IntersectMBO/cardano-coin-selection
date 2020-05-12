@@ -33,6 +33,7 @@ import Cardano.CoinSelection
     , CoinSelectionLimit (..)
     , coinMapFromList
     , coinMapToList
+    , coinMapValue
     , sumChange
     , sumInputs
     )
@@ -118,14 +119,16 @@ selectCoins options (BatchSize batchSize) utxo =
       where
         inputs = coinMapFromList inputEntries
         outputs = mempty
-        change =
-            if null nonDustInputCoins
-            then [C.succ threshold]
-            else nonDustInputCoins
-        threshold = unDustThreshold dustThreshold
+        change
+            | null nonDustInputCoins && totalInputValue >= smallestNonDustCoin =
+                [smallestNonDustCoin]
+            | otherwise =
+                nonDustInputCoins
         nonDustInputCoins = filter
             (not . isDust dustThreshold)
             (entryValue <$> inputEntries)
+        smallestNonDustCoin = C.succ $ unDustThreshold dustThreshold
+        totalInputValue = coinMapValue inputs
 
     -- | Attempt to balance the coin selection by reducing or increasing the
     -- change values based on the computed fees.
