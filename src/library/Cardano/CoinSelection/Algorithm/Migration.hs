@@ -118,13 +118,13 @@ selectCoins options (BatchSize batchSize) utxo =
         , outputs = mempty
         , change =
             let chgs = mapMaybe (noDust . entryValue) inps
-            in if null chgs then [threshold] else chgs
+            in if null chgs then [C.succ threshold] else chgs
         }
       where
         threshold = unDustThreshold dustThreshold
         noDust :: Coin -> Maybe Coin
         noDust c
-            | c < threshold = Nothing
+            | c <= threshold = Nothing
             | otherwise = Just c
 
     -- | Attempt to balance the coin selection by reducing or increasing the
