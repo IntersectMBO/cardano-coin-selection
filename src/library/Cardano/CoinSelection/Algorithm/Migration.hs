@@ -114,14 +114,13 @@ selectCoins options (BatchSize batchSize) utxo =
     -- Note that the selection may look a bit weird at first sight as it has
     -- no outputs (we are paying everything to ourselves!).
     mkCoinSelection :: [CoinMapEntry i] -> CoinSelection i o
-    mkCoinSelection inps = CoinSelection
-        { inputs = coinMapFromList inps
-        , outputs = mempty
-        , change =
-            let chgs = mapMaybe (noDust . entryValue) inps
-            in if null chgs then [C.succ threshold] else chgs
-        }
+    mkCoinSelection inputEntries = CoinSelection {inputs, outputs, change}
       where
+        inputs = coinMapFromList inputEntries
+        outputs = mempty
+        change =
+            let chgs = mapMaybe (noDust . entryValue) inputEntries
+            in if null chgs then [C.succ threshold] else chgs
         threshold = unDustThreshold dustThreshold
         noDust :: Coin -> Maybe Coin
         noDust c
