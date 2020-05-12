@@ -67,28 +67,15 @@ import qualified Internal.Coin as C
 --
 -- The algorithm terminates with an __error__ if:
 --
---  1.  The /total value/ of the initial UTxO set (the amount of money
---      /available/) is /less than/ the total value of the output list (the
+--  1.  The /total value/ of 'inputsAvailable' (the amount of money
+--      /available/) is /less than/ the total value of 'outputsRequested' (the
 --      amount of money /required/).
 --
 --      See: __'InputValueInsufficientError'__.
 --
---  2.  The /number/ of entries in the initial UTxO set is /smaller than/ the
---      number of requested outputs.
---
---      Due to the nature of the algorithm, /at least one/ UTxO entry is
---      required /for each/ output.
---
---      See: __'InputCountInsufficientError'__.
---
---  3.  Due to the particular /distribution/ of values within the initial UTxO
---      set, the algorithm depletes all entries from the UTxO set /before/ it
---      is able to pay for all requested outputs.
---
---      See: __'InputsExhaustedError'__.
---
---  4.  The /number/ of UTxO entries needed to pay for the requested outputs
---      would /exceed/ the upper limit specified by 'limit'.
+--  2.  It is not possible to cover the total value of 'outputsRequested'
+--      without selecting a number of inputs from 'inputsAvailable' that
+--      would exceed the maximum defined by 'limit'.
 --
 --      See: __'InputLimitExceededError'__.
 --
