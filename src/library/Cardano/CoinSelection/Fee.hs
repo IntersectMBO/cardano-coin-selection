@@ -119,6 +119,17 @@ newtype DustThreshold = DustThreshold { unDustThreshold :: Coin }
     deriving stock (Eq, Generic, Ord)
     deriving Show via (Quiet DustThreshold)
 
+-- | Returns 'True' if and only if the given 'Coin' is a __dust coin__
+--   according to the given 'DustThreshold'.
+--
+-- A coin is considered to be a dust coin if it is /less than or equal to/
+-- the threshold.
+--
+-- See 'DustThreshold'.
+--
+isDust :: DustThreshold -> Coin -> Bool
+isDust (DustThreshold dt) c = c <= dt
+
 -- | Provides a function capable of __estimating__ the transaction fee required
 --   for a given coin selection, according to the rules of a particular
 --   blockchain.
