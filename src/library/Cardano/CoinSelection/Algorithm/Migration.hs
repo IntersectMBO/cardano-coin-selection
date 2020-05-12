@@ -42,6 +42,7 @@ import Cardano.CoinSelection.Fee
     , FeeBalancingPolicy (..)
     , FeeEstimator (..)
     , FeeOptions (..)
+    , isDust
     )
 import Control.Monad.Trans.State
     ( State, evalState, get, put )
@@ -124,7 +125,7 @@ selectCoins options (BatchSize batchSize) utxo =
         threshold = unDustThreshold dustThreshold
         noDust :: Coin -> Maybe Coin
         noDust c
-            | c <= threshold = Nothing
+            | isDust dustThreshold c = Nothing
             | otherwise = Just c
 
     -- | Attempt to balance the coin selection by reducing or increasing the

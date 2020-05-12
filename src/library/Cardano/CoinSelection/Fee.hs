@@ -31,6 +31,7 @@ module Cardano.CoinSelection.Fee
 
       -- * Dust Processing
     , DustThreshold (..)
+    , isDust
     , coalesceDust
 
       -- # Internal Functions
