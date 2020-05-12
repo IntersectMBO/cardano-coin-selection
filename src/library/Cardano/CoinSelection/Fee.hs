@@ -629,10 +629,10 @@ distributeFee (Fee feeTotal) coinsUnsafe =
 -- >>> all (/= Coin 0) (coalesceDust threshold coins)
 --
 coalesceDust :: DustThreshold -> NonEmpty Coin -> [Coin]
-coalesceDust (DustThreshold threshold) coins =
+coalesceDust threshold coins =
     splitCoin valueToDistribute coinsToKeep
   where
-    (coinsToKeep, coinsToRemove) = NE.partition (> threshold) coins
+    (coinsToRemove, coinsToKeep) = NE.partition (isDust threshold) coins
     valueToDistribute = F.fold coinsToRemove
 
 -- Splits up the given coin of value __@v@__, distributing its value over the
