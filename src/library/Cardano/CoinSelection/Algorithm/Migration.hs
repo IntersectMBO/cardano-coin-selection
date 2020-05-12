@@ -33,6 +33,7 @@ import Cardano.CoinSelection
     , CoinSelectionLimit (..)
     , coinMapFromList
     , coinMapToList
+    , coinMapValue
     , sumChange
     , sumInputs
     )
@@ -42,13 +43,14 @@ import Cardano.CoinSelection.Fee
     , FeeBalancingPolicy (..)
     , FeeEstimator (..)
     , FeeOptions (..)
+    , isDust
     )
 import Control.Monad.Trans.State
     ( State, evalState, get, put )
 import Data.List.NonEmpty
     ( NonEmpty ((:|)) )
 import Data.Maybe
-    ( fromMaybe, mapMaybe )
+    ( fromMaybe )
 import Data.Word
     ( Word16 )
 import GHC.Generics
@@ -113,19 +115,20 @@ selectCoins options (BatchSize batchSize) utxo =
     -- Note that the selection may look a bit weird at first sight as it has
     -- no outputs (we are paying everything to ourselves!).
     mkCoinSelection :: [CoinMapEntry i] -> CoinSelection i o
-    mkCoinSelection inps = CoinSelection
-        { inputs = coinMapFromList inps
-        , outputs = mempty
-        , change =
-            let chgs = mapMaybe (noDust . entryValue) inps
-            in if null chgs then [threshold] else chgs
-        }
+    mkCoinSelection inputEntries = CoinSelection {inputs, outputs, change}
       where
-        threshold = unDustThreshold dustThreshold
-        noDust :: Coin -> Maybe Coin
-        noDust c
-            | c < threshold = Nothing
-            | otherwise = Just c
+        inputs = coinMapFromList inputEntries
+        outputs = mempty
+        change
+            | null nonDustInputCoins && totalInputValue >= smallestNonDustCoin =
+                [smallestNonDustCoin]
+            | otherwise =
+                nonDustInputCoins
+        nonDustInputCoins = filter
+            (not . isDust dustThreshold)
+            (entryValue <$> inputEntries)
+        smallestNonDustCoin = C.succ $ unDustThreshold dustThreshold
+        totalInputValue = coinMapValue inputs
 
     -- | Attempt to balance the coin selection by reducing or increasing the
     -- change values based on the computed fees.

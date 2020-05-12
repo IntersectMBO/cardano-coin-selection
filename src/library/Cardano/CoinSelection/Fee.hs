@@ -31,6 +31,7 @@ module Cardano.CoinSelection.Fee
 
       -- * Dust Processing
     , DustThreshold (..)
+    , isDust
     , coalesceDust
 
       -- # Internal Functions
@@ -118,6 +119,17 @@ newtype Fee = Fee { unFee :: Coin }
 newtype DustThreshold = DustThreshold { unDustThreshold :: Coin }
     deriving stock (Eq, Generic, Ord)
     deriving Show via (Quiet DustThreshold)
+
+-- | Returns 'True' if and only if the given 'Coin' is a __dust coin__
+--   according to the given 'DustThreshold'.
+--
+-- A coin is considered to be a dust coin if it is /less than or equal to/
+-- the threshold.
+--
+-- See 'DustThreshold'.
+--
+isDust :: DustThreshold -> Coin -> Bool
+isDust (DustThreshold dt) c = c <= dt
 
 -- | Provides a function capable of __estimating__ the transaction fee required
 --   for a given coin selection, according to the rules of a particular
@@ -618,10 +630,10 @@ distributeFee (Fee feeTotal) coinsUnsafe =
 -- >>> all (/= Coin 0) (coalesceDust threshold coins)
 --
 coalesceDust :: DustThreshold -> NonEmpty Coin -> [Coin]
-coalesceDust (DustThreshold threshold) coins =
+coalesceDust threshold coins =
     splitCoin valueToDistribute coinsToKeep
   where
-    (coinsToKeep, coinsToRemove) = NE.partition (> threshold) coins
+    (coinsToRemove, coinsToKeep) = NE.partition (isDust threshold) coins
     valueToDistribute = F.fold coinsToRemove
 
 -- Splits up the given coin of value __@v@__, distributing its value over the

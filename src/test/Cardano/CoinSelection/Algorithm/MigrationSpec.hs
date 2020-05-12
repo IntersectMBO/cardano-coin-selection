@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE NumericUnderscores #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
@@ -117,27 +118,27 @@ spec = do
 
     describe "selectCoins properties" $ do
         it "No coin selection has outputs" $
-            property $ withMaxSuccess 10000 $ prop_onlyChangeOutputs
+            property $ withMaxSuccess 10_000 $ prop_onlyChangeOutputs
                 @(Wrapped TxIn) @Address
 
-        it "Every coin in the selection change >= minimum threshold coin" $
-            property $ withMaxSuccess 10000 $ prop_noLessThanThreshold
+        it "Every coin in the selection change > dust threshold" $
+            property $ withMaxSuccess 10_000 $ prop_allAboveThreshold
                 @(Wrapped TxIn) @Address
 
         it "Total input UTxO value >= sum of selection change coins" $
-            property $ withMaxSuccess 10000 $ prop_inputsGreaterThanOutputs
+            property $ withMaxSuccess 10_000 $ prop_inputsGreaterThanOutputs
                 @(Wrapped TxIn) @Address
 
         it "Every selection input is unique" $
-            property $ withMaxSuccess 10000 $ prop_inputsAreUnique
+            property $ withMaxSuccess 10_000 $ prop_inputsAreUnique
                 @(Wrapped TxIn) @Address
 
         it "Every selection input is a member of the UTxO" $
-            property $ withMaxSuccess 10000 $ prop_inputsStillInUTxO
+            property $ withMaxSuccess 10_000 $ prop_inputsStillInUTxO
                 @(Wrapped TxIn) @Address
 
         it "Every coin selection is well-balanced" $
-            property $ withMaxSuccess 10000 $ prop_wellBalanced
+            property $ withMaxSuccess 10_000 $ prop_wellBalanced
                 @(Wrapped TxIn) @Address
 
     describe "selectCoins regressions" $ do
@@ -177,18 +178,18 @@ prop_onlyChangeOutputs feeOpts batchSize utxo = do
             coinMapToList . outputs =<< selectCoins feeOpts batchSize utxo
     property (allOutputs `shouldSatisfy` null)
 
--- | Every coin in the selection change >= minimum threshold coin
-prop_noLessThanThreshold
+-- | Every coin in the selection change > dust threshold
+prop_allAboveThreshold
     :: forall i o . (Ord i, Ord o)
     => FeeOptions i o
     -> BatchSize
     -> CoinMap i
     -> Property
-prop_noLessThanThreshold feeOpts batchSize utxo = do
+prop_allAboveThreshold feeOpts batchSize utxo = do
     let allChange = change
             =<< selectCoins feeOpts batchSize utxo
     let undersizedCoins =
-            filter (< threshold) allChange
+            filter (<= threshold) allChange
     property (undersizedCoins `shouldSatisfy` null)
   where
     threshold = unDustThreshold $ dustThreshold feeOpts
