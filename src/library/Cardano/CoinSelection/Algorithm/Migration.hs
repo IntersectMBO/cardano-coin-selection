@@ -49,7 +49,7 @@ import Control.Monad.Trans.State
 import Data.List.NonEmpty
     ( NonEmpty ((:|)) )
 import Data.Maybe
-    ( fromMaybe, mapMaybe )
+    ( fromMaybe )
 import Data.Word
     ( Word16 )
 import GHC.Generics
@@ -119,13 +119,13 @@ selectCoins options (BatchSize batchSize) utxo =
         inputs = coinMapFromList inputEntries
         outputs = mempty
         change =
-            let chgs = mapMaybe (noDust . entryValue) inputEntries
-            in if null chgs then [C.succ threshold] else chgs
+            if null nonDustInputCoins
+            then [C.succ threshold]
+            else nonDustInputCoins
         threshold = unDustThreshold dustThreshold
-        noDust :: Coin -> Maybe Coin
-        noDust c
-            | isDust dustThreshold c = Nothing
-            | otherwise = Just c
+        nonDustInputCoins = filter
+            (not . isDust dustThreshold)
+            (entryValue <$> inputEntries)
 
     -- | Attempt to balance the coin selection by reducing or increasing the
     -- change values based on the computed fees.
