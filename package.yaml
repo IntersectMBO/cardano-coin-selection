@@ -1,5 +1,5 @@
 name:                cardano-coin-selection
-version:             1.0.0
+version:             1.0.1
 github:              input-output-hk/cardano-coin-selection
 license:             Apache-2.0
 author:              IOHK
