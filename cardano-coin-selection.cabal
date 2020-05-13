@@ -4,10 +4,10 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: a18cf9486584a8610bc4358e634b9e6e98745f70162228e8f1ae2478b2d0a783
+-- hash: 955257d9cc818ae774b8798f360815648a42e3808e53b8363c5195d1864c716a
 
 name:           cardano-coin-selection
-version:        1.0.0
+version:        1.0.1
 synopsis:       Algorithms for coin selection and fee balancing.
 description:    Please see the README on GitHub at <https://github.com/input-output-hk/cardano-coin-selection>
 category:       Cardano
