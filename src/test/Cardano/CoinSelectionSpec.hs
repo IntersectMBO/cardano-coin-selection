@@ -174,6 +174,11 @@ coinSelectionAlgorithmGeneralProperties algorithm algorithmName =
             property $
             prop_algorithm_inputsSelected_inputsRemaining algorithm
 
+        it "inputsSelected ⋃ inputsRemaining = inputsAvailable" $
+            property $
+            prop_algorithm_inputsSelected_inputsRemaining_inputsAvailable
+            algorithm
+
 --------------------------------------------------------------------------------
 -- Coin Map Properties
 --------------------------------------------------------------------------------
@@ -399,6 +404,19 @@ prop_algorithm_inputsSelected_inputsRemaining algorithm csd =
             (selected `intersection` remaining)
                 `shouldBe` mempty
 
+prop_algorithm_inputsSelected_inputsRemaining_inputsAvailable
+    :: (Ord i, Show i)
+    => CoinSelectionAlgorithm i o IO
+    -> CoinSelectionData i o
+    -> Property
+prop_algorithm_inputsSelected_inputsRemaining_inputsAvailable algorithm csd =
+    prop_algorithm algorithm csd $
+        \(CoinSelectionResult (CoinSelection selected _ _) remaining) -> do
+            (selected `union` remaining)
+                `shouldBe` available
+  where
+    available = csdInputsAvailable csd
+
 prop_algorithm
     :: CoinSelectionAlgorithm i o IO
     -> CoinSelectionData i o
@@ -423,6 +441,9 @@ isSubmapOf (CoinMap a) (CoinMap b) = a `Map.isSubmapOf` b
 
 intersection :: Ord k => CoinMap k -> CoinMap k -> CoinMap k
 intersection (CoinMap a) (CoinMap b) = CoinMap $ a `Map.intersection` b
+
+union :: Ord k => CoinMap k -> CoinMap k -> CoinMap k
+union = (<>)
 
 --------------------------------------------------------------------------------
 -- Coin Selection - Unit Tests
