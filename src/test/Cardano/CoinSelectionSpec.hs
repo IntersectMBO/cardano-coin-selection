@@ -162,6 +162,10 @@ coinSelectionAlgorithmGeneralProperties algorithm algorithmName =
             property $
             prop_algorithm_outputsSelected_outputsRequested algorithm
 
+        it "inputsSelected ⊆ inputsAvailable" $
+            property $
+            prop_algorithm_inputsAvailable_inputsSelected algorithm
+
 --------------------------------------------------------------------------------
 -- Coin Map Properties
 --------------------------------------------------------------------------------
@@ -354,6 +358,17 @@ prop_algorithm_outputsSelected_outputsRequested algorithm csd =
         \(CoinSelection _ outputsSelected _) ->
             outputsSelected `shouldBe` csdOutputsRequested csd
 
+prop_algorithm_inputsAvailable_inputsSelected
+    :: (Ord i, Show i)
+    => CoinSelectionAlgorithm i o IO
+    -> CoinSelectionData i o
+    -> Property
+prop_algorithm_inputsAvailable_inputsSelected algorithm csd =
+    prop_algorithm algorithm csd $
+        \(CoinSelection inputsSelected _ _) ->
+            inputsSelected `shouldSatisfy`
+                (`isSubmapOf` csdInputsAvailable csd)
+
 prop_algorithm
     :: CoinSelectionAlgorithm i o IO
     -> CoinSelectionData i o
@@ -372,6 +387,9 @@ prop_algorithm algorithm csd expectation =
         $ CoinSelectionParameters csdInputsAvailable csdOutputsRequested
         $ CoinSelectionLimit
         $ const $ fromIntegral $ F.length csdInputsAvailable
+
+isSubmapOf :: Ord k => CoinMap k -> CoinMap k -> Bool
+isSubmapOf (CoinMap a) (CoinMap b) = a `Map.isSubmapOf` b
 
 --------------------------------------------------------------------------------
 -- Coin Selection - Unit Tests
