@@ -166,6 +166,10 @@ coinSelectionAlgorithmGeneralProperties algorithm algorithmName =
             property $
             prop_algorithm_inputsAvailable_inputsSelected algorithm
 
+        it "inputsRemaining ⊆ inputsAvailable" $
+            property $
+            prop_algorithm_inputsAvailable_inputsRemaining algorithm
+
 --------------------------------------------------------------------------------
 -- Coin Map Properties
 --------------------------------------------------------------------------------
@@ -355,7 +359,7 @@ prop_algorithm_outputsSelected_outputsRequested
     -> Property
 prop_algorithm_outputsSelected_outputsRequested algorithm csd =
     prop_algorithm algorithm csd $
-        \(CoinSelection _ outputsSelected _) ->
+        \(CoinSelectionResult (CoinSelection _ outputsSelected _) _) ->
             outputsSelected `shouldBe` csdOutputsRequested csd
 
 prop_algorithm_inputsAvailable_inputsSelected
@@ -365,24 +369,35 @@ prop_algorithm_inputsAvailable_inputsSelected
     -> Property
 prop_algorithm_inputsAvailable_inputsSelected algorithm csd =
     prop_algorithm algorithm csd $
-        \(CoinSelection inputsSelected _ _) ->
+        \(CoinSelectionResult (CoinSelection inputsSelected _ _) _) ->
             inputsSelected `shouldSatisfy`
+                (`isSubmapOf` csdInputsAvailable csd)
+
+prop_algorithm_inputsAvailable_inputsRemaining
+    :: (Ord i, Show i)
+    => CoinSelectionAlgorithm i o IO
+    -> CoinSelectionData i o
+    -> Property
+prop_algorithm_inputsAvailable_inputsRemaining algorithm csd =
+    prop_algorithm algorithm csd $
+        \(CoinSelectionResult _ inputsRemaining) ->
+            inputsRemaining `shouldSatisfy`
                 (`isSubmapOf` csdInputsAvailable csd)
 
 prop_algorithm
     :: CoinSelectionAlgorithm i o IO
     -> CoinSelectionData i o
-    -> (CoinSelection i o -> Expectation)
+    -> (CoinSelectionResult i o -> Expectation)
     -> Property
-prop_algorithm algorithm csd expectation =
-    withMaxSuccess 10_000 $ monadicIO $ QC.run $ do
-        selection <- generateSelection
-        pure $ isRight selection ==>
-            let Right (CoinSelectionResult s _) = selection in
-            expectation s
+prop_algorithm algorithm csd verifyExpectation =
+    withMaxSuccess 1_000 $ monadicIO $ QC.run $ do
+        mResult <- generateResult
+        pure $ isRight mResult ==>
+            let Right result = mResult in
+            verifyExpectation result
   where
     CoinSelectionData {csdInputsAvailable, csdOutputsRequested} = csd
-    generateSelection = runExceptT
+    generateResult = runExceptT
         $ selectCoins algorithm
         $ CoinSelectionParameters csdInputsAvailable csdOutputsRequested
         $ CoinSelectionLimit
