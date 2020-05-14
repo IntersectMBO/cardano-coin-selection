@@ -140,7 +140,7 @@ spec = do
     lowerConfidence = Confidence (10^(6 :: Integer)) 0.75
 
 --------------------------------------------------------------------------------
--- Properties
+-- Coin Map Properties
 --------------------------------------------------------------------------------
 
 prop_CoinMap_coverage
@@ -261,6 +261,10 @@ prop_coinMapToList_orderDeterministic u = monadicIO $ QC.run $ do
     return $
         cover 10 (list0 /= list1) "shuffled" $
         list0 == coinMapToList (coinMapFromList list1)
+
+--------------------------------------------------------------------------------
+-- Coin Selection Properties
+--------------------------------------------------------------------------------
 
 prop_coinSelection_mappendPreservesKeys
     :: (Ord i, Ord o, Show i, Show o)
