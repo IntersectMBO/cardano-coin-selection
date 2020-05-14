@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE NumericUnderscores #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -18,6 +19,7 @@ module Cardano.CoinSelectionSpec
     , CoinSelectionTestResult (..)
     , CoinSelectionData (..)
     , coinSelectionUnitTest
+    , coinSelectionAlgorithmGeneralProperties
     ) where
 
 -- | This module contains shared functionality for coin selection tests.
@@ -51,6 +53,8 @@ import Control.Monad
     ( replicateM )
 import Control.Monad.Trans.Except
     ( runExceptT )
+import Data.Either
+    ( isRight )
 import Data.Function
     ( (&) )
 import Data.List.NonEmpty
@@ -66,7 +70,7 @@ import Fmt
 import Internal.Coin
     ( Coin, coinToIntegral )
 import Test.Hspec
-    ( Spec, SpecWith, describe, it, shouldBe, shouldSatisfy )
+    ( Expectation, Spec, SpecWith, describe, it, shouldBe, shouldSatisfy )
 import Test.QuickCheck
     ( Arbitrary (..)
     , Confidence (..)
@@ -86,6 +90,7 @@ import Test.QuickCheck
     , vectorOf
     , withMaxSuccess
     , (.&&.)
+    , (==>)
     )
 import Test.QuickCheck.Monadic
     ( monadicIO )
@@ -93,6 +98,7 @@ import Test.Vector.Shuffle
     ( shuffle )
 
 import qualified Data.ByteString as BS
+import qualified Data.Foldable as F
 import qualified Data.List as L
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map.Strict as Map
@@ -138,6 +144,19 @@ spec = do
   where
     lowerConfidence :: Confidence
     lowerConfidence = Confidence (10^(6 :: Integer)) 0.75
+
+coinSelectionAlgorithmGeneralProperties
+    :: (Arbitrary i, Arbitrary o, Ord i, Ord o, Show i, Show o)
+    => CoinSelectionAlgorithm i o IO
+    -> String
+    -> Spec
+coinSelectionAlgorithmGeneralProperties algorithm algorithmName =
+
+    describe ("General properties for " <> algorithmName) $ do
+
+        it "outputsSelected = outputsRequested" $
+            property $
+            prop_algorithm_outputsSelected_outputsRequested algorithm
 
 --------------------------------------------------------------------------------
 -- Coin Map Properties
@@ -307,6 +326,39 @@ prop_CoinSelectionData_coverage (CoinSelectionData inps outs) = property
   where
     amountAvailable = coinMapValue inps
     amountRequested = coinMapValue outs
+
+--------------------------------------------------------------------------------
+-- Coin Selection Algorithm Properties
+--------------------------------------------------------------------------------
+
+prop_algorithm_outputsSelected_outputsRequested
+    :: (Ord o, Show o)
+    => CoinSelectionAlgorithm i o IO
+    -> CoinSelectionData i o
+    -> Property
+prop_algorithm_outputsSelected_outputsRequested algorithm csd =
+    prop_algorithm algorithm csd $
+        \(CoinSelection _ outputsSelected _) ->
+            outputsSelected `shouldBe` csdOutputsRequested csd
+
+prop_algorithm
+    :: CoinSelectionAlgorithm i o IO
+    -> CoinSelectionData i o
+    -> (CoinSelection i o -> Expectation)
+    -> Property
+prop_algorithm algorithm csd expectation =
+    withMaxSuccess 10_000 $ monadicIO $ QC.run $ do
+        selection <- generateSelection
+        pure $ isRight selection ==>
+            let Right (CoinSelectionResult s _) = selection in
+            expectation s
+  where
+    CoinSelectionData {csdInputsAvailable, csdOutputsRequested} = csd
+    generateSelection = runExceptT
+        $ selectCoins algorithm
+        $ CoinSelectionParameters csdInputsAvailable csdOutputsRequested
+        $ CoinSelectionLimit
+        $ const $ fromIntegral $ F.length csdInputsAvailable
 
 --------------------------------------------------------------------------------
 -- Coin Selection - Unit Tests

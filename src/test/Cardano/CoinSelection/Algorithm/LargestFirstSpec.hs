@@ -33,6 +33,7 @@ import Cardano.CoinSelectionSpec
     ( CoinSelectionData (..)
     , CoinSelectionFixture (..)
     , CoinSelectionTestResult (..)
+    , coinSelectionAlgorithmGeneralProperties
     , coinSelectionUnitTest
     )
 import Cardano.Test.Utilities
@@ -276,6 +277,9 @@ spec = do
                 $ property
                 $ withMaxSuccess 10_000
                 $ propChangeCorrect @Int @Int)
+
+    coinSelectionAlgorithmGeneralProperties @Int @Int
+        largestFirst "Largest-First"
 
 --------------------------------------------------------------------------------
 -- Properties
