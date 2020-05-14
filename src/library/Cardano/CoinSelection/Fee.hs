@@ -128,6 +128,7 @@ newtype DustThreshold = DustThreshold { unDustThreshold :: Coin }
 --
 -- See 'DustThreshold'.
 --
+-- @since 1.0.1
 isDust :: DustThreshold -> Coin -> Bool
 isDust (DustThreshold dt) c = c <= dt
 
