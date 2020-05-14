@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE NumericUnderscores #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -18,6 +19,7 @@ module Cardano.CoinSelectionSpec
     , CoinSelectionTestResult (..)
     , CoinSelectionData (..)
     , coinSelectionUnitTest
+    , coinSelectionAlgorithmGeneralProperties
     ) where
 
 -- | This module contains shared functionality for coin selection tests.
@@ -51,6 +53,8 @@ import Control.Monad
     ( replicateM )
 import Control.Monad.Trans.Except
     ( runExceptT )
+import Data.Either
+    ( isRight )
 import Data.Function
     ( (&) )
 import Data.List.NonEmpty
@@ -66,7 +70,7 @@ import Fmt
 import Internal.Coin
     ( Coin, coinToIntegral )
 import Test.Hspec
-    ( Spec, SpecWith, describe, it, shouldBe, shouldSatisfy )
+    ( Expectation, Spec, SpecWith, describe, it, shouldBe, shouldSatisfy )
 import Test.QuickCheck
     ( Arbitrary (..)
     , Confidence (..)
@@ -86,6 +90,7 @@ import Test.QuickCheck
     , vectorOf
     , withMaxSuccess
     , (.&&.)
+    , (==>)
     )
 import Test.QuickCheck.Monadic
     ( monadicIO )
@@ -93,6 +98,7 @@ import Test.Vector.Shuffle
     ( shuffle )
 
 import qualified Data.ByteString as BS
+import qualified Data.Foldable as F
 import qualified Data.List as L
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map.Strict as Map
@@ -139,8 +145,35 @@ spec = do
     lowerConfidence :: Confidence
     lowerConfidence = Confidence (10^(6 :: Integer)) 0.75
 
+-- A collection of general properties that should apply to all algorithms
+-- that implement the 'CoinSelectionAlgorithm' interface.
+--
+coinSelectionAlgorithmGeneralProperties
+    :: (Arbitrary i, Arbitrary o, Ord i, Ord o, Show i, Show o)
+    => CoinSelectionAlgorithm i o IO
+    -> String
+    -> Spec
+coinSelectionAlgorithmGeneralProperties algorithm algorithmName =
+    describe ("General properties for " <> algorithmName) $ do
+        it "value inputsAvailable ≥ value outputsRequested" $
+            check prop_algorithm_inputsAvailable_outputsRequested
+        it "outputsSelected = outputsRequested" $
+            check prop_algorithm_outputsSelected_outputsRequested
+        it "inputsSelected ⊆ inputsAvailable" $
+            check prop_algorithm_inputsAvailable_inputsSelected
+        it "inputsRemaining ⊆ inputsAvailable" $
+            check prop_algorithm_inputsAvailable_inputsRemaining
+        it "inputsSelected ⋂ inputsRemaining = ∅" $
+            check prop_algorithm_inputsSelected_inputsRemaining
+        it "inputsSelected ⋃ inputsRemaining = inputsAvailable" $
+            check prop_algorithm_inputsSelected_inputsRemaining_inputsAvailable
+        it "value inputsSelected = value outputsSelected + value change" $
+            check prop_algorithm_inputsSelected_outputsSelected_change
+  where
+    check = property . prop_algorithm algorithm
+
 --------------------------------------------------------------------------------
--- Properties
+-- Coin Map Properties
 --------------------------------------------------------------------------------
 
 prop_CoinMap_coverage
@@ -262,6 +295,10 @@ prop_coinMapToList_orderDeterministic u = monadicIO $ QC.run $ do
         cover 10 (list0 /= list1) "shuffled" $
         list0 == coinMapToList (coinMapFromList list1)
 
+--------------------------------------------------------------------------------
+-- Coin Selection Properties
+--------------------------------------------------------------------------------
+
 prop_coinSelection_mappendPreservesKeys
     :: (Ord i, Ord o, Show i, Show o)
     => CoinSelection i o
@@ -303,6 +340,107 @@ prop_CoinSelectionData_coverage (CoinSelectionData inps outs) = property
   where
     amountAvailable = coinMapValue inps
     amountRequested = coinMapValue outs
+
+--------------------------------------------------------------------------------
+-- Coin Selection Algorithm Properties
+--------------------------------------------------------------------------------
+
+prop_algorithm_inputsAvailable_outputsRequested
+    :: CoinSelectionData i o
+    -> CoinSelectionResult i o
+    -> Expectation
+prop_algorithm_inputsAvailable_outputsRequested =
+    \(CoinSelectionData inputsAvailable outputsRequested) -> const $
+        coinMapValue inputsAvailable `shouldSatisfy`
+            (>= coinMapValue outputsRequested)
+
+prop_algorithm_outputsSelected_outputsRequested
+    :: (Ord o, Show o)
+    => CoinSelectionData i o
+    -> CoinSelectionResult i o
+    -> Expectation
+prop_algorithm_outputsSelected_outputsRequested =
+    \(CoinSelectionData _ outputsRequested) ->
+    \(CoinSelectionResult (CoinSelection _ outputsSelected _) _) ->
+        outputsSelected `shouldBe` outputsRequested
+
+prop_algorithm_inputsAvailable_inputsSelected
+    :: (Ord i, Show i)
+    => CoinSelectionData i o
+    -> CoinSelectionResult i o
+    -> Expectation
+prop_algorithm_inputsAvailable_inputsSelected =
+    \(CoinSelectionData inputsAvailable _) ->
+    \(CoinSelectionResult (CoinSelection inputsSelected _ _) _) ->
+        inputsSelected `shouldSatisfy` (`isSubmapOf` inputsAvailable)
+
+prop_algorithm_inputsAvailable_inputsRemaining
+    :: (Ord i, Show i)
+    => CoinSelectionData i o
+    -> CoinSelectionResult i o
+    -> Expectation
+prop_algorithm_inputsAvailable_inputsRemaining =
+    \(CoinSelectionData inputsAvailable _) ->
+    \(CoinSelectionResult _ inputsRemaining) ->
+        inputsRemaining `shouldSatisfy` (`isSubmapOf` inputsAvailable)
+
+prop_algorithm_inputsSelected_inputsRemaining
+    :: (Ord i, Show i)
+    => CoinSelectionData i o
+    -> CoinSelectionResult i o
+    -> Expectation
+prop_algorithm_inputsSelected_inputsRemaining =
+    \(CoinSelectionData _ _) ->
+    \(CoinSelectionResult (CoinSelection selected _ _) remaining) ->
+        (selected `intersection` remaining) `shouldBe` mempty
+
+prop_algorithm_inputsSelected_inputsRemaining_inputsAvailable
+    :: (Ord i, Show i)
+    => CoinSelectionData i o
+    -> CoinSelectionResult i o
+    -> Expectation
+prop_algorithm_inputsSelected_inputsRemaining_inputsAvailable =
+    \(CoinSelectionData available _) ->
+    \(CoinSelectionResult (CoinSelection selected _ _) remaining) ->
+        (selected `union` remaining) `shouldBe` available
+
+prop_algorithm_inputsSelected_outputsSelected_change
+    :: CoinSelectionData i o
+    -> CoinSelectionResult i o
+    -> Expectation
+prop_algorithm_inputsSelected_outputsSelected_change = const $
+    \(CoinSelectionResult (CoinSelection {inputs, outputs, change}) _) ->
+        coinMapValue inputs
+            `shouldBe`
+            (coinMapValue outputs `C.add` mconcat change)
+
+prop_algorithm
+    :: CoinSelectionAlgorithm i o IO
+    -> (CoinSelectionData i o -> CoinSelectionResult i o -> Expectation)
+    -> (CoinSelectionData i o)
+    -> Property
+prop_algorithm algorithm verifyExpectation params =
+    withMaxSuccess 1_000 $ monadicIO $ QC.run $ do
+        mResult <- generateResult
+        pure $ isRight mResult ==>
+            let Right result = mResult in
+            verifyExpectation params result
+  where
+    CoinSelectionData {csdInputsAvailable, csdOutputsRequested} = params
+    generateResult = runExceptT
+        $ selectCoins algorithm
+        $ CoinSelectionParameters csdInputsAvailable csdOutputsRequested
+        $ CoinSelectionLimit
+        $ const $ fromIntegral $ F.length csdInputsAvailable
+
+isSubmapOf :: Ord k => CoinMap k -> CoinMap k -> Bool
+isSubmapOf (CoinMap a) (CoinMap b) = a `Map.isSubmapOf` b
+
+intersection :: Ord k => CoinMap k -> CoinMap k -> CoinMap k
+intersection (CoinMap a) (CoinMap b) = CoinMap $ a `Map.intersection` b
+
+union :: Ord k => CoinMap k -> CoinMap k -> CoinMap k
+union = (<>)
 
 --------------------------------------------------------------------------------
 -- Coin Selection - Unit Tests

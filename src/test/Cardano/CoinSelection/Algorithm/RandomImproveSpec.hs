@@ -32,6 +32,7 @@ import Cardano.CoinSelectionSpec
     ( CoinSelectionData (..)
     , CoinSelectionFixture (..)
     , CoinSelectionTestResult (..)
+    , coinSelectionAlgorithmGeneralProperties
     , coinSelectionUnitTest
     )
 import Cardano.Test.Utilities
@@ -222,6 +223,9 @@ spec = do
             it "forall (UTxO, NonEmpty TxOut), running algorithm gives the \
                 \same errors as LargestFirst algorithm"
                 (property . propErrors @TxIn @Address)
+
+    coinSelectionAlgorithmGeneralProperties @Int @Int
+        randomImprove "Random-Improve"
 
 --------------------------------------------------------------------------------
 -- Properties

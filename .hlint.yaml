@@ -51,6 +51,9 @@
 - ignore: {name: "Redundant do"} # Just an annoying hlint built-in, GHC may remove redundant do if he wants
 - ignore: {name: "Monoid law, left identity"} # Using 'mempty' can be useful to vertically-align elements
 - ignore: {name: "Use ?~"} # It's actually much clearer to do (.~ Just ...) than having to load yet-another-lens-operator
+- ignore: {name: "Use camelCase"}    # Sometimes useful in test code.
+- ignore: {name: "Redundant lambda"} # Sometimes useful in test code.
+- ignore: {name: "Collapse lambdas"} # Sometimes useful in test code.
 
 # Add custom hints for this project
 #
