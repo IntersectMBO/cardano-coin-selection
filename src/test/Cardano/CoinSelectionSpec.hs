@@ -154,6 +154,10 @@ coinSelectionAlgorithmGeneralProperties algorithm algorithmName =
 
     describe ("General properties for " <> algorithmName) $ do
 
+        it "value inputsAvailable ≥ value outputsRequested" $
+            property $
+            prop_algorithm_inputsAvailable_outputsRequested algorithm
+
         it "outputsSelected = outputsRequested" $
             property $
             prop_algorithm_outputsSelected_outputsRequested algorithm
@@ -330,6 +334,15 @@ prop_CoinSelectionData_coverage (CoinSelectionData inps outs) = property
 --------------------------------------------------------------------------------
 -- Coin Selection Algorithm Properties
 --------------------------------------------------------------------------------
+
+prop_algorithm_inputsAvailable_outputsRequested
+    :: CoinSelectionAlgorithm i o IO
+    -> CoinSelectionData i o
+    -> Property
+prop_algorithm_inputsAvailable_outputsRequested algorithm csd =
+    prop_algorithm algorithm csd $ const $
+        coinMapValue (csdInputsAvailable csd) `shouldSatisfy`
+            (>= coinMapValue (csdOutputsRequested csd))
 
 prop_algorithm_outputsSelected_outputsRequested
     :: (Ord o, Show o)
