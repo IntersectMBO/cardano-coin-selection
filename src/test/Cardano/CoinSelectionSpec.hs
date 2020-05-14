@@ -145,45 +145,32 @@ spec = do
     lowerConfidence :: Confidence
     lowerConfidence = Confidence (10^(6 :: Integer)) 0.75
 
+-- A collection of general properties that should apply to all algorithms
+-- that implement the 'CoinSelectionAlgorithm' interface.
+--
 coinSelectionAlgorithmGeneralProperties
     :: (Arbitrary i, Arbitrary o, Ord i, Ord o, Show i, Show o)
     => CoinSelectionAlgorithm i o IO
     -> String
     -> Spec
 coinSelectionAlgorithmGeneralProperties algorithm algorithmName =
-
     describe ("General properties for " <> algorithmName) $ do
-
         it "value inputsAvailable ≥ value outputsRequested" $
-            property $
-            prop_algorithm_inputsAvailable_outputsRequested algorithm
-
+            check prop_algorithm_inputsAvailable_outputsRequested
         it "outputsSelected = outputsRequested" $
-            property $
-            prop_algorithm_outputsSelected_outputsRequested algorithm
-
+            check prop_algorithm_outputsSelected_outputsRequested
         it "inputsSelected ⊆ inputsAvailable" $
-            property $
-            prop_algorithm_inputsAvailable_inputsSelected algorithm
-
+            check prop_algorithm_inputsAvailable_inputsSelected
         it "inputsRemaining ⊆ inputsAvailable" $
-            property $
-            prop_algorithm_inputsAvailable_inputsRemaining algorithm
-
+            check prop_algorithm_inputsAvailable_inputsRemaining
         it "inputsSelected ⋂ inputsRemaining = ∅" $
-            property $
-            prop_algorithm_inputsSelected_inputsRemaining algorithm
-
+            check prop_algorithm_inputsSelected_inputsRemaining
         it "inputsSelected ⋃ inputsRemaining = inputsAvailable" $
-            property $
-            prop_algorithm_inputsSelected_inputsRemaining_inputsAvailable
-            algorithm
-
-        it "value inputsSelected =\
-            \ value outputsSelected + value changeGenerated" $
-            property $
-            prop_algorithm_inputsSelected_outputsSelected_changeGenerated
-            algorithm
+            check prop_algorithm_inputsSelected_inputsRemaining_inputsAvailable
+        it "value inputsSelected = value outputsSelected + value change" $
+            check prop_algorithm_inputsSelected_outputsSelected_change
+  where
+    check = property . prop_algorithm algorithm
 
 --------------------------------------------------------------------------------
 -- Coin Map Properties
@@ -359,94 +346,87 @@ prop_CoinSelectionData_coverage (CoinSelectionData inps outs) = property
 --------------------------------------------------------------------------------
 
 prop_algorithm_inputsAvailable_outputsRequested
-    :: CoinSelectionAlgorithm i o IO
-    -> CoinSelectionData i o
-    -> Property
-prop_algorithm_inputsAvailable_outputsRequested algorithm csd =
-    prop_algorithm algorithm csd $ const $
-        coinMapValue (csdInputsAvailable csd) `shouldSatisfy`
-            (>= coinMapValue (csdOutputsRequested csd))
+    :: CoinSelectionData i o
+    -> CoinSelectionResult i o
+    -> Expectation
+prop_algorithm_inputsAvailable_outputsRequested =
+    \(CoinSelectionData inputsAvailable outputsRequested) -> const $
+        coinMapValue inputsAvailable `shouldSatisfy`
+            (>= coinMapValue outputsRequested)
 
 prop_algorithm_outputsSelected_outputsRequested
     :: (Ord o, Show o)
-    => CoinSelectionAlgorithm i o IO
-    -> CoinSelectionData i o
-    -> Property
-prop_algorithm_outputsSelected_outputsRequested algorithm csd =
-    prop_algorithm algorithm csd $
-        \(CoinSelectionResult (CoinSelection _ outputsSelected _) _) ->
-            outputsSelected `shouldBe` csdOutputsRequested csd
+    => CoinSelectionData i o
+    -> CoinSelectionResult i o
+    -> Expectation
+prop_algorithm_outputsSelected_outputsRequested =
+    \(CoinSelectionData _ outputsRequested) ->
+    \(CoinSelectionResult (CoinSelection _ outputsSelected _) _) ->
+        outputsSelected `shouldBe` outputsRequested
 
 prop_algorithm_inputsAvailable_inputsSelected
     :: (Ord i, Show i)
-    => CoinSelectionAlgorithm i o IO
-    -> CoinSelectionData i o
-    -> Property
-prop_algorithm_inputsAvailable_inputsSelected algorithm csd =
-    prop_algorithm algorithm csd $
-        \(CoinSelectionResult (CoinSelection inputsSelected _ _) _) ->
-            inputsSelected `shouldSatisfy`
-                (`isSubmapOf` csdInputsAvailable csd)
+    => CoinSelectionData i o
+    -> CoinSelectionResult i o
+    -> Expectation
+prop_algorithm_inputsAvailable_inputsSelected =
+    \(CoinSelectionData inputsAvailable _) ->
+    \(CoinSelectionResult (CoinSelection inputsSelected _ _) _) ->
+        inputsSelected `shouldSatisfy` (`isSubmapOf` inputsAvailable)
 
 prop_algorithm_inputsAvailable_inputsRemaining
     :: (Ord i, Show i)
-    => CoinSelectionAlgorithm i o IO
-    -> CoinSelectionData i o
-    -> Property
-prop_algorithm_inputsAvailable_inputsRemaining algorithm csd =
-    prop_algorithm algorithm csd $
-        \(CoinSelectionResult _ inputsRemaining) ->
-            inputsRemaining `shouldSatisfy`
-                (`isSubmapOf` csdInputsAvailable csd)
+    => CoinSelectionData i o
+    -> CoinSelectionResult i o
+    -> Expectation
+prop_algorithm_inputsAvailable_inputsRemaining =
+    \(CoinSelectionData inputsAvailable _) ->
+    \(CoinSelectionResult _ inputsRemaining) ->
+        inputsRemaining `shouldSatisfy` (`isSubmapOf` inputsAvailable)
 
 prop_algorithm_inputsSelected_inputsRemaining
     :: (Ord i, Show i)
-    => CoinSelectionAlgorithm i o IO
-    -> CoinSelectionData i o
-    -> Property
-prop_algorithm_inputsSelected_inputsRemaining algorithm csd =
-    prop_algorithm algorithm csd $
-        \(CoinSelectionResult (CoinSelection selected _ _) remaining) -> do
-            (selected `intersection` remaining)
-                `shouldBe` mempty
+    => CoinSelectionData i o
+    -> CoinSelectionResult i o
+    -> Expectation
+prop_algorithm_inputsSelected_inputsRemaining =
+    \(CoinSelectionData _ _) ->
+    \(CoinSelectionResult (CoinSelection selected _ _) remaining) ->
+        (selected `intersection` remaining) `shouldBe` mempty
 
 prop_algorithm_inputsSelected_inputsRemaining_inputsAvailable
     :: (Ord i, Show i)
-    => CoinSelectionAlgorithm i o IO
-    -> CoinSelectionData i o
-    -> Property
-prop_algorithm_inputsSelected_inputsRemaining_inputsAvailable algorithm csd =
-    prop_algorithm algorithm csd $
-        \(CoinSelectionResult (CoinSelection selected _ _) remaining) -> do
-            (selected `union` remaining)
-                `shouldBe` available
-  where
-    available = csdInputsAvailable csd
+    => CoinSelectionData i o
+    -> CoinSelectionResult i o
+    -> Expectation
+prop_algorithm_inputsSelected_inputsRemaining_inputsAvailable =
+    \(CoinSelectionData available _) ->
+    \(CoinSelectionResult (CoinSelection selected _ _) remaining) ->
+        (selected `union` remaining) `shouldBe` available
 
-prop_algorithm_inputsSelected_outputsSelected_changeGenerated
-    :: CoinSelectionAlgorithm i o IO
-    -> CoinSelectionData i o
-    -> Property
-prop_algorithm_inputsSelected_outputsSelected_changeGenerated algorithm csd =
-    prop_algorithm algorithm csd $
-        \(CoinSelectionResult (CoinSelection {inputs, outputs, change}) _) ->
-            coinMapValue inputs
-                `shouldBe`
-                (coinMapValue outputs `C.add` mconcat change)
+prop_algorithm_inputsSelected_outputsSelected_change
+    :: CoinSelectionData i o
+    -> CoinSelectionResult i o
+    -> Expectation
+prop_algorithm_inputsSelected_outputsSelected_change = const $
+    \(CoinSelectionResult (CoinSelection {inputs, outputs, change}) _) ->
+        coinMapValue inputs
+            `shouldBe`
+            (coinMapValue outputs `C.add` mconcat change)
 
 prop_algorithm
     :: CoinSelectionAlgorithm i o IO
-    -> CoinSelectionData i o
-    -> (CoinSelectionResult i o -> Expectation)
+    -> (CoinSelectionData i o -> CoinSelectionResult i o -> Expectation)
+    -> (CoinSelectionData i o)
     -> Property
-prop_algorithm algorithm csd verifyExpectation =
+prop_algorithm algorithm verifyExpectation params =
     withMaxSuccess 1_000 $ monadicIO $ QC.run $ do
         mResult <- generateResult
         pure $ isRight mResult ==>
             let Right result = mResult in
-            verifyExpectation result
+            verifyExpectation params result
   where
-    CoinSelectionData {csdInputsAvailable, csdOutputsRequested} = csd
+    CoinSelectionData {csdInputsAvailable, csdOutputsRequested} = params
     generateResult = runExceptT
         $ selectCoins algorithm
         $ CoinSelectionParameters csdInputsAvailable csdOutputsRequested
