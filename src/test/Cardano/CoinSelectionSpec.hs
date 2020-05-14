@@ -179,6 +179,12 @@ coinSelectionAlgorithmGeneralProperties algorithm algorithmName =
             prop_algorithm_inputsSelected_inputsRemaining_inputsAvailable
             algorithm
 
+        it "value inputsSelected =\
+            \ value outputsSelected + value changeGenerated" $
+            property $
+            prop_algorithm_inputsSelected_outputsSelected_changeGenerated
+            algorithm
+
 --------------------------------------------------------------------------------
 -- Coin Map Properties
 --------------------------------------------------------------------------------
@@ -416,6 +422,17 @@ prop_algorithm_inputsSelected_inputsRemaining_inputsAvailable algorithm csd =
                 `shouldBe` available
   where
     available = csdInputsAvailable csd
+
+prop_algorithm_inputsSelected_outputsSelected_changeGenerated
+    :: CoinSelectionAlgorithm i o IO
+    -> CoinSelectionData i o
+    -> Property
+prop_algorithm_inputsSelected_outputsSelected_changeGenerated algorithm csd =
+    prop_algorithm algorithm csd $
+        \(CoinSelectionResult (CoinSelection {inputs, outputs, change}) _) ->
+            coinMapValue inputs
+                `shouldBe`
+                (coinMapValue outputs `C.add` mconcat change)
 
 prop_algorithm
     :: CoinSelectionAlgorithm i o IO
