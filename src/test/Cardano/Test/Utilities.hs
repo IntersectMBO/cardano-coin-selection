@@ -30,7 +30,6 @@ module Cardano.Test.Utilities
 
     -- * Transactions
     , TxIn (..)
-    , TxOut (..)
 
     -- * UTxO Operations
     , excluding
@@ -199,23 +198,6 @@ instance Buildable TxIn where
         <> ordinalF (txinIx txin + 1)
         <> " "
         <> build (txinId txin)
-
-data TxOut = TxOut
-    { txoutAddress
-        :: !Address
-    , txoutCoin
-        :: !Coin
-    } deriving (Show, Generic, Eq, Ord)
-
-instance Buildable TxOut where
-    build txout = mempty
-        <> build (txoutCoin txout)
-        <> " @ "
-        <> prefixF 8 addrF
-        <> "..."
-        <> suffixF 8 addrF
-      where
-        addrF = build $ txoutAddress txout
 
 --------------------------------------------------------------------------------
 -- UTxO Operations

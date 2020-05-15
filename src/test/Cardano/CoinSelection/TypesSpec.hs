@@ -21,7 +21,6 @@ import Cardano.Test.Utilities
     , Hash (..)
     , ShowFmt (..)
     , TxIn (..)
-    , TxOut (..)
     , excluding
     , isSubsetOf
     , restrictedBy
@@ -234,12 +233,6 @@ instance Arbitrary Address where
 instance Arbitrary Coin where
     -- No Shrinking
     arbitrary = unsafeCoin @Int <$> choose (0, 3)
-
-instance Arbitrary TxOut where
-    -- No Shrinking
-    arbitrary = TxOut
-        <$> arbitrary
-        <*> arbitrary
 
 instance Arbitrary TxIn where
     -- No Shrinking
