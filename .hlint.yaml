@@ -54,6 +54,7 @@
 - ignore: {name: "Use camelCase"}    # Sometimes useful in test code.
 - ignore: {name: "Redundant lambda"} # Sometimes useful in test code.
 - ignore: {name: "Collapse lambdas"} # Sometimes useful in test code.
+- ignore: {name: "Use section"} # Useful for aligning elements vertically.
 
 # Add custom hints for this project
 #

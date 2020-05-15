@@ -54,10 +54,11 @@ import Cardano.CoinSelection.Fee
     , splitCoin
     )
 import Cardano.Test.Utilities
-    ( Address (..)
-    , Hash (..)
+    ( InputId
+    , OutputId
     , ShowFmt (..)
-    , TxIn (..)
+    , genInputId
+    , genOutputId
     , unsafeCoin
     , unsafeDustThreshold
     , unsafeFee
@@ -101,7 +102,6 @@ import Test.QuickCheck
     , Gen
     , Positive (getPositive)
     , Property
-    , arbitraryBoundedIntegral
     , checkCoverage
     , choose
     , counterexample
@@ -114,7 +114,6 @@ import Test.QuickCheck
     , genericShrink
     , oneof
     , property
-    , scale
     , tabulate
     , vectorOf
     , withMaxSuccess
@@ -126,7 +125,6 @@ import Test.QuickCheck.Monadic
     ( monadicIO )
 
 import qualified Cardano.CoinSelection as CS
-import qualified Data.ByteString as BS
 import qualified Data.Foldable as F
 import qualified Data.List as L
 import qualified Data.List.NonEmpty as NE
@@ -366,14 +364,14 @@ spec = do
 
     describe "Fee Calculation: Generators" $ do
         it "Arbitrary CoinSelection" $ property $ \(ShowFmt cs) ->
-            property $ isValidSelection @TxIn @Address cs
+            property $ isValidSelection @InputId @OutputId cs
 
     before getSystemDRG $ describe "Fee Adjustment properties" $ do
         it "Fee adjustment is deterministic when there's no extra inputs"
-            (\_ -> property $ propDeterministic @TxIn @Address)
+            (\_ -> property $ propDeterministic @InputId @OutputId)
         it "Adjusting for fee (/= 0) reduces the change outputs or increase \
             \inputs"
-            (property . propReducedChanges @TxIn @Address)
+            (property . propReducedChanges @InputId @OutputId)
 
     describe "distributeFee" $ do
         it "fee portions are all within unity of ideal unrounded portions"
@@ -402,7 +400,7 @@ spec = do
             (checkCoverage propReduceChangeOutputsDataCoverage)
         it "the fee balancing algorithm converges for any coin selection"
             ( withMaxSuccess 100_000
-            $ propReduceChangeOutputsConverge @TxIn @Address
+            $ propReduceChangeOutputsConverge @InputId @OutputId
             )
 
     describe "splitCoin" $ do
@@ -858,11 +856,11 @@ feeOptions fee dust = FeeOptions
 
 feeUnitTest
     :: FeeFixture
-    -> Either (FeeAdjustmentError TxIn Address) FeeOutput
+    -> Either (FeeAdjustmentError InputId OutputId) FeeOutput
     -> SpecWith ()
 feeUnitTest (FeeFixture inpsF outsF chngsF utxoF feeF dustF) expected =
     it title $ do
-        (utxo, sel) <- setup @TxIn @Address
+        (utxo, sel) <- setup @InputId @OutputId
         result <- runExceptT $ do
             (CoinSelection inps outs chngs) <-
                 adjustForFee (feeOptions feeF dustF) utxo sel
@@ -927,6 +925,12 @@ sortFeeOutput (FeeOutput is os cs) =
 -- Arbitrary Instances
 --------------------------------------------------------------------------------
 
+instance Arbitrary InputId where
+    arbitrary = genInputId 8
+
+instance Arbitrary OutputId where
+    arbitrary = genOutputId 8
+
 deriving newtype instance Arbitrary a => Arbitrary (ShowFmt a)
 
 genInputs :: (Arbitrary i, Ord i) => [Coin] -> Gen (CoinMap i)
@@ -952,12 +956,6 @@ genSelection outs = do
     case runIdentity $ runExceptT $ selectCoins largestFirst params of
         Left _ -> genSelection outs
         Right (CoinSelectionResult s _) -> return s
-
-instance Arbitrary TxIn where
-    shrink _ = []
-    arbitrary = TxIn
-        <$> arbitrary
-        <*> scale (`mod` 3) arbitrary -- No need for a high indexes
 
 instance Arbitrary Coin where
     arbitrary = unsafeCoin @Int <$> choose (1, 100_000)
@@ -992,18 +990,6 @@ instance (Arbitrary i, Arbitrary o, Ord i, Ord o) =>
         fee <- choose (100000, 500000)
         dust <- choose (0, 10000)
         return $ FeeProp cs utxo (fee, dust)
-
-instance Arbitrary (Hash "Tx") where
-    shrink _ = []
-    arbitrary = do
-        bytes <- BS.pack <$> vectorOf 8 arbitraryBoundedIntegral
-        pure $ Hash bytes
-
-instance Arbitrary Address where
-    shrink _ = []
-    arbitrary = do
-        bytes <- BS.pack <$> vectorOf 8 arbitraryBoundedIntegral
-        pure $ Address bytes
 
 instance (Arbitrary i, Arbitrary o, Ord i, Ord o) =>
     Arbitrary (CoinSelection i o)

@@ -36,7 +36,7 @@ import Cardano.CoinSelectionSpec
     , coinSelectionUnitTest
     )
 import Cardano.Test.Utilities
-    ( Address, TxIn, unsafeCoin )
+    ( InputId, OutputId, unsafeCoin )
 import Control.Monad.Trans.Except
     ( runExceptT )
 import Crypto.Random
@@ -219,12 +219,12 @@ spec = do
         describe "Coin selection properties : random algorithm" $ do
             it "forall (UTxO, NonEmpty TxOut), running algorithm gives not \
                 \less UTxO fragmentation than LargestFirst algorithm"
-                (property . propFragmentation @TxIn @Address)
+                (property . propFragmentation @InputId @OutputId)
             it "forall (UTxO, NonEmpty TxOut), running algorithm gives the \
                 \same errors as LargestFirst algorithm"
-                (property . propErrors @TxIn @Address)
+                (property . propErrors @InputId @OutputId)
 
-    coinSelectionAlgorithmGeneralProperties @Int @Int
+    coinSelectionAlgorithmGeneralProperties @InputId @OutputId
         randomImprove "Random-Improve"
 
 --------------------------------------------------------------------------------

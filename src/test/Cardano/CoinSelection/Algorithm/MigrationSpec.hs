@@ -37,15 +37,14 @@ import Cardano.CoinSelection.FeeSpec
 import Cardano.CoinSelectionSpec
     ()
 import Cardano.Test.Utilities
-    ( Address
-    , Hash (..)
-    , TxIn (..)
+    ( InputId
+    , OutputId
+    , genInputId
+    , mkInputId
     , unsafeCoin
     , unsafeDustThreshold
     , unsafeFee
     )
-import Data.ByteString
-    ( ByteString )
 import Data.Function
     ( (&) )
 import Internal.Coin
@@ -65,7 +64,6 @@ import Test.QuickCheck
     , frequency
     , label
     , property
-    , scale
     , vectorOf
     , withMaxSuccess
     , (===)
@@ -73,8 +71,6 @@ import Test.QuickCheck
 import Test.QuickCheck.Monadic
     ( monadicIO, monitor, pick )
 
-import qualified Data.ByteString as BS
-import qualified Data.ByteString.Char8 as B8
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Internal.Coin as C
@@ -119,27 +115,27 @@ spec = do
     describe "selectCoins properties" $ do
         it "No coin selection has outputs" $
             property $ withMaxSuccess 10_000 $ prop_onlyChangeOutputs
-                @(Wrapped TxIn) @Address
+                @(Wrapped InputId) @OutputId
 
         it "Every coin in the selection change > dust threshold" $
             property $ withMaxSuccess 10_000 $ prop_allAboveThreshold
-                @(Wrapped TxIn) @Address
+                @(Wrapped InputId) @OutputId
 
         it "Total input UTxO value >= sum of selection change coins" $
             property $ withMaxSuccess 10_000 $ prop_inputsGreaterThanOutputs
-                @(Wrapped TxIn) @Address
+                @(Wrapped InputId) @OutputId
 
         it "Every selection input is unique" $
             property $ withMaxSuccess 10_000 $ prop_inputsAreUnique
-                @(Wrapped TxIn) @Address
+                @(Wrapped InputId) @OutputId
 
         it "Every selection input is a member of the UTxO" $
             property $ withMaxSuccess 10_000 $ prop_inputsStillInUTxO
-                @(Wrapped TxIn) @Address
+                @(Wrapped InputId) @OutputId
 
         it "Every coin selection is well-balanced" $
             property $ withMaxSuccess 10_000 $ prop_wellBalanced
-                @(Wrapped TxIn) @Address
+                @(Wrapped InputId) @OutputId
 
     describe "selectCoins regressions" $ do
         it "regression #1" $ do
@@ -152,15 +148,12 @@ spec = do
                     }
             let batchSize = BatchSize 1
             let utxo = CoinMap $ Map.fromList
-                    [ ( TxIn
-                        { txinId = Hash "|\243^\SUBg\242\231\&1\213\203"
-                        , txinIx = 2
-                        }
+                    [ ( mkInputId "|\243^\SUBg\242\231\&1\213\203"
                       , unsafeCoin @Int 2
                       )
                     ]
             property $ prop_inputsGreaterThanOutputs
-                @TxIn @Address feeOpts batchSize utxo
+                @InputId @OutputId feeOpts batchSize utxo
 
 --------------------------------------------------------------------------------
 -- Properties
@@ -278,14 +271,8 @@ newtype Wrapped a = Wrapped { unwrap :: a }
     deriving (Eq, Ord, Show)
 
 -- TODO: Move similar Arbitrary instances to a shared module for better reuse.
-instance Arbitrary (Wrapped TxIn) where
-    arbitrary = fmap Wrapped . TxIn
-        <$> fmap unwrap arbitrary
-        <*> scale (`mod` 3) arbitrary
-
--- TODO: Move similar Arbitrary instances to a shared module for better reuse.
-instance Arbitrary (Wrapped (Hash "Tx")) where
-    arbitrary = Wrapped . Hash <$> (BS.pack <$> vectorOf 32 arbitrary)
+instance Arbitrary (Wrapped InputId) where
+    arbitrary = Wrapped <$> genInputId 8
 
 instance Arbitrary BatchSize where
     arbitrary = BatchSize <$> arbitrarySizedIntegral
@@ -298,7 +285,7 @@ instance Arbitrary BatchSize where
 genBatchSize :: Gen BatchSize
 genBatchSize = BatchSize <$> choose (50, 150)
 
-genFeeOptions :: Coin -> Gen (FeeOptions TxIn Address)
+genFeeOptions :: Coin -> Gen (FeeOptions InputId OutputId)
 genFeeOptions dust = do
     pure $ FeeOptions
         { feeEstimator = FeeEstimator $ \s ->
@@ -311,22 +298,13 @@ genFeeOptions dust = do
         }
 
 -- | Generate a given UTxO with a particular percentage of dust
-genUTxO :: Double -> Coin -> Gen (CoinMap TxIn)
+genUTxO :: Double -> Coin -> Gen (CoinMap InputId)
 genUTxO r dust = do
     n <- choose (10, 1000)
-    inps <- genTxIn n
+    inps <- vectorOf n (genInputId 8)
     coins <- vectorOf n genCoin
     pure $ CoinMap $ Map.fromList $ zip inps coins
   where
-    genTxIn :: Int -> Gen [TxIn]
-    genTxIn n = do
-        ids <- vectorOf n (Hash <$> genBytes 8)
-        ixs <- vectorOf n arbitrary
-        pure $ zipWith TxIn ids ixs
-
-    genBytes :: Int -> Gen ByteString
-    genBytes n = B8.pack <$> vectorOf n arbitrary
-
     genCoin :: Gen Coin
     genCoin = unsafeCoin @Int <$> frequency
         [ (round (100*r), choose (1, integralDust))

@@ -37,7 +37,7 @@ import Cardano.CoinSelectionSpec
     , coinSelectionUnitTest
     )
 import Cardano.Test.Utilities
-    ( Address, TxIn, excluding, unsafeCoin )
+    ( InputId, OutputId, excluding, unsafeCoin )
 import Control.Monad
     ( unless )
 import Control.Monad.Trans.Except
@@ -265,20 +265,20 @@ spec = do
         it "forall (UTxO, NonEmpty TxOut), for all selected input, there's no \
             \bigger input in the UTxO that is not already in the selected \
             \inputs"
-            (property $ propInputDecreasingOrder @TxIn @Address)
+            (property $ propInputDecreasingOrder @InputId @OutputId)
 
         it "The algorithm selects just enough inputs and no more."
             (property
                 $ withMaxSuccess 10_000
-                $ propSelectionMinimal @Int @Int)
+                $ propSelectionMinimal @InputId @OutputId)
 
         it "The algorithm produces the correct set of change."
             (checkCoverage
                 $ property
                 $ withMaxSuccess 10_000
-                $ propChangeCorrect @Int @Int)
+                $ propChangeCorrect @InputId @OutputId)
 
-    coinSelectionAlgorithmGeneralProperties @Int @Int
+    coinSelectionAlgorithmGeneralProperties @InputId @OutputId
         largestFirst "Largest-First"
 
 --------------------------------------------------------------------------------
