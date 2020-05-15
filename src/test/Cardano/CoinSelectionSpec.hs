@@ -46,7 +46,7 @@ import Cardano.CoinSelection
     , sumOutputs
     )
 import Cardano.Test.Utilities
-    ( Address (..), Hash (..), ShowFmt (..), TxIn (..), unsafeCoin )
+    ( InputId, OutputId, ShowFmt (..), genInputId, genOutputId, unsafeCoin )
 import Control.Arrow
     ( (&&&) )
 import Control.Monad
@@ -64,7 +64,7 @@ import Data.Maybe
 import Data.Set
     ( Set )
 import Data.Word
-    ( Word16, Word8 )
+    ( Word16 )
 import Fmt
     ( Buildable (..), blockListF, nameF )
 import Internal.Coin
@@ -76,7 +76,6 @@ import Test.QuickCheck
     , Confidence (..)
     , Gen
     , Property
-    , arbitraryBoundedIntegral
     , checkCoverage
     , checkCoverageWith
     , choose
@@ -86,7 +85,6 @@ import Test.QuickCheck
     , genericShrink
     , oneof
     , property
-    , scale
     , vectorOf
     , withMaxSuccess
     , (.&&.)
@@ -97,7 +95,6 @@ import Test.QuickCheck.Monadic
 import Test.Vector.Shuffle
     ( shuffle )
 
-import qualified Data.ByteString as BS
 import qualified Data.Foldable as F
 import qualified Data.List as L
 import qualified Data.List.NonEmpty as NE
@@ -484,10 +481,10 @@ sortCoinSelectionTestResult (CoinSelectionTestResult is cs os) =
 -- | Generate a 'UTxO' and 'TxOut' matching the given 'Fixture', and perform
 -- the given coin selection on it.
 coinSelectionUnitTest
-    :: CoinSelectionAlgorithm TxIn Address IO
+    :: CoinSelectionAlgorithm InputId OutputId IO
     -> String
     -> Either CoinSelectionError CoinSelectionTestResult
-    -> CoinSelectionFixture TxIn Address
+    -> CoinSelectionFixture InputId OutputId
     -> SpecWith ()
 coinSelectionUnitTest alg lbl expected (CoinSelectionFixture n utxoF outsF) =
     it title $ do
@@ -514,7 +511,7 @@ coinSelectionUnitTest alg lbl expected (CoinSelectionFixture n utxoF outsF) =
         <> ", Output=" <> show outsF
         <> " --> " <> show (rsInputs <$> expected)
 
-    setup :: IO (CoinMap TxIn, CoinMap Address)
+    setup :: IO (CoinMap InputId, CoinMap OutputId)
     setup = do
         utxo <- generate (genUTxO utxoF)
         outs <- generate (genOutputs outsF)
@@ -523,6 +520,12 @@ coinSelectionUnitTest alg lbl expected (CoinSelectionFixture n utxoF outsF) =
 --------------------------------------------------------------------------------
 -- Arbitrary Instances
 --------------------------------------------------------------------------------
+
+instance Arbitrary InputId where
+    arbitrary = genInputId 8
+
+instance Arbitrary OutputId where
+    arbitrary = genOutputId 8
 
 deriving instance Arbitrary a => Arbitrary (ShowFmt a)
 
@@ -582,28 +585,9 @@ instance (Arbitrary i, Arbitrary o, Ord i, Ord o) =>
         genCoin :: Gen Coin
         genCoin = unsafeCoin @Int <$> choose (1, 16)
 
-instance Arbitrary Address where
-    shrink _ = []
-    arbitrary = do
-        bytes <- BS.pack <$> vectorOf 8 arbitraryBoundedIntegral
-        pure $ Address bytes
-
 instance Arbitrary Coin where
     -- No Shrinking
     arbitrary = unsafeCoin @Int <$> choose (1, 100000)
-
-instance Arbitrary TxIn where
-    -- No Shrinking
-    arbitrary = TxIn
-        <$> arbitrary
-        <*> scale (`mod` 3) arbitrary -- No need for a high indexes
-
-instance Arbitrary (Hash "Tx") where
-    -- No Shrinking
-    arbitrary = do
-        wds <- vectorOf 10 arbitrary :: Gen [Word8]
-        let bs = BS.pack wds
-        pure $ Hash bs
 
 instance Arbitrary a => Arbitrary (CoinMapEntry a) where
     -- No Shrinking
@@ -624,13 +608,13 @@ instance (Arbitrary a, Ord a) => Arbitrary (CoinMap a) where
             <*> vectorOf n arbitrary
         return $ CoinMap $ Map.fromList entries
 
-genUTxO :: [Integer] -> Gen (CoinMap TxIn)
+genUTxO :: [Integer] -> Gen (CoinMap InputId)
 genUTxO coins = do
     let n = length coins
     inps <- vectorOf n arbitrary
     return $ CoinMap $ Map.fromList $ zip inps (unsafeCoin <$> coins)
 
-genOutputs :: [Integer] -> Gen (CoinMap Address)
+genOutputs :: [Integer] -> Gen (CoinMap OutputId)
 genOutputs coins = do
     let n = length coins
     outs <- vectorOf n arbitrary

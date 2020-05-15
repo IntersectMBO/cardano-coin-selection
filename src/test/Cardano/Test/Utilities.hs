@@ -4,9 +4,9 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE NumericUnderscores #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 
@@ -19,17 +19,18 @@
 --
 module Cardano.Test.Utilities
     (
-    -- * Addresses
-      Address (..)
+    -- * Input Identifiers
+      InputId
+    , mkInputId
+    , genInputId
 
-    -- * Hashes
-    , Hash (..)
+    -- * Output Identifiers
+    , OutputId
+    , mkOutputId
+    , genOutputId
 
     -- * Formatting
     , ShowFmt (..)
-
-    -- * Transactions
-    , TxIn (..)
 
     -- * UTxO Operations
     , excluding
@@ -53,67 +54,86 @@ import Cardano.CoinSelection.Fee
     ( DustThreshold (..), Fee (..) )
 import Control.DeepSeq
     ( NFData (..) )
-import Data.ByteArray
-    ( ByteArrayAccess )
 import Data.ByteArray.Encoding
     ( Base (Base16), convertFromBase, convertToBase )
 import Data.ByteString
     ( ByteString )
 import Data.Maybe
     ( fromMaybe )
+import Data.Proxy
+    ( Proxy (..) )
 import Data.Set
     ( Set )
-import Data.Word
-    ( Word32 )
 import Fmt
-    ( Buildable (..)
-    , blockListF
-    , fmt
-    , listF
-    , nameF
-    , ordinalF
-    , prefixF
-    , suffixF
-    )
+    ( Buildable (..), blockListF, fmt, listF, nameF )
 import GHC.Generics
     ( Generic )
 import GHC.Stack
     ( HasCallStack )
 import GHC.TypeLits
-    ( Symbol )
+    ( KnownSymbol, Symbol, symbolVal )
 import Internal.Coin
     ( Coin, coinFromIntegral )
 import Numeric.Natural
     ( Natural )
-import Quiet
-    ( Quiet (Quiet) )
+import Test.QuickCheck
+    ( Gen, arbitraryBoundedIntegral, vectorOf )
 
+import qualified Data.ByteString as BS
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
+import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import qualified Internal.Coin as C
 
 --------------------------------------------------------------------------------
--- Addresses
+-- Unique Identifiers
 --------------------------------------------------------------------------------
 
-newtype Address = Address
-    { unAddress :: ByteString }
+newtype UniqueId (tag :: Symbol) = UniqueId { unUniqueId :: ByteString }
     deriving stock (Eq, Generic, Ord)
-    deriving Show via (Quiet Address)
 
-instance NFData Address
+instance NFData (UniqueId tag)
 
-instance Buildable Address where
-    build addr = mempty
-        <> prefixF 8 addrF
-        <> "..."
-        <> suffixF 8 addrF
-      where
-        addrF = build (toText addr)
-        toText = T.decodeUtf8
-            . convertToBase Base16
-            . unAddress
+-- Generate a unique identifier of a given length in bytes.
+genUniqueId :: Int -> Gen (UniqueId tag)
+genUniqueId n = UniqueId . BS.pack <$> vectorOf n arbitraryBoundedIntegral
+
+instance forall tag . KnownSymbol tag => Show (UniqueId tag) where
+    show
+        = ((<>) (symbolVal (Proxy :: Proxy tag)))
+        . ((<>) " ")
+        . T.unpack
+        . T.decodeUtf8
+        . convertToBase Base16
+        . unUniqueId
+
+instance KnownSymbol tag => Buildable (UniqueId tag) where
+    build = build . show
+
+--------------------------------------------------------------------------------
+-- Input Identifiers
+--------------------------------------------------------------------------------
+
+type InputId = UniqueId "InputId"
+
+mkInputId :: ByteString -> InputId
+mkInputId = UniqueId
+
+genInputId :: Int -> Gen InputId
+genInputId = genUniqueId
+
+--------------------------------------------------------------------------------
+-- Output Identifiers
+--------------------------------------------------------------------------------
+
+type OutputId = UniqueId "OutputId"
+
+genOutputId :: Int -> Gen OutputId
+genOutputId = genUniqueId
+
+mkOutputId :: ByteString -> OutputId
+mkOutputId = UniqueId
 
 --------------------------------------------------------------------------------
 -- Unsafe Operations
@@ -149,24 +169,6 @@ unsafeFromHex =
     either (error . show) id . convertFromBase @ByteString @ByteString Base16
 
 --------------------------------------------------------------------------------
--- Hashes
---------------------------------------------------------------------------------
-
-newtype Hash (tag :: Symbol) = Hash { getHash :: ByteString }
-    deriving stock (Eq, Generic, Ord)
-    deriving newtype (ByteArrayAccess)
-    deriving Show via (Quiet (Hash tag))
-
-instance NFData (Hash tag)
-
-instance Buildable (Hash tag) where
-    build h = mempty
-        <> prefixF 8 builder
-      where
-        builder = build . toText $ h
-        toText = T.decodeUtf8 . convertToBase Base16 . getHash
-
---------------------------------------------------------------------------------
 -- Formatting
 --------------------------------------------------------------------------------
 
@@ -179,25 +181,6 @@ instance NFData a => NFData (ShowFmt a)
 
 instance Buildable a => Show (ShowFmt a) where
     show (ShowFmt a) = fmt (build a)
-
---------------------------------------------------------------------------------
--- Transactions
---------------------------------------------------------------------------------
-
-data TxIn = TxIn
-    { txinId
-        :: !(Hash "Tx")
-    , txinIx
-        :: !Word32
-    } deriving (Show, Generic, Eq, Ord)
-
-instance NFData TxIn
-
-instance Buildable TxIn where
-    build txin = mempty
-        <> ordinalF (txinIx txin + 1)
-        <> " "
-        <> build (txinId txin)
 
 --------------------------------------------------------------------------------
 -- UTxO Operations

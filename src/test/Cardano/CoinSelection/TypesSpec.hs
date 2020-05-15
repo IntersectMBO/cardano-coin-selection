@@ -1,9 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeApplications #-}
 
 {-# OPTIONS_GHC -fno-warn-orphans #-}
@@ -17,16 +15,13 @@ import Prelude
 import Cardano.CoinSelection
     ( CoinMap (..), coinMapValue )
 import Cardano.Test.Utilities
-    ( Address (..)
-    , Hash (..)
-    , ShowFmt (..)
-    , TxIn (..)
+    ( InputId
     , excluding
     , isSubsetOf
+    , mkInputId
     , restrictedBy
     , restrictedTo
     , unsafeCoin
-    , unsafeFromHex
     )
 import Data.Set
     ( Set, (\\) )
@@ -40,13 +35,12 @@ import Test.QuickCheck
     , checkCoverage
     , choose
     , cover
-    , oneof
     , property
-    , scale
     , vectorOf
     , (===)
     )
 
+import qualified Data.ByteString as BS
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
 import qualified Internal.Coin as C
@@ -56,29 +50,29 @@ spec = do
 
     describe "Lemma 2.1 - Properties of UTxO operations" $ do
         it "2.1.1) ins⊲ u ⊆ u"
-            (checkCoverage $ prop_2_1_1 @TxIn)
+            (checkCoverage $ prop_2_1_1 @InputId)
         it "2.1.2) ins⋪ u ⊆ u"
-            (checkCoverage $ prop_2_1_2 @TxIn)
+            (checkCoverage $ prop_2_1_2 @InputId)
         it "2.1.3) u ⊳ outs ⊆ u"
-            (checkCoverage $ prop_2_1_3 @TxIn)
+            (checkCoverage $ prop_2_1_3 @InputId)
         it "2.1.4) ins⊲ (u ⋃ v) = (ins⊲ u) ⋃ (ins⊲ v)"
-            (checkCoverage $ prop_2_1_4 @TxIn)
+            (checkCoverage $ prop_2_1_4 @InputId)
         it "2.1.5) ins⋪ (u ⋃ v) = (ins⋪ u) ⋃ (ins⋪ v)"
-            (checkCoverage $ prop_2_1_5 @TxIn)
+            (checkCoverage $ prop_2_1_5 @InputId)
         it "2.1.6) (dom u ⋂ ins) ⊲ u = ins⊲ u"
-            (checkCoverage $ prop_2_1_6 @TxIn)
+            (checkCoverage $ prop_2_1_6 @InputId)
         it "2.1.7) (dom u ⋂ ins) ⋪ u = ins⋪ u"
-            (checkCoverage $ prop_2_1_7 @TxIn)
+            (checkCoverage $ prop_2_1_7 @InputId)
         it "2.1.8) (dom u ⋃ ins) ⋪ (u ⋃ v) = (ins ⋃ dom u) ⋪ v"
-            (checkCoverage $ prop_2_1_8 @TxIn)
+            (checkCoverage $ prop_2_1_8 @InputId)
         it "2.1.9) ins⋪ u = (dom u \\ ins)⊲ u"
-            (checkCoverage $ prop_2_1_9 @TxIn)
+            (checkCoverage $ prop_2_1_9 @InputId)
 
     describe "Lemma 2.6 - Properties of balance" $ do
         it "2.6.1) dom u ⋂ dom v ==> balance (u ⋃ v) = balance u + balance v"
-            (checkCoverage $ prop_2_6_1 @TxIn)
+            (checkCoverage $ prop_2_6_1 @InputId)
         it "2.6.2) balance (ins⋪ u) = balance u - balance (ins⊲ u)"
-            (checkCoverage $ prop_2_6_2 @TxIn)
+            (checkCoverage $ prop_2_6_2 @InputId)
 
 --------------------------------------------------------------------------------
 -- Wallet Specification - Lemma 2.1 - Properties of UTxO operations
@@ -209,36 +203,9 @@ dom (CoinMap utxo) = Map.keysSet utxo
 -- something when checking for intersections and set restrictions!
 --------------------------------------------------------------------------------
 
-deriving instance Arbitrary a => Arbitrary (ShowFmt a)
-
-instance Arbitrary (Hash "Tx") where
-    -- No Shrinking
-    arbitrary = oneof
-        [ pure $ Hash $ unsafeFromHex
-            "0000000000000000000000000000000000000000000000000000000000000001"
-        , pure $ Hash $ unsafeFromHex
-            "0000000000000000000000000000000000000000000000000000000000000002"
-        , pure $ Hash $ unsafeFromHex
-            "0000000000000000000000000000000000000000000000000000000000000003"
-        ]
-
-instance Arbitrary Address where
-    -- No Shrinking
-    arbitrary = oneof
-        [ pure $ Address "ADDR01"
-        , pure $ Address "ADDR02"
-        , pure $ Address "ADDR03"
-        ]
-
 instance Arbitrary Coin where
     -- No Shrinking
     arbitrary = unsafeCoin @Int <$> choose (0, 3)
-
-instance Arbitrary TxIn where
-    -- No Shrinking
-    arbitrary = TxIn
-        <$> arbitrary
-        <*> scale (`mod` 3) arbitrary -- No need for a crazy high indexes
 
 instance (Arbitrary u, Ord u) => Arbitrary (CoinMap u) where
     shrink (CoinMap utxo) = CoinMap <$> shrink utxo
@@ -248,3 +215,6 @@ instance (Arbitrary u, Ord u) => Arbitrary (CoinMap u) where
             <$> vectorOf n arbitrary
             <*> vectorOf n arbitrary
         return $ CoinMap $ Map.fromList utxo
+
+instance Arbitrary InputId where
+    arbitrary = mkInputId . BS.singleton <$> choose (0, 7)
