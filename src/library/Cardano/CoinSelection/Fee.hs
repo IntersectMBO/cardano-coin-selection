@@ -63,6 +63,8 @@ import Control.Monad.Trans.State
     ( StateT (..), evalStateT )
 import Crypto.Random.Types
     ( MonadRandom )
+import Data.Bifunctor
+    ( first )
 import Data.Function
     ( (&) )
 import Data.List.NonEmpty
@@ -399,12 +401,14 @@ coverRemainingFee (Fee fee) = go [] where
             return acc
         | otherwise = do
             -- We ignore the size of the fee, and just pick randomly
-            StateT (lift . coinMapRandomEntry) >>= \case
+            StateT (lift . selectRandomEntry) >>= \case
                 Just entry ->
                     go (entry : acc)
                 Nothing ->
                     lift $ throwE $ CannotCoverFee $ Fee $
                         fee `C.distance` (sumEntries acc)
+    selectRandomEntry m =
+        maybe (Nothing, m) (first Just) <$> coinMapRandomEntry m
 
 -- Pays for the given fee by subtracting it from the given list of change
 -- outputs, so that each change output is reduced by a portion of the fee
