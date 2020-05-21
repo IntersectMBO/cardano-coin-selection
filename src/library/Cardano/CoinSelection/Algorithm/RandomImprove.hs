@@ -1,6 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeFamilies #-}
 
 -- |
@@ -288,7 +287,7 @@ makeRandomSelection
         | sumEntries selected >= targetMin (mkTargetRange txout) =
             MaybeT $ return $ Just (selected, remaining)
         | otherwise =
-            utxoPickRandomT remaining >>= \(picked, remaining') ->
+            MaybeT (coinMapRandomEntry remaining) >>= \(picked, remaining') ->
                 coverRandomly (picked : selected, remaining')
 
 -- | Perform an improvement to random selection on a given output.
@@ -316,7 +315,7 @@ improveSelection (maxN0, selection, utxo0) (inps0, txout) = do
         -> m (Integer, [CoinMapEntry i], CoinMap i)
     improve (maxN, inps, utxo)
         | maxN >= 1 && sumEntries inps < targetAim target = do
-            runMaybeT (utxoPickRandomT utxo) >>= \case
+            coinMapRandomEntry utxo >>= \case
                 Nothing ->
                     return (maxN, inps, utxo)
                 Just (io, utxo') | isImprovement io inps -> do
@@ -381,16 +380,6 @@ mkTargetRange (CoinMapEntry _ c) = TargetRange
     , targetAim = c `C.add` c
     , targetMax = c `C.add` c `C.add` c
     }
-
--- | Re-wrap 'utxoPickRandom' in a 'MaybeT' monad
-utxoPickRandomT
-    :: MonadRandom m
-    => CoinMap i
-    -> MaybeT m (CoinMapEntry i, CoinMap i)
-utxoPickRandomT =
-    MaybeT
-        . fmap (\(mi, u) -> (, u) <$> mi)
-        . coinMapRandomEntry
 
 -- | Compute change outputs from a target output and a selection of inputs.
 --

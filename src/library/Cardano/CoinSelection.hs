@@ -388,12 +388,12 @@ newtype InputLimitExceededError =
 coinMapRandomEntry
     :: MonadRandom m
     => CoinMap a
-    -> m (Maybe (CoinMapEntry a), CoinMap a)
+    -> m (Maybe (CoinMapEntry a, CoinMap a))
 coinMapRandomEntry (CoinMap m)
     | Map.null m =
-        return (Nothing, CoinMap m)
-    | otherwise = do
+        return Nothing
+    | otherwise = Just <$> do
         ix <- fromEnum <$> generateBetween 0 (toEnum (Map.size m - 1))
         let entry = uncurry CoinMapEntry $ Map.elemAt ix m
         let remainder = CoinMap $ Map.deleteAt ix m
-        return (Just entry, remainder)
+        return (entry, remainder)
