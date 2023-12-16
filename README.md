@@ -5,6 +5,6 @@
 
 This repository provides reference implementations of algorithms for coin selection and change generation, as specified by [CIP-2](https://cips.cardano.org/cips/cip2/).
 
-## Documentation
+## Documentation 
 
 API documentation is available [here](https://input-output-hk.github.io/cardano-coin-selection/haddock).
