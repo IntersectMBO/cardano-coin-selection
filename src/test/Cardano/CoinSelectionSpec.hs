@@ -28,100 +28,58 @@ module Cardano.CoinSelectionSpec (
 
 import Prelude
 
-import Cardano.CoinSelection (
-    CoinMap (..),
-    CoinMapEntry (..),
-    CoinSelection (..),
-    CoinSelectionAlgorithm (..),
-    CoinSelectionError (..),
-    CoinSelectionLimit (..),
-    CoinSelectionParameters (..),
-    CoinSelectionResult (..),
-    coinMapFromList,
-    coinMapToList,
-    coinMapValue,
-    sumChange,
-    sumInputs,
-    sumOutputs,
- )
-import Cardano.Test.Utilities (
-    InputId,
-    OutputId,
-    ShowFmt (..),
-    genInputId,
-    genOutputId,
-    unsafeCoin,
- )
-import Control.Arrow (
-    (&&&),
- )
-import Control.Monad (
-    replicateM,
- )
-import Control.Monad.Trans.Except (
-    runExceptT,
- )
-import Data.Either (
-    isRight,
- )
-import Data.Function (
-    (&),
- )
-import Data.List.NonEmpty (
-    NonEmpty (..),
- )
-import Data.Maybe (
-    catMaybes,
- )
-import Data.Set (
-    Set,
- )
-import Data.Word (
-    Word16,
- )
-import Fmt (
-    Buildable (..),
-    blockListF,
-    nameF,
- )
-import Internal.Coin (
-    Coin,
-    coinToIntegral,
- )
-import Test.Hspec (
-    Expectation,
-    Spec,
-    SpecWith,
-    describe,
-    it,
-    shouldBe,
-    shouldSatisfy,
- )
-import Test.QuickCheck (
-    Arbitrary (..),
-    Confidence (..),
-    Gen,
-    Property,
-    checkCoverage,
-    checkCoverageWith,
-    choose,
-    cover,
-    elements,
-    generate,
-    genericShrink,
-    oneof,
-    property,
-    vectorOf,
-    withMaxSuccess,
-    (.&&.),
-    (==>),
- )
-import Test.QuickCheck.Monadic (
-    monadicIO,
- )
-import Test.Vector.Shuffle (
-    shuffle,
- )
+import Cardano.CoinSelection
+    ( CoinMap (..)
+    , CoinMapEntry (..)
+    , CoinSelection (..)
+    , CoinSelectionAlgorithm (..)
+    , CoinSelectionError (..)
+    , CoinSelectionLimit (..)
+    , CoinSelectionParameters (..)
+    , CoinSelectionResult (..)
+    , coinMapFromList
+    , coinMapToList
+    , coinMapValue
+    , sumChange
+    , sumInputs
+    , sumOutputs
+    )
+import Cardano.Test.Utilities
+    ( InputId, OutputId, ShowFmt (..), genInputId, genOutputId, unsafeCoin )
+import Control.Arrow ( (&&&) )
+import Control.Monad ( replicateM )
+import Control.Monad.Trans.Except ( runExceptT )
+import Data.Either ( isRight )
+import Data.Function ( (&) )
+import Data.List.NonEmpty ( NonEmpty (..) )
+import Data.Maybe ( catMaybes )
+import Data.Set ( Set )
+import Data.Word ( Word16 )
+import Fmt ( Buildable (..), blockListF, nameF )
+import Internal.Coin ( Coin, coinToIntegral )
+import Test.Hspec
+    ( Expectation, Spec, SpecWith, describe, it, shouldBe, shouldSatisfy )
+import Test.QuickCheck
+    ( Arbitrary (..)
+    , Confidence (..)
+    , Gen
+    , Property
+    , checkCoverage
+    , checkCoverageWith
+    , choose
+    , cover
+    , elements
+    , generate
+    , genericShrink
+    , oneof
+    , property
+    , vectorOf
+    , withMaxSuccess
+    , (.&&.)
+    , (==>)
+    )
+import Test.QuickCheck.Monadic ( monadicIO )
+import Test.Vector.Shuffle ( shuffle )
 
 import qualified Data.Foldable as F
 import qualified Data.List as L

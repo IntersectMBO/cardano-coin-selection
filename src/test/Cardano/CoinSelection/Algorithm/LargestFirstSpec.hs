@@ -12,68 +12,38 @@ module Cardano.CoinSelection.Algorithm.LargestFirstSpec (
 
 import Prelude
 
-import Cardano.CoinSelection (
-    CoinMap (..),
-    CoinMapEntry (..),
-    CoinSelection (..),
-    CoinSelectionAlgorithm (..),
-    CoinSelectionError (..),
-    CoinSelectionLimit (..),
-    CoinSelectionParameters (..),
-    CoinSelectionResult (..),
-    InputLimitExceededError (..),
-    InputValueInsufficientError (..),
-    coinMapFromList,
-    coinMapToList,
-    coinMapValue,
- )
-import Cardano.CoinSelection.Algorithm.LargestFirst (
-    largestFirst,
- )
-import Cardano.CoinSelectionSpec (
-    CoinSelectionData (..),
-    CoinSelectionFixture (..),
-    CoinSelectionTestResult (..),
-    coinSelectionAlgorithmGeneralProperties,
-    coinSelectionUnitTest,
- )
-import Cardano.Test.Utilities (
-    InputId,
-    OutputId,
-    excluding,
-    unsafeCoin,
- )
-import Control.Monad (
-    unless,
- )
-import Control.Monad.Trans.Except (
-    runExceptT,
- )
-import Data.Either (
-    isRight,
- )
-import Data.Function (
-    (&),
- )
-import Data.Functor.Identity (
-    Identity (runIdentity),
- )
-import Test.Hspec (
-    Spec,
-    describe,
-    it,
-    shouldBe,
-    shouldSatisfy,
- )
-import Test.QuickCheck (
-    Property,
-    checkCoverage,
-    cover,
-    property,
-    withMaxSuccess,
-    (.&&.),
-    (==>),
- )
+import Cardano.CoinSelection
+    ( CoinMap (..)
+    , CoinMapEntry (..)
+    , CoinSelection (..)
+    , CoinSelectionAlgorithm (..)
+    , CoinSelectionError (..)
+    , CoinSelectionLimit (..)
+    , CoinSelectionParameters (..)
+    , CoinSelectionResult (..)
+    , InputLimitExceededError (..)
+    , InputValueInsufficientError (..)
+    , coinMapFromList
+    , coinMapToList
+    , coinMapValue
+    )
+import Cardano.CoinSelection.Algorithm.LargestFirst ( largestFirst )
+import Cardano.CoinSelectionSpec
+    ( CoinSelectionData (..)
+    , CoinSelectionFixture (..)
+    , CoinSelectionTestResult (..)
+    , coinSelectionAlgorithmGeneralProperties
+    , coinSelectionUnitTest
+    )
+import Cardano.Test.Utilities ( InputId, OutputId, excluding, unsafeCoin )
+import Control.Monad ( unless )
+import Control.Monad.Trans.Except ( runExceptT )
+import Data.Either ( isRight )
+import Data.Function ( (&) )
+import Data.Functor.Identity ( Identity (runIdentity) )
+import Test.Hspec ( Spec, describe, it, shouldBe, shouldSatisfy )
+import Test.QuickCheck
+    ( Property, checkCoverage, cover, property, withMaxSuccess, (.&&.), (==>) )
 
 import qualified Data.List as L
 import qualified Data.Map.Strict as Map

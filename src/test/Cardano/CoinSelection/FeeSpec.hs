@@ -21,137 +21,87 @@ module Cardano.CoinSelection.FeeSpec (
     valueDependentEstimator,
 ) where
 
-import Prelude hiding (
-    round,
- )
+import Prelude hiding ( round )
 
-import Cardano.CoinSelection (
-    CoinMap (..),
-    CoinMapEntry (..),
-    CoinSelection (..),
-    CoinSelectionAlgorithm (..),
-    CoinSelectionResult (..),
-    coinMapFromList,
-    coinMapToList,
-    sumChange,
-    sumInputs,
-    sumOutputs,
- )
-import Cardano.CoinSelection.Algorithm.LargestFirst (
-    largestFirst,
- )
-import Cardano.CoinSelection.Fee (
-    DustThreshold (..),
-    Fee (..),
-    FeeAdjustmentError (..),
-    FeeBalancingPolicy (..),
-    FeeEstimator (..),
-    FeeOptions (..),
-    adjustForFee,
-    coalesceDust,
-    distributeFee,
-    reduceChangeOutputs,
-    splitCoin,
- )
-import Cardano.Test.Utilities (
-    InputId,
-    OutputId,
-    ShowFmt (..),
-    genInputId,
-    genOutputId,
-    unsafeCoin,
-    unsafeDustThreshold,
-    unsafeFee,
- )
-import Control.Arrow (
-    left,
- )
-import Control.Monad (
-    replicateM,
- )
-import Control.Monad.IO.Class (
-    liftIO,
- )
-import Control.Monad.Trans.Except (
-    runExceptT,
- )
-import Crypto.Random (
-    SystemDRG,
-    getSystemDRG,
- )
-import Crypto.Random.Types (
-    withDRG,
- )
-import Data.Either (
-    isRight,
- )
-import Data.Function (
-    (&),
- )
-import Data.Functor.Identity (
-    Identity (runIdentity),
- )
-import Data.List.NonEmpty (
-    NonEmpty (..),
- )
-import Data.Monoid (
-    All (..),
- )
-import Data.Ratio (
-    (%),
- )
-import Fmt (
-    Buildable (..),
-    nameF,
-    tupleF,
- )
-import GHC.Generics (
-    Generic,
- )
-import Internal.Coin (
-    Coin,
-    coinToIntegral,
- )
-import Internal.Rounding (
-    RoundingDirection (..),
-    round,
- )
-import Test.Hspec (
-    Spec,
-    SpecWith,
-    before,
-    describe,
-    it,
-    shouldBe,
-    shouldSatisfy,
- )
-import Test.QuickCheck (
-    Arbitrary (..),
-    Gen,
-    Positive (getPositive),
-    Property,
-    checkCoverage,
-    choose,
-    counterexample,
-    cover,
-    coverTable,
-    disjoin,
-    elements,
-    expectFailure,
-    generate,
-    genericShrink,
-    oneof,
-    property,
-    tabulate,
-    vectorOf,
-    withMaxSuccess,
-    (.&&.),
-    (===),
-    (==>),
- )
-import Test.QuickCheck.Monadic (
-    monadicIO,
- )
+import Cardano.CoinSelection
+    ( CoinMap (..)
+    , CoinMapEntry (..)
+    , CoinSelection (..)
+    , CoinSelectionAlgorithm (..)
+    , CoinSelectionResult (..)
+    , coinMapFromList
+    , coinMapToList
+    , sumChange
+    , sumInputs
+    , sumOutputs
+    )
+import Cardano.CoinSelection.Algorithm.LargestFirst ( largestFirst )
+import Cardano.CoinSelection.Fee
+    ( DustThreshold (..)
+    , Fee (..)
+    , FeeAdjustmentError (..)
+    , FeeBalancingPolicy (..)
+    , FeeEstimator (..)
+    , FeeOptions (..)
+    , adjustForFee
+    , coalesceDust
+    , distributeFee
+    , reduceChangeOutputs
+    , splitCoin
+    )
+import Cardano.Test.Utilities
+    ( InputId
+    , OutputId
+    , ShowFmt (..)
+    , genInputId
+    , genOutputId
+    , unsafeCoin
+    , unsafeDustThreshold
+    , unsafeFee
+    )
+import Control.Arrow ( left )
+import Control.Monad ( replicateM )
+import Control.Monad.IO.Class ( liftIO )
+import Control.Monad.Trans.Except ( runExceptT )
+import Crypto.Random ( SystemDRG, getSystemDRG )
+import Crypto.Random.Types ( withDRG )
+import Data.Either ( isRight )
+import Data.Function ( (&) )
+import Data.Functor.Identity ( Identity (runIdentity) )
+import Data.List.NonEmpty ( NonEmpty (..) )
+import Data.Monoid ( All (..) )
+import Data.Ratio ( (%) )
+import Fmt ( Buildable (..), nameF, tupleF )
+import GHC.Generics ( Generic )
+import Internal.Coin ( Coin, coinToIntegral )
+import Internal.Rounding ( RoundingDirection (..), round )
+import Test.Hspec
+    ( Spec, SpecWith, before, describe, it, shouldBe, shouldSatisfy )
+import Test.QuickCheck
+    ( Arbitrary (..)
+    , Gen
+    , Positive (getPositive)
+    , Property
+    , checkCoverage
+    , choose
+    , counterexample
+    , cover
+    , coverTable
+    , disjoin
+    , elements
+    , expectFailure
+    , generate
+    , genericShrink
+    , oneof
+    , property
+    , tabulate
+    , vectorOf
+    , withMaxSuccess
+    , (.&&.)
+    , (===)
+    , (==>)
+    )
+import Test.QuickCheck.Monadic ( monadicIO )
 
 import qualified Cardano.CoinSelection as CS
 import qualified Data.Foldable as F

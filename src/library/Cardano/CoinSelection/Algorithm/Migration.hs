@@ -45,18 +45,12 @@ import Cardano.CoinSelection.Fee
     , FeeOptions (..)
     , isDust
     )
-import Control.Monad.Trans.State
-    ( State, evalState, get, put )
-import Data.List.NonEmpty
-    ( NonEmpty ((:|)) )
-import Data.Maybe
-    ( fromMaybe )
-import Data.Word
-    ( Word16 )
-import GHC.Generics
-    ( Generic )
-import Internal.Coin
-    ( Coin, coinFromIntegral, coinToIntegral )
+import Control.Monad.Trans.State ( State, evalState, get, put )
+import Data.List.NonEmpty ( NonEmpty ((:|)) )
+import Data.Maybe ( fromMaybe )
+import Data.Word ( Word16 )
+import GHC.Generics ( Generic )
+import Internal.Coin ( Coin, coinFromIntegral, coinToIntegral )
 
 import qualified Internal.Coin as C
 

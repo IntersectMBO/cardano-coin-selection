@@ -12,8 +12,7 @@ module Cardano.CoinSelection.TypesSpec
 
 import Prelude
 
-import Cardano.CoinSelection
-    ( CoinMap (..), coinMapValue )
+import Cardano.CoinSelection ( CoinMap (..), coinMapValue )
 import Cardano.Test.Utilities
     ( InputId
     , excluding
@@ -23,12 +22,9 @@ import Cardano.Test.Utilities
     , restrictedTo
     , unsafeCoin
     )
-import Data.Set
-    ( Set, (\\) )
-import Internal.Coin
-    ( Coin )
-import Test.Hspec
-    ( Spec, describe, it )
+import Data.Set ( Set, (\\) )
+import Internal.Coin ( Coin )
+import Test.Hspec ( Spec, describe, it )
 import Test.QuickCheck
     ( Arbitrary (..)
     , Property

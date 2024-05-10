@@ -42,8 +42,7 @@ module Cardano.CoinSelection.Fee
 
     ) where
 
-import Prelude hiding
-    ( round )
+import Prelude hiding ( round )
 
 import Cardano.CoinSelection
     ( CoinMap (..)
@@ -55,36 +54,21 @@ import Cardano.CoinSelection
     , sumInputs
     , sumOutputs
     )
-import Control.Monad.Trans.Class
-    ( lift )
-import Control.Monad.Trans.Except
-    ( ExceptT (..), except, throwE )
-import Control.Monad.Trans.State
-    ( StateT (..), evalStateT )
-import Crypto.Random.Types
-    ( MonadRandom )
-import Data.Bifunctor
-    ( first )
-import Data.Function
-    ( (&) )
-import Data.List.NonEmpty
-    ( NonEmpty ((:|)) )
-import Data.Maybe
-    ( fromMaybe )
-import Data.Ord
-    ( Down (..), comparing )
-import Data.Ratio
-    ( (%) )
-import GHC.Generics
-    ( Generic )
-import Internal.Coin
-    ( Coin )
-import Internal.Invariant
-    ( invariant )
-import Internal.Rounding
-    ( RoundingDirection (..), round )
-import Quiet
-    ( Quiet (Quiet) )
+import Control.Monad.Trans.Class ( lift )
+import Control.Monad.Trans.Except ( ExceptT (..), except, throwE )
+import Control.Monad.Trans.State ( StateT (..), evalStateT )
+import Crypto.Random.Types ( MonadRandom )
+import Data.Bifunctor ( first )
+import Data.Function ( (&) )
+import Data.List.NonEmpty ( NonEmpty ((:|)) )
+import Data.Maybe ( fromMaybe )
+import Data.Ord ( Down (..), comparing )
+import Data.Ratio ( (%) )
+import GHC.Generics ( Generic )
+import Internal.Coin ( Coin )
+import Internal.Invariant ( invariant )
+import Internal.Rounding ( RoundingDirection (..), round )
+import Quiet ( Quiet (Quiet) )
 
 import qualified Data.Foldable as F
 import qualified Data.List.NonEmpty as NE

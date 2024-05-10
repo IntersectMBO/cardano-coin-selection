@@ -11,69 +11,37 @@ module Cardano.CoinSelection.Algorithm.RandomImproveSpec (
 
 import Prelude
 
-import Cardano.CoinSelection (
-    CoinSelection (..),
-    CoinSelectionAlgorithm (..),
-    CoinSelectionError (..),
-    CoinSelectionLimit (..),
-    CoinSelectionParameters (..),
-    CoinSelectionResult (..),
-    InputCountInsufficientError (..),
-    InputLimitExceededError (..),
-    InputValueInsufficientError (..),
-    InputsExhaustedError (..),
- )
-import Cardano.CoinSelection.Algorithm.LargestFirst (
-    largestFirst,
- )
-import Cardano.CoinSelection.Algorithm.LargestFirstSpec (
-    isValidLargestFirstError,
- )
-import Cardano.CoinSelection.Algorithm.RandomImprove (
-    randomImprove,
- )
-import Cardano.CoinSelectionSpec (
-    CoinSelectionData (..),
-    CoinSelectionFixture (..),
-    CoinSelectionTestResult (..),
-    coinSelectionAlgorithmGeneralProperties,
-    coinSelectionUnitTest,
- )
-import Cardano.Test.Utilities (
-    InputId,
-    OutputId,
-    unsafeCoin,
- )
-import Control.Monad.Trans.Except (
-    runExceptT,
- )
-import Crypto.Random (
-    SystemDRG,
-    getSystemDRG,
- )
-import Crypto.Random.Types (
-    withDRG,
- )
-import Data.Either (
-    isRight,
- )
-import Data.Functor.Identity (
-    Identity (..),
- )
-import Test.Hspec (
-    Spec,
-    before,
-    describe,
-    it,
-    shouldBe,
-    shouldSatisfy,
- )
-import Test.QuickCheck (
-    Property,
-    counterexample,
-    property,
-    (==>),
- )
+import Cardano.CoinSelection
+    ( CoinSelection (..)
+    , CoinSelectionAlgorithm (..)
+    , CoinSelectionError (..)
+    , CoinSelectionLimit (..)
+    , CoinSelectionParameters (..)
+    , CoinSelectionResult (..)
+    , InputCountInsufficientError (..)
+    , InputLimitExceededError (..)
+    , InputValueInsufficientError (..)
+    , InputsExhaustedError (..)
+    )
+import Cardano.CoinSelection.Algorithm.LargestFirst ( largestFirst )
+import Cardano.CoinSelection.Algorithm.LargestFirstSpec
+    ( isValidLargestFirstError )
+import Cardano.CoinSelection.Algorithm.RandomImprove ( randomImprove )
+import Cardano.CoinSelectionSpec
+    ( CoinSelectionData (..)
+    , CoinSelectionFixture (..)
+    , CoinSelectionTestResult (..)
+    , coinSelectionAlgorithmGeneralProperties
+    , coinSelectionUnitTest
+    )
+import Cardano.Test.Utilities ( InputId, OutputId, unsafeCoin )
+import Control.Monad.Trans.Except ( runExceptT )
+import Crypto.Random ( SystemDRG, getSystemDRG )
+import Crypto.Random.Types ( withDRG )
+import Data.Either ( isRight )
+import Data.Functor.Identity ( Identity (..) )
+import Test.Hspec ( Spec, before, describe, it, shouldBe, shouldSatisfy )
+import Test.QuickCheck ( Property, counterexample, property, (==>) )
 
 import qualified Data.List as L
 

@@ -14,28 +14,17 @@ module Test.Vector.Shuffle
 
 import Prelude
 
-import Control.Monad
-    ( forM_ )
-import Control.Monad.Trans.Class
-    ( lift )
-import Control.Monad.Trans.State.Strict
-    ( evalStateT, state )
-import Crypto.Hash
-    ( hash )
-import Crypto.Hash.Algorithms
-    ( MD5 )
-import Data.List.NonEmpty
-    ( NonEmpty (..) )
-import Data.Maybe
-    ( fromMaybe )
-import Data.Text
-    ( Text )
-import Data.Vector.Mutable
-    ( IOVector )
-import Data.Word
-    ( Word8 )
-import System.Random
-    ( RandomGen, StdGen, mkStdGen, newStdGen, randomR )
+import Control.Monad ( forM_ )
+import Control.Monad.Trans.Class ( lift )
+import Control.Monad.Trans.State.Strict ( evalStateT, state )
+import Crypto.Hash ( hash )
+import Crypto.Hash.Algorithms ( MD5 )
+import Data.List.NonEmpty ( NonEmpty (..) )
+import Data.Maybe ( fromMaybe )
+import Data.Text ( Text )
+import Data.Vector.Mutable ( IOVector )
+import Data.Word ( Word8 )
+import System.Random ( RandomGen, StdGen, mkStdGen, newStdGen, randomR )
 
 import qualified Data.ByteArray as BA
 import qualified Data.ByteString as BS

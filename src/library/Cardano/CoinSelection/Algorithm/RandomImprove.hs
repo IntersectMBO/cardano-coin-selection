@@ -33,20 +33,13 @@ import Cardano.CoinSelection
     , coinMapToList
     , coinMapValue
     )
-import Control.Monad
-    ( foldM )
-import Control.Monad.Trans.Class
-    ( lift )
-import Control.Monad.Trans.Except
-    ( ExceptT (..), throwE )
-import Control.Monad.Trans.Maybe
-    ( MaybeT (..), runMaybeT )
-import Crypto.Random.Types
-    ( MonadRandom )
-import Data.Ord
-    ( Down (..) )
-import Internal.Coin
-    ( Coin )
+import Control.Monad ( foldM )
+import Control.Monad.Trans.Class ( lift )
+import Control.Monad.Trans.Except ( ExceptT (..), throwE )
+import Control.Monad.Trans.Maybe ( MaybeT (..), runMaybeT )
+import Crypto.Random.Types ( MonadRandom )
+import Data.Ord ( Down (..) )
+import Internal.Coin ( Coin )
 
 import qualified Data.List as L
 import qualified Internal.Coin as C

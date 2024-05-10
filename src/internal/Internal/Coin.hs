@@ -41,15 +41,11 @@ module Internal.Coin
 
     ) where
 
-import Prelude hiding
-    ( div, fromIntegral, mod, pred, succ )
+import Prelude hiding ( div, fromIntegral, mod, pred, succ )
 
-import GHC.Generics
-    ( Generic )
-import Numeric.Natural
-    ( Natural )
-import Quiet
-    ( Quiet (Quiet) )
+import GHC.Generics ( Generic )
+import Numeric.Natural ( Natural )
+import Quiet ( Quiet (Quiet) )
 
 import qualified Prelude
 

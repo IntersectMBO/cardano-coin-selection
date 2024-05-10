@@ -14,8 +14,7 @@ module Internal.Rounding
     , round
     ) where
 
-import Prelude hiding
-    ( round )
+import Prelude hiding ( round )
 
 -- | Indicates a rounding direction to be used when converting from a
 --   fractional value to an integral value.

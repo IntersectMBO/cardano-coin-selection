@@ -8,10 +8,8 @@ module Test.Vector.ShuffleSpec
 
 import Prelude
 
-import Data.List.NonEmpty
-    ( NonEmpty (..) )
-import Test.Hspec
-    ( Spec, describe, it )
+import Data.List.NonEmpty ( NonEmpty (..) )
+import Test.Hspec ( Spec, describe, it )
 import Test.QuickCheck
     ( Arbitrary (..)
     , Confidence (..)
@@ -28,10 +26,8 @@ import Test.QuickCheck
     , vectorOf
     , (==>)
     )
-import Test.QuickCheck.Monadic
-    ( assert, monadicIO, monitor, pick, run )
-import Test.Vector.Shuffle
-    ( mkSeed, shuffle, shuffleNonEmpty, shuffleWith )
+import Test.QuickCheck.Monadic ( assert, monadicIO, monitor, pick, run )
+import Test.Vector.Shuffle ( mkSeed, shuffle, shuffleNonEmpty, shuffleWith )
 
 import qualified Data.List as L
 import qualified Data.List.NonEmpty as NE

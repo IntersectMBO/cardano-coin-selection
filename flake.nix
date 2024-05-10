@@ -73,6 +73,7 @@
               # tools that work only with default compiler
               fourmolu = "0.14.0.0";
               hlint = "3.6.1";
+              stylish-haskell = "0.14.5.0";
               haskell-language-server = "2.7.0.0";
             };
           # and from nixpkgs or other inputs
