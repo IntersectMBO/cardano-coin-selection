@@ -3,7 +3,7 @@
 {-# LANGUAGE TypeFamilies #-}
 
 -- |
--- Copyright: © 2018-2020 IOHK
+-- Copyright: © 2018-2024 Intersect MBO
 -- License: Apache-2.0
 --
 -- This module contains an implementation of the __Random-Improve__ coin

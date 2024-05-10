@@ -8,7 +8,7 @@
 {-# OPTIONS_HADDOCK prune #-}
 
 -- |
--- Copyright: © 2018-2020 IOHK
+-- Copyright: © 2018-2024 Intersect MBO
 -- License: Apache-2.0
 --
 -- This module contains an algorithm for migrating all funds from one wallet

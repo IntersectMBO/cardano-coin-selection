@@ -1,10 +1,10 @@
 name:                cardano-coin-selection
 version:             1.0.1
-github:              input-output-hk/cardano-coin-selection
+github:              IntersectMBO/cardano-coin-selection
 license:             Apache-2.0
-author:              IOHK
+author:              Intersect MBO
 maintainer:          operations@iohk.io
-copyright:           2020 IOHK
+copyright:           2024 Intersect MBO
 synopsis:            Algorithms for coin selection and fee balancing.
 category:            Cardano
 
@@ -12,7 +12,7 @@ extra-source-files:
 - ChangeLog.md
 
 description: |
-  Please see the README on GitHub at <https://github.com/input-output-hk/cardano-coin-selection>
+  Please see the README on GitHub at <https://github.com/IntersectMBO/cardano-coin-selection>
 
 dependencies:
 - base >= 4.7 && < 5

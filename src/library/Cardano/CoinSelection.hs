@@ -7,7 +7,7 @@
 {-# OPTIONS_HADDOCK prune #-}
 
 -- |
--- Copyright: © 2018-2020 IOHK
+-- Copyright: © 2018-2024 Intersect MBO
 -- License: Apache-2.0
 --
 -- Provides general functions and types relating to coin selection.

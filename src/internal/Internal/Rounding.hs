@@ -3,7 +3,7 @@
 {-# OPTIONS_HADDOCK hide #-}
 
 -- |
--- Copyright: © 2018-2020 IOHK
+-- Copyright: © 2018-2024 Intersect MBO
 -- License: Apache-2.0
 --
 -- Provides internal types and functions relating to rounding of fractional

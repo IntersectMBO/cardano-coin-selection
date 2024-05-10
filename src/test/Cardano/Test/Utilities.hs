@@ -14,7 +14,7 @@
 
 -- | Utility functions, types, and type class instances used purely for testing.
 --
--- Copyright: © 2018-2020 IOHK
+-- Copyright: © 2018-2024 Intersect MBO
 -- License: Apache-2.0
 --
 module Cardano.Test.Utilities
