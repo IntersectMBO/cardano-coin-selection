@@ -11,7 +11,7 @@
 {-# OPTIONS_HADDOCK prune #-}
 
 -- |
--- Copyright: © 2018-2020 IOHK
+-- Copyright: © 2018-2024 Intersect MBO
 -- License: Apache-2.0
 --
 -- Provides functionality for __adjusting__ coin selections in order to pay for
@@ -42,8 +42,7 @@ module Cardano.CoinSelection.Fee
 
     ) where
 
-import Prelude hiding
-    ( round )
+import Prelude hiding ( round )
 
 import Cardano.CoinSelection
     ( CoinMap (..)
@@ -55,36 +54,21 @@ import Cardano.CoinSelection
     , sumInputs
     , sumOutputs
     )
-import Control.Monad.Trans.Class
-    ( lift )
-import Control.Monad.Trans.Except
-    ( ExceptT (..), except, throwE )
-import Control.Monad.Trans.State
-    ( StateT (..), evalStateT )
-import Crypto.Random.Types
-    ( MonadRandom )
-import Data.Bifunctor
-    ( first )
-import Data.Function
-    ( (&) )
-import Data.List.NonEmpty
-    ( NonEmpty ((:|)) )
-import Data.Maybe
-    ( fromMaybe )
-import Data.Ord
-    ( Down (..), comparing )
-import Data.Ratio
-    ( (%) )
-import GHC.Generics
-    ( Generic )
-import Internal.Coin
-    ( Coin )
-import Internal.Invariant
-    ( invariant )
-import Internal.Rounding
-    ( RoundingDirection (..), round )
-import Quiet
-    ( Quiet (Quiet) )
+import Control.Monad.Trans.Class ( lift )
+import Control.Monad.Trans.Except ( ExceptT (..), except, throwE )
+import Control.Monad.Trans.State ( StateT (..), evalStateT )
+import Crypto.Random.Types ( MonadRandom )
+import Data.Bifunctor ( first )
+import Data.Function ( (&) )
+import Data.List.NonEmpty ( NonEmpty ((:|)) )
+import Data.Maybe ( fromMaybe )
+import Data.Ord ( Down (..), comparing )
+import Data.Ratio ( (%) )
+import GHC.Generics ( Generic )
+import Internal.Coin ( Coin )
+import Internal.Invariant ( invariant )
+import Internal.Rounding ( RoundingDirection (..), round )
+import Quiet ( Quiet (Quiet) )
 
 import qualified Data.Foldable as F
 import qualified Data.List.NonEmpty as NE
@@ -203,7 +187,7 @@ data FeeOptions i o = FeeOptions
 -- However, for blockchains that allow /unbalanced/ fees, it is sometimes
 -- possible to /save money/ by generating a coin selection with an unbalanced
 -- fee. This may seem counterintuitive at first, but consider an individual
--- change ouput __/c/__ of value __/v/__. If the /marginal fee/ __/f/__
+-- change output __/c/__ of value __/v/__. If the /marginal fee/ __/f/__
 -- associated with __/c/__ is greater than its value __/v/__, then we will
 -- /save money/ by __not__ including __/c/__ within 'change'.
 --
@@ -447,22 +431,22 @@ reduceChangeOutputs
     -> Either (FeeAdjustmentError i o) (CoinSelection i o, Fee)
 reduceChangeOutputs opts s = do
     -- The original requested fee amount
-    let Fee φ_original = estimateFee (feeEstimator opts) s
+    let Fee phi_original = estimateFee (feeEstimator opts) s
     -- The initial amount left for fee (i.e. inputs - outputs)
-    let mδ_original = sumInputs s `C.sub` (sumOutputs s `C.add` sumChange s)
-    case mδ_original of
+    let m_delta_original = sumInputs s `C.sub` (sumOutputs s `C.add` sumChange s)
+    case m_delta_original of
         -- selection is now balanced, nothing to do.
-        Just δ_original | φ_original == δ_original -> do
+        Just delta_original | phi_original == delta_original -> do
             pure (s, Fee C.zero)
 
         -- some fee left to pay, but we've depleted all change outputs
-        Just δ_original | φ_original > δ_original && null (change s) -> do
-            let remainder = φ_original `C.distance` δ_original
+        Just delta_original | phi_original > delta_original && null (change s) -> do
+            let remainder = phi_original `C.distance` delta_original
             pure (s, Fee remainder)
 
         -- some fee left to pay, and we've haven't depleted all change yet
-        Just δ_original | φ_original > δ_original && not (null (change s)) -> do
-            let remainder = φ_original `C.distance` δ_original
+        Just delta_original | phi_original > delta_original && not (null (change s)) -> do
+            let remainder = phi_original `C.distance` delta_original
             let chgs' = distributeFee (Fee remainder) (NE.fromList (change s))
                       & fmap payFee
                       & coalesceDust (dustThreshold opts)
@@ -473,22 +457,22 @@ reduceChangeOutputs opts s = do
         -- required fee turns out to be less than originally predicted.
         -- The outcome depends on whether or not the node allows transactions
         -- to be unbalanced.
-        Just δ_original | δ_original > φ_original -> do
-            let extraChg = δ_original `C.distance` φ_original
+        Just delta_original | delta_original > phi_original -> do
+            let extraChg = delta_original `C.distance` phi_original
             let sDangling = s { change = splitCoin extraChg (change s) }
-            let Fee φ_dangling = estimateFee (feeEstimator opts) sDangling
-            -- We have `δ_dangling = φ_original` by construction of sDangling.
+            let Fee phi_dangling = estimateFee (feeEstimator opts) sDangling
+            -- We have `delta_dangling = phi_original` by construction of sDangling.
             --
             -- Proof:
             --
-            -- δ_dangling = Σi_dangling - (Σo_dangling + Σc_dangling)
+            -- delta_dangling = Σi_dangling - (Σo_dangling + Σc_dangling)
             --            = Σi_original - (Σo_original + Σc_original + extraChg)
             --            = Σi_original - (Σo_original + Σc_original) - extraChg
-            --            = δ_original - extraChg
-            --            = δ_original - (δ_original - φ_original)
-            --            = φ_original
-            let δ_dangling = φ_original
-            case φ_dangling `C.sub` δ_dangling of
+            --            = delta_original - extraChg
+            --            = delta_original - (delta_original - phi_original)
+            --            = phi_original
+            let delta_dangling = phi_original
+            case phi_dangling `C.sub` delta_dangling of
                 -- we've left too much, but adding a change output would be more
                 -- expensive than not having it. Here we have two choices:
                 --
@@ -501,7 +485,7 @@ reduceChangeOutputs opts s = do
                 --    to pay the extra cost by adding the change output and
                 --    continue trying to balance the transaction (likely, by
                 --    selecting another input).
-                Just remainder | φ_dangling >= δ_original ->
+                Just remainder | phi_dangling >= delta_original ->
                     case feeBalancingPolicy opts of
                         RequireMinimalFee ->
                             pure (s, Fee C.zero)

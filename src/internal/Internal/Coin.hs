@@ -4,7 +4,7 @@
 {-# OPTIONS_HADDOCK hide #-}
 
 -- |
--- Copyright: © 2018-2020 IOHK
+-- Copyright: © 2018-2024 Intersect MBO
 -- License: Apache-2.0
 --
 module Internal.Coin
@@ -41,15 +41,11 @@ module Internal.Coin
 
     ) where
 
-import Prelude hiding
-    ( div, fromIntegral, mod, pred, succ )
+import Prelude hiding ( div, fromIntegral, mod, pred, succ )
 
-import GHC.Generics
-    ( Generic )
-import Numeric.Natural
-    ( Natural )
-import Quiet
-    ( Quiet (Quiet) )
+import GHC.Generics ( Generic )
+import Numeric.Natural ( Natural )
+import Quiet ( Quiet (Quiet) )
 
 import qualified Prelude
 

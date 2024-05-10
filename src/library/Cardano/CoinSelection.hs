@@ -7,7 +7,7 @@
 {-# OPTIONS_HADDOCK prune #-}
 
 -- |
--- Copyright: © 2018-2020 IOHK
+-- Copyright: © 2018-2024 Intersect MBO
 -- License: Apache-2.0
 --
 -- Provides general functions and types relating to coin selection.
@@ -64,26 +64,16 @@ module Cardano.CoinSelection
 
 import Prelude
 
-import Control.Arrow
-    ( (&&&) )
-import Control.Monad.Trans.Except
-    ( ExceptT (..) )
-import Crypto.Number.Generate
-    ( generateBetween )
-import Crypto.Random.Types
-    ( MonadRandom )
-import Data.Map.Strict
-    ( Map )
-import Data.Word
-    ( Word16 )
-import GHC.Generics
-    ( Generic )
-import Internal.Coin
-    ( Coin, coinFromNatural, coinToNatural )
-import Numeric.Natural
-    ( Natural )
-import Quiet
-    ( Quiet (Quiet) )
+import Control.Arrow ( (&&&) )
+import Control.Monad.Trans.Except ( ExceptT (..) )
+import Crypto.Number.Generate ( generateBetween )
+import Crypto.Random.Types ( MonadRandom )
+import Data.Map.Strict ( Map )
+import Data.Word ( Word16 )
+import GHC.Generics ( Generic )
+import Internal.Coin ( Coin, coinFromNatural, coinToNatural )
+import Numeric.Natural ( Natural )
+import Quiet ( Quiet (Quiet) )
 
 import qualified Data.Foldable as F
 import qualified Data.Map.Strict as Map

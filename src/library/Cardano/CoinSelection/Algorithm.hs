@@ -1,5 +1,5 @@
 -- |
--- Copyright: © 2018-2020 IOHK
+-- Copyright: © 2018-2024 Intersect MBO
 -- License: Apache-2.0
 --
 -- __Submodules__ of this module provide implementations of
@@ -42,7 +42,7 @@
 -- For __guidance on choosing an algorithm__ that's appropriate for your
 -- scenario, please consult the following article:
 --
---        <https://iohk.io/blog/self-organisation-in-coin-selection/>
+--        <https://iohk.io/en/blog/posts/2018/07/03/self-organisation-in-coin-selection/>
 --
 -- = Specialized Algorithms #specialized-algorithms#
 --

@@ -3,7 +3,7 @@
 {-# LANGUAGE TypeFamilies #-}
 
 -- |
--- Copyright: © 2018-2020 IOHK
+-- Copyright: © 2018-2024 Intersect MBO
 -- License: Apache-2.0
 --
 -- This module contains an implementation of the __Random-Improve__ coin
@@ -33,20 +33,13 @@ import Cardano.CoinSelection
     , coinMapToList
     , coinMapValue
     )
-import Control.Monad
-    ( foldM )
-import Control.Monad.Trans.Class
-    ( lift )
-import Control.Monad.Trans.Except
-    ( ExceptT (..), throwE )
-import Control.Monad.Trans.Maybe
-    ( MaybeT (..), runMaybeT )
-import Crypto.Random.Types
-    ( MonadRandom )
-import Data.Ord
-    ( Down (..) )
-import Internal.Coin
-    ( Coin )
+import Control.Monad ( foldM )
+import Control.Monad.Trans.Class ( lift )
+import Control.Monad.Trans.Except ( ExceptT (..), throwE )
+import Control.Monad.Trans.Maybe ( MaybeT (..), runMaybeT )
+import Crypto.Random.Types ( MonadRandom )
+import Data.Ord ( Down (..) )
+import Internal.Coin ( Coin )
 
 import qualified Data.List as L
 import qualified Internal.Coin as C

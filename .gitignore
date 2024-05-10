@@ -25,7 +25,10 @@ cabal.project.local~
 .ghci
 *.tix
 stack.yaml.lock
+haddocks
 
 ### Nix ###
 result*
 .stack-to-nix.cache
+
+.direnv

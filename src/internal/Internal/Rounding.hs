@@ -3,7 +3,7 @@
 {-# OPTIONS_HADDOCK hide #-}
 
 -- |
--- Copyright: © 2018-2020 IOHK
+-- Copyright: © 2018-2024 Intersect MBO
 -- License: Apache-2.0
 --
 -- Provides internal types and functions relating to rounding of fractional
@@ -14,8 +14,7 @@ module Internal.Rounding
     , round
     ) where
 
-import Prelude hiding
-    ( round )
+import Prelude hiding ( round )
 
 -- | Indicates a rounding direction to be used when converting from a
 --   fractional value to an integral value.

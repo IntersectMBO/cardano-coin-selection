@@ -32,8 +32,7 @@ import Cardano.CoinSelection.Fee
     , FeeEstimator (..)
     , FeeOptions (..)
     )
-import Cardano.CoinSelection.FeeSpec
-    ( FeeParameters, stableEstimator )
+import Cardano.CoinSelection.FeeSpec ( FeeParameters, stableEstimator )
 import Cardano.CoinSelectionSpec
     ()
 import Cardano.Test.Utilities
@@ -45,14 +44,10 @@ import Cardano.Test.Utilities
     , unsafeDustThreshold
     , unsafeFee
     )
-import Data.Function
-    ( (&) )
-import Internal.Coin
-    ( Coin, coinToIntegral )
-import Numeric.Natural
-    ( Natural )
-import Test.Hspec
-    ( Spec, SpecWith, describe, it, shouldSatisfy )
+import Data.Function ( (&) )
+import Internal.Coin ( Coin, coinToIntegral )
+import Numeric.Natural ( Natural )
+import Test.Hspec ( Spec, SpecWith, describe, it, shouldSatisfy )
 import Test.QuickCheck
     ( Arbitrary (..)
     , Gen
@@ -68,8 +63,7 @@ import Test.QuickCheck
     , withMaxSuccess
     , (===)
     )
-import Test.QuickCheck.Monadic
-    ( monadicIO, monitor, pick )
+import Test.QuickCheck.Monadic ( monadicIO, monitor, pick )
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set

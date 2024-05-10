@@ -4,7 +4,6 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE NumericUnderscores #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
@@ -14,7 +13,7 @@
 
 -- | Utility functions, types, and type class instances used purely for testing.
 --
--- Copyright: © 2018-2020 IOHK
+-- Copyright: © 2018-2024 Intersect MBO
 -- License: Apache-2.0
 --
 module Cardano.Test.Utilities
@@ -50,34 +49,20 @@ import Prelude
 
 import Cardano.CoinSelection
     ( CoinMap (..), CoinMapEntry (..), CoinSelection (..), coinMapToList )
-import Cardano.CoinSelection.Fee
-    ( DustThreshold (..), Fee (..) )
-import Control.DeepSeq
-    ( NFData (..) )
-import Data.ByteArray.Encoding
-    ( Base (Base16), convertFromBase, convertToBase )
-import Data.ByteString
-    ( ByteString )
-import Data.Maybe
-    ( fromMaybe )
-import Data.Proxy
-    ( Proxy (..) )
-import Data.Set
-    ( Set )
-import Fmt
-    ( Buildable (..), blockListF, fmt, listF, nameF )
-import GHC.Generics
-    ( Generic )
-import GHC.Stack
-    ( HasCallStack )
-import GHC.TypeLits
-    ( KnownSymbol, Symbol, symbolVal )
-import Internal.Coin
-    ( Coin, coinFromIntegral )
-import Numeric.Natural
-    ( Natural )
-import Test.QuickCheck
-    ( Gen, arbitraryBoundedIntegral, vectorOf )
+import Cardano.CoinSelection.Fee ( DustThreshold (..), Fee (..) )
+import Control.DeepSeq ( NFData (..) )
+import Data.ByteArray.Encoding ( Base (Base16), convertFromBase, convertToBase )
+import Data.ByteString ( ByteString )
+import Data.Maybe ( fromMaybe )
+import Data.Proxy ( Proxy (..) )
+import Data.Set ( Set )
+import Fmt ( Buildable (..), blockListF, fmt, listF, nameF )
+import GHC.Generics ( Generic )
+import GHC.Stack ( HasCallStack )
+import GHC.TypeLits ( KnownSymbol, Symbol, symbolVal )
+import Internal.Coin ( Coin, coinFromIntegral )
+import Numeric.Natural ( Natural )
+import Test.QuickCheck ( Gen, arbitraryBoundedIntegral, vectorOf )
 
 import qualified Data.ByteString as BS
 import qualified Data.Map.Strict as Map

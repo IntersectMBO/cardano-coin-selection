@@ -7,12 +7,9 @@ module Internal.CoinSpec
 
 import Prelude
 
-import Data.Maybe
-    ( catMaybes, fromMaybe )
-import Internal.Coin
-    ( Coin )
-import Test.Hspec
-    ( Spec, describe, it, shouldBe, shouldSatisfy )
+import Data.Maybe ( catMaybes, fromMaybe )
+import Internal.Coin ( Coin )
+import Test.Hspec ( Spec, describe, it, shouldBe, shouldSatisfy )
 import Test.QuickCheck
     ( Arbitrary (..)
     , NonNegative (..)

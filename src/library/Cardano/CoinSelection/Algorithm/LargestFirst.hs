@@ -4,7 +4,7 @@
 {-# LANGUAGE TypeFamilies #-}
 
 -- |
--- Copyright: © 2018-2020 IOHK
+-- Copyright: © 2018-2024 Intersect MBO
 -- License: Apache-2.0
 --
 -- This module contains an implementation of the __Largest-First__ coin
@@ -31,14 +31,10 @@ import Cardano.CoinSelection
     , coinMapToList
     , coinMapValue
     )
-import Control.Monad.Trans.Except
-    ( ExceptT (..), throwE )
-import Data.Function
-    ( (&) )
-import Data.Ord
-    ( Down (..) )
-import Data.Word
-    ( Word16 )
+import Control.Monad.Trans.Except ( ExceptT (..), throwE )
+import Data.Function ( (&) )
+import Data.Ord ( Down (..) )
+import Data.Word ( Word16 )
 
 import qualified Data.Foldable as F
 import qualified Data.List as L
