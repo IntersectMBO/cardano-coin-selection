@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE NumericUnderscores #-}
 {-# LANGUAGE TypeApplications #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
@@ -57,7 +58,7 @@ import qualified Data.List as L
 spec :: Spec
 spec = do
     describe "Coin selection : random algorithm unit tests" $ do
-        let oneAda = 1000000
+        let oneAda = 1_000_000
 
         coinSelectionUnitTest randomImprove ""
             (Right $ CoinSelectionTestResult

@@ -594,7 +594,7 @@ propDistributeFeeNoNullFee
     :: (Fee, NonEmpty Coin)
     -> Property
 propDistributeFeeNoNullFee (fee, outs) =
-    not (null outs) ==> withMaxSuccess 100000 prop
+    not (null outs) ==> withMaxSuccess 100_000 prop
   where
     prop = property $ Fee C.zero `F.notElem` (fst <$> distributeFee fee outs)
 
@@ -987,8 +987,8 @@ instance (Arbitrary i, Arbitrary o, Ord i, Ord o) =>
         utxo <- choose (0, 50)
             >>= \n -> vectorOf n arbitrary
             >>= genInputs
-        fee <- choose (100000, 500000)
-        dust <- choose (0, 10000)
+        fee <- choose (100_000, 500_000)
+        dust <- choose (0, 10_000)
         return $ FeeProp cs utxo (fee, dust)
 
 instance (Arbitrary i, Arbitrary o, Ord i, Ord o) =>

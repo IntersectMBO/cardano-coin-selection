@@ -587,7 +587,7 @@ instance (Arbitrary i, Arbitrary o, Ord i, Ord o) =>
 
 instance Arbitrary Coin where
     -- No Shrinking
-    arbitrary = unsafeCoin @Int <$> choose (1, 100000)
+    arbitrary = unsafeCoin @Int <$> choose (1, 100_000)
 
 instance Arbitrary a => Arbitrary (CoinMapEntry a) where
     -- No Shrinking
