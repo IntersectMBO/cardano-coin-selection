@@ -42,6 +42,7 @@
 
         # see flake `variants` below for alternative compilers
         defaultCompiler = "ghc964";
+        haddockShellCompiler = defaultCompiler;
         # We use cabalProject' to ensure we don't build the plan for
         # all systems.
         cabalProject = nixpkgs.haskell-nix.cabalProject' ({config, ...}: {
@@ -119,7 +120,8 @@
                   # This ensure hydra send a status for the required job (even if no change other than commit hash)
                   revision = nixpkgs.writeText "revision" (inputs.self.rev or "dirty");
                 };
-            };
+            }
+            // { haddockShell = devShells.haddockShell; };
           legacyPackages = rec {
             inherit cabalProject nixpkgs;
             # also provide hydraJobs through legacyPackages to allow building without system prefix:
@@ -128,12 +130,19 @@
             cardano-coin-selection = cabalProject.hsPkgs.cardano-coin-selection.components.library;
           };
           devShells = let
-            profillingShell = p: {
+            profilingShell = p: {
               # `nix develop .#profiling` (or `.#ghc927.profiling): a shell with profiling enabled
               profiling = (p.appendModule {modules = [{enableLibraryProfiling = true;}];}).shell;
             };
           in
-            profillingShell cabalProject;
+            profilingShell cabalProject
+            # Add GHC 9.6 shell for haddocks
+            //
+            { haddockShell = let
+              p = cabalProject.appendModule {compiler-nix-name = haddockShellCompiler;};
+              in
+              p.shell // (profilingShell p);
+            };
           # formatter used by nix fmt
           formatter = nixpkgs.alejandra;
         }
