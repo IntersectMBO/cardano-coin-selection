@@ -7,4 +7,4 @@ This repository provides reference implementations of algorithms for coin select
 
 ## Documentation
 
-API documentation is available [here](https://input-output-hk.github.io/cardano-coin-selection/haddock).
+API documentation is available [here](https://coin-selection.cardano.intersectmbo.org).
