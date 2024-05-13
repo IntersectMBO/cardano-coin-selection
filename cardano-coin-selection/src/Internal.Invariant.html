@@ -1,0 +1,46 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# OPTIONS_HADDOCK hide #-}</span><span>
+</span><span id="line-2"></span><span>
+</span><span id="line-3"></span><span class="hs-comment">-- |</span><span>
+</span><span id="line-4"></span><span class="hs-comment">-- Copyright: &#169; 2018-2024 Intersect MBO</span><span>
+</span><span id="line-5"></span><span class="hs-comment">-- License: Apache-2.0</span><span>
+</span><span id="line-6"></span><span class="hs-comment">--</span><span>
+</span><span id="line-7"></span><span class="hs-comment">-- Provides internal functions relating to verification of invariants.</span><span>
+</span><span id="line-8"></span><span class="hs-comment">--</span><span>
+</span><span id="line-9"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Internal.Invariant</span><span>
+</span><span id="line-10"></span><span>    </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Internal.Invariant.html#invariant"><span class="hs-identifier">invariant</span></a></span><span>
+</span><span id="line-11"></span><span>    </span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-12"></span><span>
+</span><span id="line-13"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/Prelude.html"><span class="hs-identifier">Prelude</span></a></span><span>
+</span><span id="line-14"></span><span>
+</span><span id="line-15"></span><span class="hs-comment">-- | Checks whether or not an invariant holds, by applying the given predicate</span><span>
+</span><span id="line-16"></span><span class="hs-comment">--   to the given value.</span><span>
+</span><span id="line-17"></span><span class="hs-comment">--</span><span>
+</span><span id="line-18"></span><span class="hs-comment">-- If the invariant does not hold (indicated by the predicate function</span><span>
+</span><span id="line-19"></span><span class="hs-comment">-- returning 'False'), throws an error with the specified message.</span><span>
+</span><span id="line-20"></span><span class="hs-comment">--</span><span>
+</span><span id="line-21"></span><span class="hs-comment">-- &gt;&gt;&gt; invariant &quot;not empty&quot; [1,2,3] (not . null)</span><span>
+</span><span id="line-22"></span><span class="hs-comment">-- [1, 2, 3]</span><span>
+</span><span id="line-23"></span><span class="hs-comment">--</span><span>
+</span><span id="line-24"></span><span class="hs-comment">-- &gt;&gt;&gt; invariant &quot;not empty&quot; [] (not . null)</span><span>
+</span><span id="line-25"></span><span class="hs-comment">-- *** Exception: not empty</span><span>
+</span><span id="line-26"></span><span id="local-6989586621679063301"><span class="annot"><a href="Internal.Invariant.html#invariant"><span class="hs-identifier hs-type">invariant</span></a></span><span>
+</span><span id="line-27"></span><span>    </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Base.html#String"><span class="hs-identifier hs-type">String</span></a></span><span>
+</span><span id="line-28"></span><span>        </span><span class="annot"><span class="hs-comment">-- ^ The message</span></span><span>
+</span><span id="line-29"></span><span>    </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679063301"><span class="hs-identifier hs-type">a</span></a></span><span>
+</span><span id="line-30"></span><span>        </span><span class="annot"><span class="hs-comment">-- ^ The value to test</span></span><span>
+</span><span id="line-31"></span><span>    </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679063301"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/ghc-prim-0.10.0/src/GHC.Types.html#Bool"><span class="hs-identifier hs-type">Bool</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-32"></span><span>        </span><span class="annot"><span class="hs-comment">-- ^ The predicate</span></span><span>
+</span><span id="line-33"></span><span>    </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679063301"><span class="hs-identifier hs-type">a</span></a></span></span><span>
+</span><span id="line-34"></span><span id="invariant"><span class="annot"><span class="annottext">invariant :: forall a. String -&gt; a -&gt; (a -&gt; Bool) -&gt; a
+</span><a href="Internal.Invariant.html#invariant"><span class="hs-identifier hs-var hs-var">invariant</span></a></span></span><span> </span><span id="local-6989586621679063309"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679063309"><span class="hs-identifier hs-var">msg</span></a></span></span><span> </span><span id="local-6989586621679063310"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679063310"><span class="hs-identifier hs-var">a</span></a></span></span><span> </span><span id="local-6989586621679063311"><span class="annot"><span class="annottext">a -&gt; Bool
+</span><a href="#local-6989586621679063311"><span class="hs-identifier hs-var">predicate</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-35"></span><span>    </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">a -&gt; Bool
+</span><a href="#local-6989586621679063311"><span class="hs-identifier hs-var">predicate</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679063310"><span class="hs-identifier hs-var">a</span></a></span><span> </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679063310"><span class="hs-identifier hs-var">a</span></a></span><span> </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">String -&gt; a
+forall a. HasCallStack =&gt; String -&gt; a
+</span><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Err.html#error"><span class="hs-identifier hs-var">error</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679063309"><span class="hs-identifier hs-var">msg</span></a></span><span>
+</span><span id="line-36"></span></pre></body></html>

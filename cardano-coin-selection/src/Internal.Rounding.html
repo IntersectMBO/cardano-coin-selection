@@ -1,0 +1,71 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE LambdaCase #-}</span><span>
+</span><span id="line-2"></span><span>
+</span><span id="line-3"></span><span class="hs-pragma">{-# OPTIONS_HADDOCK hide #-}</span><span>
+</span><span id="line-4"></span><span>
+</span><span id="line-5"></span><span class="hs-comment">-- |</span><span>
+</span><span id="line-6"></span><span class="hs-comment">-- Copyright: &#169; 2018-2024 Intersect MBO</span><span>
+</span><span id="line-7"></span><span class="hs-comment">-- License: Apache-2.0</span><span>
+</span><span id="line-8"></span><span class="hs-comment">--</span><span>
+</span><span id="line-9"></span><span class="hs-comment">-- Provides internal types and functions relating to rounding of fractional</span><span>
+</span><span id="line-10"></span><span class="hs-comment">-- numbers.</span><span>
+</span><span id="line-11"></span><span class="hs-comment">--</span><span>
+</span><span id="line-12"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Internal.Rounding</span><span>
+</span><span id="line-13"></span><span>    </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Internal.Rounding.html#RoundingDirection"><span class="hs-identifier">RoundingDirection</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-14"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Internal.Rounding.html#round"><span class="hs-identifier">round</span></a></span><span>
+</span><span id="line-15"></span><span>    </span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-16"></span><span>
+</span><span id="line-17"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/Prelude.html"><span class="hs-identifier">Prelude</span></a></span><span> </span><span class="hs-keyword">hiding</span><span> </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Real.html#round"><span class="hs-identifier">round</span></a></span><span> </span><span class="hs-special">)</span><span>
+</span><span id="line-18"></span><span>
+</span><span id="line-19"></span><span class="hs-comment">-- | Indicates a rounding direction to be used when converting from a</span><span>
+</span><span id="line-20"></span><span class="hs-comment">--   fractional value to an integral value.</span><span>
+</span><span id="line-21"></span><span class="hs-comment">--</span><span>
+</span><span id="line-22"></span><span class="hs-comment">-- See 'round'.</span><span>
+</span><span id="line-23"></span><span class="hs-comment">--</span><span>
+</span><span id="line-24"></span><span class="hs-keyword">data</span><span> </span><span id="RoundingDirection"><span class="annot"><a href="Internal.Rounding.html#RoundingDirection"><span class="hs-identifier hs-var">RoundingDirection</span></a></span></span><span>
+</span><span id="line-25"></span><span>    </span><span class="hs-glyph">=</span><span> </span><span id="RoundUp"><span class="annot"><a href="Internal.Rounding.html#RoundUp"><span class="hs-identifier hs-var">RoundUp</span></a></span></span><span>
+</span><span id="line-26"></span><span>      </span><span class="annot"><span class="hs-comment">-- ^ Round up to the nearest integral value.</span></span><span>
+</span><span id="line-27"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span id="RoundDown"><span class="annot"><a href="Internal.Rounding.html#RoundDown"><span class="hs-identifier hs-var">RoundDown</span></a></span></span><span>
+</span><span id="line-28"></span><span>      </span><span class="annot"><span class="hs-comment">-- ^ Round down to the nearest integral value.</span></span><span>
+</span><span id="line-29"></span><span>    </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679063328"><span id="local-6989586621679063330"><span class="annot"><span class="annottext">RoundingDirection -&gt; RoundingDirection -&gt; Bool
+(RoundingDirection -&gt; RoundingDirection -&gt; Bool)
+-&gt; (RoundingDirection -&gt; RoundingDirection -&gt; Bool)
+-&gt; Eq RoundingDirection
+forall a. (a -&gt; a -&gt; Bool) -&gt; (a -&gt; a -&gt; Bool) -&gt; Eq a
+$c== :: RoundingDirection -&gt; RoundingDirection -&gt; Bool
+== :: RoundingDirection -&gt; RoundingDirection -&gt; Bool
+$c/= :: RoundingDirection -&gt; RoundingDirection -&gt; Bool
+/= :: RoundingDirection -&gt; RoundingDirection -&gt; Bool
+</span><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/ghc-prim-0.10.0/src/GHC.Classes.html#Eq"><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Eq</span></a></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679063335"><span id="local-6989586621679063337"><span id="local-6989586621679063341"><span class="annot"><span class="annottext">Int -&gt; RoundingDirection -&gt; ShowS
+[RoundingDirection] -&gt; ShowS
+RoundingDirection -&gt; String
+(Int -&gt; RoundingDirection -&gt; ShowS)
+-&gt; (RoundingDirection -&gt; String)
+-&gt; ([RoundingDirection] -&gt; ShowS)
+-&gt; Show RoundingDirection
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+$cshowsPrec :: Int -&gt; RoundingDirection -&gt; ShowS
+showsPrec :: Int -&gt; RoundingDirection -&gt; ShowS
+$cshow :: RoundingDirection -&gt; String
+show :: RoundingDirection -&gt; String
+$cshowList :: [RoundingDirection] -&gt; ShowS
+showList :: [RoundingDirection] -&gt; ShowS
+</span><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Show.html#Show"><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></a></span></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-30"></span><span>
+</span><span id="line-31"></span><span class="hs-comment">-- | Use the given rounding direction to round the given fractional value,</span><span>
+</span><span id="line-32"></span><span class="hs-comment">--   producing an integral result.</span><span>
+</span><span id="line-33"></span><span class="hs-comment">--</span><span>
+</span><span id="line-34"></span><span id="local-6989586621679063317"><span id="local-6989586621679063318"><span class="annot"><a href="Internal.Rounding.html#round"><span class="hs-identifier hs-type">round</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Real.html#RealFrac"><span class="hs-identifier hs-type">RealFrac</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679063317"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Real.html#Integral"><span class="hs-identifier hs-type">Integral</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679063318"><span class="hs-identifier hs-type">b</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="Internal.Rounding.html#RoundingDirection"><span class="hs-identifier hs-type">RoundingDirection</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679063317"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679063318"><span class="hs-identifier hs-type">b</span></a></span></span></span><span>
+</span><span id="line-35"></span><span id="round"><span class="annot"><span class="annottext">round :: forall a b. (RealFrac a, Integral b) =&gt; RoundingDirection -&gt; a -&gt; b
+</span><a href="Internal.Rounding.html#round"><span class="hs-identifier hs-var hs-var">round</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-glyph">\</span><span class="hs-glyph">case</span><span>
+</span><span id="line-36"></span><span>    </span><span class="annot"><span class="annottext">RoundingDirection
+</span><a href="Internal.Rounding.html#RoundUp"><span class="hs-identifier hs-var">RoundUp</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">a -&gt; b
+forall b. Integral b =&gt; a -&gt; b
+forall a b. (RealFrac a, Integral b) =&gt; a -&gt; b
+</span><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Real.html#ceiling"><span class="hs-identifier hs-var">ceiling</span></a></span><span>
+</span><span id="line-37"></span><span>    </span><span class="annot"><span class="annottext">RoundingDirection
+</span><a href="Internal.Rounding.html#RoundDown"><span class="hs-identifier hs-var">RoundDown</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">a -&gt; b
+forall b. Integral b =&gt; a -&gt; b
+forall a b. (RealFrac a, Integral b) =&gt; a -&gt; b
+</span><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Real.html#floor"><span class="hs-identifier hs-var">floor</span></a></span><span>
+</span><span id="line-38"></span></pre></body></html>

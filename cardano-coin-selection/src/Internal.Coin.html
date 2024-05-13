@@ -1,0 +1,441 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE DeriveGeneric #-}</span><span>
+</span><span id="line-2"></span><span class="hs-pragma">{-# LANGUAGE DerivingVia #-}</span><span>
+</span><span id="line-3"></span><span class="hs-pragma">{-# LANGUAGE FlexibleInstances #-}</span><span>
+</span><span id="line-4"></span><span class="hs-pragma">{-# OPTIONS_HADDOCK hide #-}</span><span>
+</span><span id="line-5"></span><span>
+</span><span id="line-6"></span><span class="hs-comment">-- |</span><span>
+</span><span id="line-7"></span><span class="hs-comment">-- Copyright: &#169; 2018-2024 Intersect MBO</span><span>
+</span><span id="line-8"></span><span class="hs-comment">-- License: Apache-2.0</span><span>
+</span><span id="line-9"></span><span class="hs-comment">--</span><span>
+</span><span id="line-10"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Internal.Coin</span><span>
+</span><span id="line-11"></span><span>    </span><span class="hs-special">(</span><span>
+</span><span id="line-12"></span><span>      </span><span class="annot"><span class="hs-comment">-- * Types</span></span><span>
+</span><span id="line-13"></span><span>      </span><span class="annot"><a href="Internal.Coin.html#Coin"><span class="hs-identifier">Coin</span></a></span><span>
+</span><span id="line-14"></span><span>
+</span><span id="line-15"></span><span>      </span><span class="hs-comment">-- Construction and Deconstruction</span><span>
+</span><span id="line-16"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Internal.Coin.html#coinFromIntegral"><span class="hs-identifier">coinFromIntegral</span></a></span><span>
+</span><span id="line-17"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Internal.Coin.html#coinFromNatural"><span class="hs-identifier">coinFromNatural</span></a></span><span>
+</span><span id="line-18"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Internal.Coin.html#coinToIntegral"><span class="hs-identifier">coinToIntegral</span></a></span><span>
+</span><span id="line-19"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Internal.Coin.html#coinToNatural"><span class="hs-identifier">coinToNatural</span></a></span><span>
+</span><span id="line-20"></span><span>
+</span><span id="line-21"></span><span>      </span><span class="annot"><span class="hs-comment">-- * Unary Operations</span></span><span>
+</span><span id="line-22"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Internal.Coin.html#pred"><span class="hs-identifier">pred</span></a></span><span>
+</span><span id="line-23"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Internal.Coin.html#succ"><span class="hs-identifier">succ</span></a></span><span>
+</span><span id="line-24"></span><span>
+</span><span id="line-25"></span><span>      </span><span class="annot"><span class="hs-comment">-- * Binary Operations</span></span><span>
+</span><span id="line-26"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Internal.Coin.html#add"><span class="hs-identifier">add</span></a></span><span>
+</span><span id="line-27"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Internal.Coin.html#sub"><span class="hs-identifier">sub</span></a></span><span>
+</span><span id="line-28"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Internal.Coin.html#mul"><span class="hs-identifier">mul</span></a></span><span>
+</span><span id="line-29"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Internal.Coin.html#div"><span class="hs-identifier">div</span></a></span><span>
+</span><span id="line-30"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Internal.Coin.html#mod"><span class="hs-identifier">mod</span></a></span><span>
+</span><span id="line-31"></span><span>
+</span><span id="line-32"></span><span>      </span><span class="annot"><span class="hs-comment">-- * Calculating Distances</span></span><span>
+</span><span id="line-33"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Internal.Coin.html#distance"><span class="hs-identifier">distance</span></a></span><span>
+</span><span id="line-34"></span><span>
+</span><span id="line-35"></span><span>      </span><span class="annot"><span class="hs-comment">-- * Value Tests</span></span><span>
+</span><span id="line-36"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Internal.Coin.html#isZero"><span class="hs-identifier">isZero</span></a></span><span>
+</span><span id="line-37"></span><span>
+</span><span id="line-38"></span><span>      </span><span class="annot"><span class="hs-comment">-- * Special Values</span></span><span>
+</span><span id="line-39"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Internal.Coin.html#zero"><span class="hs-identifier">zero</span></a></span><span>
+</span><span id="line-40"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Internal.Coin.html#one"><span class="hs-identifier">one</span></a></span><span>
+</span><span id="line-41"></span><span>
+</span><span id="line-42"></span><span>    </span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-43"></span><span>
+</span><span id="line-44"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/Prelude.html"><span class="hs-identifier">Prelude</span></a></span><span> </span><span class="hs-keyword">hiding</span><span> </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Real.html#div"><span class="hs-identifier">div</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Real.html#fromIntegral"><span class="hs-identifier">fromIntegral</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Real.html#mod"><span class="hs-identifier">mod</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Enum.html#pred"><span class="hs-identifier">pred</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Enum.html#succ"><span class="hs-identifier">succ</span></a></span><span> </span><span class="hs-special">)</span><span>
+</span><span id="line-45"></span><span>
+</span><span id="line-46"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Generics.html"><span class="hs-identifier">GHC.Generics</span></a></span><span> </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Generics.html#Generic"><span class="hs-identifier">Generic</span></a></span><span> </span><span class="hs-special">)</span><span>
+</span><span id="line-47"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/Numeric.Natural.html"><span class="hs-identifier">Numeric.Natural</span></a></span><span> </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/ghc-bignum-1.3/src/GHC.Num.Natural.html#Natural"><span class="hs-identifier">Natural</span></a></span><span> </span><span class="hs-special">)</span><span>
+</span><span id="line-48"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Quiet</span></span><span> </span><span class="hs-special">(</span><span> </span><span class="annot"><span class="hs-identifier">Quiet</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Quiet</span></span><span class="hs-special">)</span><span> </span><span class="hs-special">)</span><span>
+</span><span id="line-49"></span><span>
+</span><span id="line-50"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/Prelude.html"><span class="hs-identifier">Prelude</span></a></span><span>
+</span><span id="line-51"></span><span>
+</span><span id="line-52"></span><span class="hs-comment">-- | Represents a non-negative integral amount of currency.</span><span>
+</span><span id="line-53"></span><span class="hs-comment">--</span><span>
+</span><span id="line-54"></span><span class="hs-comment">-- Use 'coinFromNatural' to create a coin from a natural number.</span><span>
+</span><span id="line-55"></span><span class="hs-comment">--</span><span>
+</span><span id="line-56"></span><span class="hs-comment">-- Use 'coinToNatural' to convert a coin into a natural number.</span><span>
+</span><span id="line-57"></span><span class="hs-comment">--</span><span>
+</span><span id="line-58"></span><span class="hs-comment">-- @since 1.0.0</span><span>
+</span><span id="line-59"></span><span class="hs-keyword">newtype</span><span> </span><span id="Coin"><span class="annot"><a href="Internal.Coin.html#Coin"><span class="hs-identifier hs-var">Coin</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="Coin"><span class="annot"><a href="Internal.Coin.html#Coin"><span class="hs-identifier hs-var">Coin</span></a></span></span><span> </span><span class="hs-special">{</span><span> </span><span id="unCoin"><span class="annot"><span class="annottext">Coin -&gt; Natural
+</span><a href="Internal.Coin.html#unCoin"><span class="hs-identifier hs-var hs-var">unCoin</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/ghc-bignum-1.3/src/GHC.Num.Natural.html#Natural"><span class="hs-identifier hs-type">Natural</span></a></span><span> </span><span class="hs-special">}</span><span>
+</span><span id="line-60"></span><span>    </span><span class="hs-keyword">deriving</span><span> </span><span class="annot"><span class="hs-keyword">stock</span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679061727"><span id="local-6989586621679061731"><span class="annot"><span class="annottext">Coin -&gt; Coin -&gt; Bool
+(Coin -&gt; Coin -&gt; Bool) -&gt; (Coin -&gt; Coin -&gt; Bool) -&gt; Eq Coin
+forall a. (a -&gt; a -&gt; Bool) -&gt; (a -&gt; a -&gt; Bool) -&gt; Eq a
+$c== :: Coin -&gt; Coin -&gt; Bool
+== :: Coin -&gt; Coin -&gt; Bool
+$c/= :: Coin -&gt; Coin -&gt; Bool
+/= :: Coin -&gt; Coin -&gt; Bool
+</span><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/ghc-prim-0.10.0/src/GHC.Classes.html#Eq"><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Eq</span></a></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679061735"><span id="local-6989586621679061737"><span class="annot"><span class="annottext">(forall x. Coin -&gt; Rep Coin x)
+-&gt; (forall x. Rep Coin x -&gt; Coin) -&gt; Generic Coin
+forall x. Rep Coin x -&gt; Coin
+forall x. Coin -&gt; Rep Coin x
+forall a.
+(forall x. a -&gt; Rep a x) -&gt; (forall x. Rep a x -&gt; a) -&gt; Generic a
+$cfrom :: forall x. Coin -&gt; Rep Coin x
+from :: forall x. Coin -&gt; Rep Coin x
+$cto :: forall x. Rep Coin x -&gt; Coin
+to :: forall x. Rep Coin x -&gt; Coin
+</span><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Generics.html#Generic"><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Generic</span></a></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679061743"><span id="local-6989586621679061746"><span id="local-6989586621679061749"><span id="local-6989586621679061753"><span id="local-6989586621679061756"><span id="local-6989586621679061759"><span id="local-6989586621679061762"><span class="annot"><span class="annottext">Eq Coin
+Eq Coin =&gt;
+(Coin -&gt; Coin -&gt; Ordering)
+-&gt; (Coin -&gt; Coin -&gt; Bool)
+-&gt; (Coin -&gt; Coin -&gt; Bool)
+-&gt; (Coin -&gt; Coin -&gt; Bool)
+-&gt; (Coin -&gt; Coin -&gt; Bool)
+-&gt; (Coin -&gt; Coin -&gt; Coin)
+-&gt; (Coin -&gt; Coin -&gt; Coin)
+-&gt; Ord Coin
+Coin -&gt; Coin -&gt; Bool
+Coin -&gt; Coin -&gt; Ordering
+Coin -&gt; Coin -&gt; Coin
+forall a.
+Eq a =&gt;
+(a -&gt; a -&gt; Ordering)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; a)
+-&gt; (a -&gt; a -&gt; a)
+-&gt; Ord a
+$ccompare :: Coin -&gt; Coin -&gt; Ordering
+compare :: Coin -&gt; Coin -&gt; Ordering
+$c&lt; :: Coin -&gt; Coin -&gt; Bool
+&lt; :: Coin -&gt; Coin -&gt; Bool
+$c&lt;= :: Coin -&gt; Coin -&gt; Bool
+&lt;= :: Coin -&gt; Coin -&gt; Bool
+$c&gt; :: Coin -&gt; Coin -&gt; Bool
+&gt; :: Coin -&gt; Coin -&gt; Bool
+$c&gt;= :: Coin -&gt; Coin -&gt; Bool
+&gt;= :: Coin -&gt; Coin -&gt; Bool
+$cmax :: Coin -&gt; Coin -&gt; Coin
+max :: Coin -&gt; Coin -&gt; Coin
+$cmin :: Coin -&gt; Coin -&gt; Coin
+min :: Coin -&gt; Coin -&gt; Coin
+</span><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/ghc-prim-0.10.0/src/GHC.Classes.html#Ord"><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Ord</span></a></span></span></span></span></span></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-61"></span><span>    </span><span class="hs-keyword">deriving</span><span> </span><span id="local-6989586621679061766"><span id="local-6989586621679061773"><span id="local-6989586621679061779"><span class="annot"><span class="annottext">Int -&gt; Coin -&gt; ShowS
+[Coin] -&gt; ShowS
+Coin -&gt; String
+(Int -&gt; Coin -&gt; ShowS)
+-&gt; (Coin -&gt; String) -&gt; ([Coin] -&gt; ShowS) -&gt; Show Coin
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+$cshowsPrec :: Int -&gt; Coin -&gt; ShowS
+showsPrec :: Int -&gt; Coin -&gt; ShowS
+$cshow :: Coin -&gt; String
+show :: Coin -&gt; String
+$cshowList :: [Coin] -&gt; ShowS
+showList :: [Coin] -&gt; ShowS
+</span><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Show.html#Show"><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></a></span></span></span></span><span> </span><span class="hs-keyword">via</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Quiet</span></span><span> </span><span class="annot"><a href="Internal.Coin.html#Coin"><span class="hs-identifier hs-type">Coin</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-62"></span><span>
+</span><span id="line-63"></span><span class="hs-comment">-- | Creates a coin from an integral number.</span><span>
+</span><span id="line-64"></span><span class="hs-comment">--</span><span>
+</span><span id="line-65"></span><span class="hs-comment">-- Returns a coin if (and only if) the given input is not negative.</span><span>
+</span><span id="line-66"></span><span class="hs-comment">--</span><span>
+</span><span id="line-67"></span><span id="local-6989586621679061656"><span class="annot"><a href="Internal.Coin.html#coinFromIntegral"><span class="hs-identifier hs-type">coinFromIntegral</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Real.html#Integral"><span class="hs-identifier hs-type">Integral</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679061656"><span class="hs-identifier hs-type">i</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679061656"><span class="hs-identifier hs-type">i</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Maybe.html#Maybe"><span class="hs-identifier hs-type">Maybe</span></a></span><span> </span><span class="annot"><a href="Internal.Coin.html#Coin"><span class="hs-identifier hs-type">Coin</span></a></span></span><span>
+</span><span id="line-68"></span><span id="coinFromIntegral"><span class="annot"><span class="annottext">coinFromIntegral :: forall i. Integral i =&gt; i -&gt; Maybe Coin
+</span><a href="Internal.Coin.html#coinFromIntegral"><span class="hs-identifier hs-var hs-var">coinFromIntegral</span></a></span></span><span> </span><span id="local-6989586621679061832"><span class="annot"><span class="annottext">i
+</span><a href="#local-6989586621679061832"><span class="hs-identifier hs-var">i</span></a></span></span><span>
+</span><span id="line-69"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">i
+</span><a href="#local-6989586621679061832"><span class="hs-identifier hs-var">i</span></a></span><span> </span><span class="annot"><span class="annottext">i -&gt; i -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/ghc-prim-0.10.0/src/GHC.Classes.html#%3E%3D"><span class="hs-operator hs-var">&gt;=</span></a></span><span> </span><span class="annot"><span class="annottext">i
+</span><span class="hs-number">0</span></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Coin -&gt; Maybe Coin
+forall a. a -&gt; Maybe a
+</span><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Maybe.html#Just"><span class="hs-identifier hs-var">Just</span></a></span><span> </span><span class="annot"><span class="annottext">(Coin -&gt; Maybe Coin) -&gt; Coin -&gt; Maybe Coin
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Base.html#%24"><span class="hs-operator hs-var">$</span></a></span><span> </span><span class="annot"><span class="annottext">Natural -&gt; Coin
+</span><a href="Internal.Coin.html#Coin"><span class="hs-identifier hs-var">Coin</span></a></span><span> </span><span class="annot"><span class="annottext">(Natural -&gt; Coin) -&gt; Natural -&gt; Coin
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Base.html#%24"><span class="hs-operator hs-var">$</span></a></span><span> </span><span class="annot"><span class="annottext">i -&gt; Natural
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Real.html#fromIntegral"><span class="hs-identifier hs-var">Prelude.fromIntegral</span></a></span><span> </span><span class="annot"><span class="annottext">i
+</span><a href="#local-6989586621679061832"><span class="hs-identifier hs-var">i</span></a></span><span>
+</span><span id="line-70"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Base.html#otherwise"><span class="hs-identifier hs-var">otherwise</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe Coin
+forall a. Maybe a
+</span><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Maybe.html#Nothing"><span class="hs-identifier hs-var">Nothing</span></a></span><span>
+</span><span id="line-71"></span><span>
+</span><span id="line-72"></span><span class="hs-comment">-- | Creates a coin from a natural number.</span><span>
+</span><span id="line-73"></span><span class="hs-comment">--</span><span>
+</span><span id="line-74"></span><span class="hs-comment">-- @since 1.0.0</span><span>
+</span><span id="line-75"></span><span class="annot"><a href="Internal.Coin.html#coinFromNatural"><span class="hs-identifier hs-type">coinFromNatural</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/ghc-bignum-1.3/src/GHC.Num.Natural.html#Natural"><span class="hs-identifier hs-type">Natural</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Internal.Coin.html#Coin"><span class="hs-identifier hs-type">Coin</span></a></span><span>
+</span><span id="line-76"></span><span id="coinFromNatural"><span class="annot"><span class="annottext">coinFromNatural :: Natural -&gt; Coin
+</span><a href="Internal.Coin.html#coinFromNatural"><span class="hs-identifier hs-var hs-var">coinFromNatural</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Natural -&gt; Coin
+</span><a href="Internal.Coin.html#Coin"><span class="hs-identifier hs-var">Coin</span></a></span><span>
+</span><span id="line-77"></span><span>
+</span><span id="line-78"></span><span class="hs-comment">-- | Converts the given coin into an integral number.</span><span>
+</span><span id="line-79"></span><span class="hs-comment">--</span><span>
+</span><span id="line-80"></span><span id="local-6989586621679061665"><span class="annot"><a href="Internal.Coin.html#coinToIntegral"><span class="hs-identifier hs-type">coinToIntegral</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Real.html#Integral"><span class="hs-identifier hs-type">Integral</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679061665"><span class="hs-identifier hs-type">i</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="Internal.Coin.html#Coin"><span class="hs-identifier hs-type">Coin</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679061665"><span class="hs-identifier hs-type">i</span></a></span></span><span>
+</span><span id="line-81"></span><span id="coinToIntegral"><span class="annot"><span class="annottext">coinToIntegral :: forall i. Integral i =&gt; Coin -&gt; i
+</span><a href="Internal.Coin.html#coinToIntegral"><span class="hs-identifier hs-var hs-var">coinToIntegral</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Internal.Coin.html#Coin"><span class="hs-identifier hs-type">Coin</span></a></span><span> </span><span id="local-6989586621679061838"><span class="annot"><span class="annottext">Natural
+</span><a href="#local-6989586621679061838"><span class="hs-identifier hs-var">i</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Natural -&gt; i
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Real.html#fromIntegral"><span class="hs-identifier hs-var">Prelude.fromIntegral</span></a></span><span> </span><span class="annot"><span class="annottext">Natural
+</span><a href="#local-6989586621679061838"><span class="hs-identifier hs-var">i</span></a></span><span>
+</span><span id="line-82"></span><span>
+</span><span id="line-83"></span><span class="hs-comment">-- | Converts the given coin into a natural number.</span><span>
+</span><span id="line-84"></span><span class="hs-comment">--</span><span>
+</span><span id="line-85"></span><span class="hs-comment">-- @since 1.0.0</span><span>
+</span><span id="line-86"></span><span class="annot"><a href="Internal.Coin.html#coinToNatural"><span class="hs-identifier hs-type">coinToNatural</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Internal.Coin.html#Coin"><span class="hs-identifier hs-type">Coin</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/ghc-bignum-1.3/src/GHC.Num.Natural.html#Natural"><span class="hs-identifier hs-type">Natural</span></a></span><span>
+</span><span id="line-87"></span><span id="coinToNatural"><span class="annot"><span class="annottext">coinToNatural :: Coin -&gt; Natural
+</span><a href="Internal.Coin.html#coinToNatural"><span class="hs-identifier hs-var hs-var">coinToNatural</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Coin -&gt; Natural
+</span><a href="Internal.Coin.html#unCoin"><span class="hs-identifier hs-var">unCoin</span></a></span><span>
+</span><span id="line-88"></span><span>
+</span><span id="line-89"></span><span class="annot"><a href="Internal.Coin.html#add"><span class="hs-identifier hs-type">add</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Internal.Coin.html#Coin"><span class="hs-identifier hs-type">Coin</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Internal.Coin.html#Coin"><span class="hs-identifier hs-type">Coin</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Internal.Coin.html#Coin"><span class="hs-identifier hs-type">Coin</span></a></span><span>
+</span><span id="line-90"></span><span id="add"><span class="annot"><span class="annottext">add :: Coin -&gt; Coin -&gt; Coin
+</span><a href="Internal.Coin.html#add"><span class="hs-identifier hs-var hs-var">add</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Internal.Coin.html#Coin"><span class="hs-identifier hs-type">Coin</span></a></span><span> </span><span id="local-6989586621679061839"><span class="annot"><span class="annottext">Natural
+</span><a href="#local-6989586621679061839"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Internal.Coin.html#Coin"><span class="hs-identifier hs-type">Coin</span></a></span><span> </span><span id="local-6989586621679061840"><span class="annot"><span class="annottext">Natural
+</span><a href="#local-6989586621679061840"><span class="hs-identifier hs-var">y</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Natural -&gt; Coin
+</span><a href="Internal.Coin.html#Coin"><span class="hs-identifier hs-var">Coin</span></a></span><span> </span><span class="annot"><span class="annottext">(Natural -&gt; Coin) -&gt; Natural -&gt; Coin
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Base.html#%24"><span class="hs-operator hs-var">$</span></a></span><span> </span><span class="annot"><span class="annottext">Natural
+</span><a href="#local-6989586621679061839"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Natural -&gt; Natural -&gt; Natural
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Num.html#%2B"><span class="hs-operator hs-var">+</span></a></span><span> </span><span class="annot"><span class="annottext">Natural
+</span><a href="#local-6989586621679061840"><span class="hs-identifier hs-var">y</span></a></span><span>
+</span><span id="line-91"></span><span>
+</span><span id="line-92"></span><span class="annot"><a href="Internal.Coin.html#sub"><span class="hs-identifier hs-type">sub</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Internal.Coin.html#Coin"><span class="hs-identifier hs-type">Coin</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Internal.Coin.html#Coin"><span class="hs-identifier hs-type">Coin</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Maybe.html#Maybe"><span class="hs-identifier hs-type">Maybe</span></a></span><span> </span><span class="annot"><a href="Internal.Coin.html#Coin"><span class="hs-identifier hs-type">Coin</span></a></span><span>
+</span><span id="line-93"></span><span id="sub"><span class="annot"><span class="annottext">sub :: Coin -&gt; Coin -&gt; Maybe Coin
+</span><a href="Internal.Coin.html#sub"><span class="hs-identifier hs-var hs-var">sub</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Internal.Coin.html#Coin"><span class="hs-identifier hs-type">Coin</span></a></span><span> </span><span id="local-6989586621679061842"><span class="annot"><span class="annottext">Natural
+</span><a href="#local-6989586621679061842"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Internal.Coin.html#Coin"><span class="hs-identifier hs-type">Coin</span></a></span><span> </span><span id="local-6989586621679061843"><span class="annot"><span class="annottext">Natural
+</span><a href="#local-6989586621679061843"><span class="hs-identifier hs-var">y</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Integer -&gt; Maybe Coin
+forall i. Integral i =&gt; i -&gt; Maybe Coin
+</span><a href="Internal.Coin.html#coinFromIntegral"><span class="hs-identifier hs-var">coinFromIntegral</span></a></span><span> </span><span class="annot"><span class="annottext">(Integer -&gt; Maybe Coin) -&gt; Integer -&gt; Maybe Coin
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Base.html#%24"><span class="hs-operator hs-var">$</span></a></span><span> </span><span class="annot"><span class="annottext">Natural -&gt; Integer
+forall a. Integral a =&gt; a -&gt; Integer
+</span><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Real.html#toInteger"><span class="hs-identifier hs-var">toInteger</span></a></span><span> </span><span class="annot"><span class="annottext">Natural
+</span><a href="#local-6989586621679061842"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Integer -&gt; Integer -&gt; Integer
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Num.html#-"><span class="hs-glyph hs-var">-</span></a></span><span> </span><span class="annot"><span class="annottext">Natural -&gt; Integer
+forall a. Integral a =&gt; a -&gt; Integer
+</span><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Real.html#toInteger"><span class="hs-identifier hs-var">toInteger</span></a></span><span> </span><span class="annot"><span class="annottext">Natural
+</span><a href="#local-6989586621679061843"><span class="hs-identifier hs-var">y</span></a></span><span>
+</span><span id="line-94"></span><span>
+</span><span id="line-95"></span><span id="local-6989586621679061668"><span class="annot"><a href="Internal.Coin.html#mul"><span class="hs-identifier hs-type">mul</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Real.html#Integral"><span class="hs-identifier hs-type">Integral</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679061668"><span class="hs-identifier hs-type">i</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="Internal.Coin.html#Coin"><span class="hs-identifier hs-type">Coin</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679061668"><span class="hs-identifier hs-type">i</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Maybe.html#Maybe"><span class="hs-identifier hs-type">Maybe</span></a></span><span> </span><span class="annot"><a href="Internal.Coin.html#Coin"><span class="hs-identifier hs-type">Coin</span></a></span></span><span>
+</span><span id="line-96"></span><span id="mul"><span class="annot"><span class="annottext">mul :: forall i. Integral i =&gt; Coin -&gt; i -&gt; Maybe Coin
+</span><a href="Internal.Coin.html#mul"><span class="hs-identifier hs-var hs-var">mul</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Internal.Coin.html#Coin"><span class="hs-identifier hs-type">Coin</span></a></span><span> </span><span id="local-6989586621679061849"><span class="annot"><span class="annottext">Natural
+</span><a href="#local-6989586621679061849"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">)</span><span> </span><span id="local-6989586621679061850"><span class="annot"><span class="annottext">i
+</span><a href="#local-6989586621679061850"><span class="hs-identifier hs-var">y</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Integer -&gt; Maybe Coin
+forall i. Integral i =&gt; i -&gt; Maybe Coin
+</span><a href="Internal.Coin.html#coinFromIntegral"><span class="hs-identifier hs-var">coinFromIntegral</span></a></span><span> </span><span class="annot"><span class="annottext">(Integer -&gt; Maybe Coin) -&gt; Integer -&gt; Maybe Coin
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Base.html#%24"><span class="hs-operator hs-var">$</span></a></span><span> </span><span class="annot"><span class="annottext">Natural -&gt; Integer
+forall a. Integral a =&gt; a -&gt; Integer
+</span><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Real.html#toInteger"><span class="hs-identifier hs-var">toInteger</span></a></span><span> </span><span class="annot"><span class="annottext">Natural
+</span><a href="#local-6989586621679061849"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Integer -&gt; Integer -&gt; Integer
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Num.html#%2A"><span class="hs-operator hs-var">*</span></a></span><span> </span><span class="annot"><span class="annottext">i -&gt; Integer
+forall a. Integral a =&gt; a -&gt; Integer
+</span><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Real.html#toInteger"><span class="hs-identifier hs-var">toInteger</span></a></span><span> </span><span class="annot"><span class="annottext">i
+</span><a href="#local-6989586621679061850"><span class="hs-identifier hs-var">y</span></a></span><span>
+</span><span id="line-97"></span><span>
+</span><span id="line-98"></span><span id="local-6989586621679061852"><span class="annot"><a href="Internal.Coin.html#div"><span class="hs-identifier hs-type">div</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Real.html#Integral"><span class="hs-identifier hs-type">Integral</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679061852"><span class="hs-identifier hs-type">i</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="Internal.Coin.html#Coin"><span class="hs-identifier hs-type">Coin</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679061852"><span class="hs-identifier hs-type">i</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Maybe.html#Maybe"><span class="hs-identifier hs-type">Maybe</span></a></span><span> </span><span class="annot"><a href="Internal.Coin.html#Coin"><span class="hs-identifier hs-type">Coin</span></a></span></span><span>
+</span><span id="line-99"></span><span id="div"><span class="annot"><span class="annottext">div :: forall i. Integral i =&gt; Coin -&gt; i -&gt; Maybe Coin
+</span><a href="Internal.Coin.html#div"><span class="hs-identifier hs-var hs-var">div</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Internal.Coin.html#Coin"><span class="hs-identifier hs-type">Coin</span></a></span><span> </span><span id="local-6989586621679061863"><span class="annot"><span class="annottext">Natural
+</span><a href="#local-6989586621679061863"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">)</span><span> </span><span id="local-6989586621679061864"><span class="annot"><span class="annottext">i
+</span><a href="#local-6989586621679061864"><span class="hs-identifier hs-var">y</span></a></span></span><span>
+</span><span id="line-100"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">i
+</span><a href="#local-6989586621679061864"><span class="hs-identifier hs-var">y</span></a></span><span> </span><span class="annot"><span class="annottext">i -&gt; i -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/ghc-prim-0.10.0/src/GHC.Classes.html#%3C%3D"><span class="hs-operator hs-var">&lt;=</span></a></span><span> </span><span class="annot"><span class="annottext">i
+</span><span class="hs-number">0</span></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe Coin
+forall a. Maybe a
+</span><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Maybe.html#Nothing"><span class="hs-identifier hs-var">Nothing</span></a></span><span>
+</span><span id="line-101"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Base.html#otherwise"><span class="hs-identifier hs-var">otherwise</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Integer -&gt; Maybe Coin
+forall i. Integral i =&gt; i -&gt; Maybe Coin
+</span><a href="Internal.Coin.html#coinFromIntegral"><span class="hs-identifier hs-var">coinFromIntegral</span></a></span><span> </span><span class="annot"><span class="annottext">(Integer -&gt; Maybe Coin) -&gt; Integer -&gt; Maybe Coin
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Base.html#%24"><span class="hs-operator hs-var">$</span></a></span><span> </span><span class="annot"><span class="annottext">Natural -&gt; Integer
+forall a. Integral a =&gt; a -&gt; Integer
+</span><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Real.html#toInteger"><span class="hs-identifier hs-var">toInteger</span></a></span><span> </span><span class="annot"><span class="annottext">Natural
+</span><a href="#local-6989586621679061863"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Integer -&gt; Integer -&gt; Integer
+forall a. Integral a =&gt; a -&gt; a -&gt; a
+</span><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Real.html#div"><span class="hs-operator hs-var">`Prelude.div`</span></a></span><span> </span><span class="annot"><span class="annottext">i -&gt; Integer
+forall a. Integral a =&gt; a -&gt; Integer
+</span><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Real.html#toInteger"><span class="hs-identifier hs-var">toInteger</span></a></span><span> </span><span class="annot"><span class="annottext">i
+</span><a href="#local-6989586621679061864"><span class="hs-identifier hs-var">y</span></a></span><span>
+</span><span id="line-102"></span><span>
+</span><span id="line-103"></span><span id="local-6989586621679061866"><span class="annot"><a href="Internal.Coin.html#mod"><span class="hs-identifier hs-type">mod</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Real.html#Integral"><span class="hs-identifier hs-type">Integral</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679061866"><span class="hs-identifier hs-type">i</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="Internal.Coin.html#Coin"><span class="hs-identifier hs-type">Coin</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679061866"><span class="hs-identifier hs-type">i</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Maybe.html#Maybe"><span class="hs-identifier hs-type">Maybe</span></a></span><span> </span><span class="annot"><a href="Internal.Coin.html#Coin"><span class="hs-identifier hs-type">Coin</span></a></span></span><span>
+</span><span id="line-104"></span><span id="mod"><span class="annot"><span class="annottext">mod :: forall i. Integral i =&gt; Coin -&gt; i -&gt; Maybe Coin
+</span><a href="Internal.Coin.html#mod"><span class="hs-identifier hs-var hs-var">mod</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Internal.Coin.html#Coin"><span class="hs-identifier hs-type">Coin</span></a></span><span> </span><span id="local-6989586621679061877"><span class="annot"><span class="annottext">Natural
+</span><a href="#local-6989586621679061877"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">)</span><span> </span><span id="local-6989586621679061878"><span class="annot"><span class="annottext">i
+</span><a href="#local-6989586621679061878"><span class="hs-identifier hs-var">y</span></a></span></span><span>
+</span><span id="line-105"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">i
+</span><a href="#local-6989586621679061878"><span class="hs-identifier hs-var">y</span></a></span><span> </span><span class="annot"><span class="annottext">i -&gt; i -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/ghc-prim-0.10.0/src/GHC.Classes.html#%3C%3D"><span class="hs-operator hs-var">&lt;=</span></a></span><span> </span><span class="annot"><span class="annottext">i
+</span><span class="hs-number">0</span></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe Coin
+forall a. Maybe a
+</span><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Maybe.html#Nothing"><span class="hs-identifier hs-var">Nothing</span></a></span><span>
+</span><span id="line-106"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Base.html#otherwise"><span class="hs-identifier hs-var">otherwise</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Integer -&gt; Maybe Coin
+forall i. Integral i =&gt; i -&gt; Maybe Coin
+</span><a href="Internal.Coin.html#coinFromIntegral"><span class="hs-identifier hs-var">coinFromIntegral</span></a></span><span> </span><span class="annot"><span class="annottext">(Integer -&gt; Maybe Coin) -&gt; Integer -&gt; Maybe Coin
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Base.html#%24"><span class="hs-operator hs-var">$</span></a></span><span> </span><span class="annot"><span class="annottext">Natural -&gt; Integer
+forall a. Integral a =&gt; a -&gt; Integer
+</span><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Real.html#toInteger"><span class="hs-identifier hs-var">toInteger</span></a></span><span> </span><span class="annot"><span class="annottext">Natural
+</span><a href="#local-6989586621679061877"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Integer -&gt; Integer -&gt; Integer
+forall a. Integral a =&gt; a -&gt; a -&gt; a
+</span><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Real.html#mod"><span class="hs-operator hs-var">`Prelude.mod`</span></a></span><span> </span><span class="annot"><span class="annottext">i -&gt; Integer
+forall a. Integral a =&gt; a -&gt; Integer
+</span><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Real.html#toInteger"><span class="hs-identifier hs-var">toInteger</span></a></span><span> </span><span class="annot"><span class="annottext">i
+</span><a href="#local-6989586621679061878"><span class="hs-identifier hs-var">y</span></a></span><span>
+</span><span id="line-107"></span><span>
+</span><span id="line-108"></span><span class="annot"><a href="Internal.Coin.html#distance"><span class="hs-identifier hs-type">distance</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Internal.Coin.html#Coin"><span class="hs-identifier hs-type">Coin</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Internal.Coin.html#Coin"><span class="hs-identifier hs-type">Coin</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Internal.Coin.html#Coin"><span class="hs-identifier hs-type">Coin</span></a></span><span>
+</span><span id="line-109"></span><span id="distance"><span class="annot"><span class="annottext">distance :: Coin -&gt; Coin -&gt; Coin
+</span><a href="Internal.Coin.html#distance"><span class="hs-identifier hs-var hs-var">distance</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Internal.Coin.html#Coin"><span class="hs-identifier hs-type">Coin</span></a></span><span> </span><span id="local-6989586621679061879"><span class="annot"><span class="annottext">Natural
+</span><a href="#local-6989586621679061879"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Internal.Coin.html#Coin"><span class="hs-identifier hs-type">Coin</span></a></span><span> </span><span id="local-6989586621679061880"><span class="annot"><span class="annottext">Natural
+</span><a href="#local-6989586621679061880"><span class="hs-identifier hs-var">y</span></a></span></span><span class="hs-special">)</span><span>
+</span><span id="line-110"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Natural
+</span><a href="#local-6989586621679061879"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Natural -&gt; Natural -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/ghc-prim-0.10.0/src/GHC.Classes.html#%3E%3D"><span class="hs-operator hs-var">&gt;=</span></a></span><span> </span><span class="annot"><span class="annottext">Natural
+</span><a href="#local-6989586621679061880"><span class="hs-identifier hs-var">y</span></a></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Natural -&gt; Coin
+</span><a href="Internal.Coin.html#Coin"><span class="hs-identifier hs-var">Coin</span></a></span><span> </span><span class="annot"><span class="annottext">(Natural -&gt; Coin) -&gt; Natural -&gt; Coin
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Base.html#%24"><span class="hs-operator hs-var">$</span></a></span><span> </span><span class="annot"><span class="annottext">Natural
+</span><a href="#local-6989586621679061879"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Natural -&gt; Natural -&gt; Natural
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Num.html#-"><span class="hs-glyph hs-var">-</span></a></span><span> </span><span class="annot"><span class="annottext">Natural
+</span><a href="#local-6989586621679061880"><span class="hs-identifier hs-var">y</span></a></span><span>
+</span><span id="line-111"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Base.html#otherwise"><span class="hs-identifier hs-var">otherwise</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Natural -&gt; Coin
+</span><a href="Internal.Coin.html#Coin"><span class="hs-identifier hs-var">Coin</span></a></span><span> </span><span class="annot"><span class="annottext">(Natural -&gt; Coin) -&gt; Natural -&gt; Coin
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Base.html#%24"><span class="hs-operator hs-var">$</span></a></span><span> </span><span class="annot"><span class="annottext">Natural
+</span><a href="#local-6989586621679061880"><span class="hs-identifier hs-var">y</span></a></span><span> </span><span class="annot"><span class="annottext">Natural -&gt; Natural -&gt; Natural
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Num.html#-"><span class="hs-glyph hs-var">-</span></a></span><span> </span><span class="annot"><span class="annottext">Natural
+</span><a href="#local-6989586621679061879"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-112"></span><span>
+</span><span id="line-113"></span><span class="annot"><a href="Internal.Coin.html#pred"><span class="hs-identifier hs-type">pred</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Internal.Coin.html#Coin"><span class="hs-identifier hs-type">Coin</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Maybe.html#Maybe"><span class="hs-identifier hs-type">Maybe</span></a></span><span> </span><span class="annot"><a href="Internal.Coin.html#Coin"><span class="hs-identifier hs-type">Coin</span></a></span><span>
+</span><span id="line-114"></span><span id="pred"><span class="annot"><span class="annottext">pred :: Coin -&gt; Maybe Coin
+</span><a href="Internal.Coin.html#pred"><span class="hs-identifier hs-var hs-var">pred</span></a></span></span><span> </span><span id="local-6989586621679061881"><span class="annot"><span class="annottext">Coin
+</span><a href="#local-6989586621679061881"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Coin
+</span><a href="#local-6989586621679061881"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Coin -&gt; Coin -&gt; Maybe Coin
+</span><a href="Internal.Coin.html#sub"><span class="hs-operator hs-var">`sub`</span></a></span><span> </span><span class="annot"><span class="annottext">Coin
+</span><a href="Internal.Coin.html#one"><span class="hs-identifier hs-var">one</span></a></span><span>
+</span><span id="line-115"></span><span>
+</span><span id="line-116"></span><span class="annot"><a href="Internal.Coin.html#succ"><span class="hs-identifier hs-type">succ</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Internal.Coin.html#Coin"><span class="hs-identifier hs-type">Coin</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Internal.Coin.html#Coin"><span class="hs-identifier hs-type">Coin</span></a></span><span>
+</span><span id="line-117"></span><span id="succ"><span class="annot"><span class="annottext">succ :: Coin -&gt; Coin
+</span><a href="Internal.Coin.html#succ"><span class="hs-identifier hs-var hs-var">succ</span></a></span></span><span> </span><span id="local-6989586621679061882"><span class="annot"><span class="annottext">Coin
+</span><a href="#local-6989586621679061882"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Coin
+</span><a href="#local-6989586621679061882"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Coin -&gt; Coin -&gt; Coin
+</span><a href="Internal.Coin.html#add"><span class="hs-operator hs-var">`add`</span></a></span><span> </span><span class="annot"><span class="annottext">Coin
+</span><a href="Internal.Coin.html#one"><span class="hs-identifier hs-var">one</span></a></span><span>
+</span><span id="line-118"></span><span>
+</span><span id="line-119"></span><span class="annot"><a href="Internal.Coin.html#isZero"><span class="hs-identifier hs-type">isZero</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Internal.Coin.html#Coin"><span class="hs-identifier hs-type">Coin</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/ghc-prim-0.10.0/src/GHC.Types.html#Bool"><span class="hs-identifier hs-type">Bool</span></a></span><span>
+</span><span id="line-120"></span><span id="isZero"><span class="annot"><span class="annottext">isZero :: Coin -&gt; Bool
+</span><a href="Internal.Coin.html#isZero"><span class="hs-identifier hs-var hs-var">isZero</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Coin -&gt; Coin -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/ghc-prim-0.10.0/src/GHC.Classes.html#%3D%3D"><span class="hs-operator hs-var">==</span></a></span><span> </span><span class="annot"><span class="annottext">Coin
+</span><a href="Internal.Coin.html#zero"><span class="hs-identifier hs-var">zero</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-121"></span><span>
+</span><span id="line-122"></span><span class="annot"><a href="Internal.Coin.html#zero"><span class="hs-identifier hs-type">zero</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Internal.Coin.html#Coin"><span class="hs-identifier hs-type">Coin</span></a></span><span>
+</span><span id="line-123"></span><span id="zero"><span class="annot"><span class="annottext">zero :: Coin
+</span><a href="Internal.Coin.html#zero"><span class="hs-identifier hs-var hs-var">zero</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Natural -&gt; Coin
+</span><a href="Internal.Coin.html#Coin"><span class="hs-identifier hs-var">Coin</span></a></span><span> </span><span class="annot"><span class="annottext">Natural
+</span><span class="hs-number">0</span></span><span>
+</span><span id="line-124"></span><span>
+</span><span id="line-125"></span><span class="annot"><a href="Internal.Coin.html#one"><span class="hs-identifier hs-type">one</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Internal.Coin.html#Coin"><span class="hs-identifier hs-type">Coin</span></a></span><span>
+</span><span id="line-126"></span><span id="one"><span class="annot"><span class="annottext">one :: Coin
+</span><a href="Internal.Coin.html#one"><span class="hs-identifier hs-var hs-var">one</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Natural -&gt; Coin
+</span><a href="Internal.Coin.html#Coin"><span class="hs-identifier hs-var">Coin</span></a></span><span> </span><span class="annot"><span class="annottext">Natural
+</span><span class="hs-number">1</span></span><span>
+</span><span id="line-127"></span><span>
+</span><span id="line-128"></span><span class="hs-keyword">newtype</span><span> </span><span id="Sum"><span class="annot"><a href="Internal.Coin.html#Sum"><span class="hs-identifier hs-var">Sum</span></a></span></span><span> </span><span id="local-6989586621679061672"><span class="annot"><a href="#local-6989586621679061672"><span class="hs-identifier hs-type">a</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="Sum"><span class="annot"><a href="Internal.Coin.html#Sum"><span class="hs-identifier hs-var">Sum</span></a></span></span><span> </span><span class="hs-special">{</span><span> </span><span id="getSum"><span class="annot"><span class="annottext">forall a. Sum a -&gt; a
+</span><a href="Internal.Coin.html#getSum"><span class="hs-identifier hs-var hs-var">getSum</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="#local-6989586621679061672"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-special">}</span><span>
+</span><span id="line-129"></span><span>    </span><span class="hs-keyword">deriving</span><span> </span><span class="annot"><span class="hs-keyword">stock</span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679061887"><span id="local-6989586621679061890"><span class="annot"><span class="annottext">Sum a -&gt; Sum a -&gt; Bool
+(Sum a -&gt; Sum a -&gt; Bool) -&gt; (Sum a -&gt; Sum a -&gt; Bool) -&gt; Eq (Sum a)
+forall a. Eq a =&gt; Sum a -&gt; Sum a -&gt; Bool
+forall a. (a -&gt; a -&gt; Bool) -&gt; (a -&gt; a -&gt; Bool) -&gt; Eq a
+$c== :: forall a. Eq a =&gt; Sum a -&gt; Sum a -&gt; Bool
+== :: Sum a -&gt; Sum a -&gt; Bool
+$c/= :: forall a. Eq a =&gt; Sum a -&gt; Sum a -&gt; Bool
+/= :: Sum a -&gt; Sum a -&gt; Bool
+</span><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/ghc-prim-0.10.0/src/GHC.Classes.html#Eq"><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Eq</span></a></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679061894"><span id="local-6989586621679061896"><span class="annot"><span class="annottext">(forall x. Sum a -&gt; Rep (Sum a) x)
+-&gt; (forall x. Rep (Sum a) x -&gt; Sum a) -&gt; Generic (Sum a)
+forall x. Rep (Sum a) x -&gt; Sum a
+forall x. Sum a -&gt; Rep (Sum a) x
+forall a.
+(forall x. a -&gt; Rep a x) -&gt; (forall x. Rep a x -&gt; a) -&gt; Generic a
+forall a x. Rep (Sum a) x -&gt; Sum a
+forall a x. Sum a -&gt; Rep (Sum a) x
+$cfrom :: forall a x. Sum a -&gt; Rep (Sum a) x
+from :: forall x. Sum a -&gt; Rep (Sum a) x
+$cto :: forall a x. Rep (Sum a) x -&gt; Sum a
+to :: forall x. Rep (Sum a) x -&gt; Sum a
+</span><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Generics.html#Generic"><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Generic</span></a></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679061903"><span id="local-6989586621679061906"><span id="local-6989586621679061909"><span id="local-6989586621679061913"><span id="local-6989586621679061916"><span id="local-6989586621679061919"><span id="local-6989586621679061922"><span class="annot"><span class="annottext">Eq (Sum a)
+Eq (Sum a) =&gt;
+(Sum a -&gt; Sum a -&gt; Ordering)
+-&gt; (Sum a -&gt; Sum a -&gt; Bool)
+-&gt; (Sum a -&gt; Sum a -&gt; Bool)
+-&gt; (Sum a -&gt; Sum a -&gt; Bool)
+-&gt; (Sum a -&gt; Sum a -&gt; Bool)
+-&gt; (Sum a -&gt; Sum a -&gt; Sum a)
+-&gt; (Sum a -&gt; Sum a -&gt; Sum a)
+-&gt; Ord (Sum a)
+Sum a -&gt; Sum a -&gt; Bool
+Sum a -&gt; Sum a -&gt; Ordering
+Sum a -&gt; Sum a -&gt; Sum a
+forall a.
+Eq a =&gt;
+(a -&gt; a -&gt; Ordering)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; a)
+-&gt; (a -&gt; a -&gt; a)
+-&gt; Ord a
+forall a. Ord a =&gt; Eq (Sum a)
+forall a. Ord a =&gt; Sum a -&gt; Sum a -&gt; Bool
+forall a. Ord a =&gt; Sum a -&gt; Sum a -&gt; Ordering
+forall a. Ord a =&gt; Sum a -&gt; Sum a -&gt; Sum a
+$ccompare :: forall a. Ord a =&gt; Sum a -&gt; Sum a -&gt; Ordering
+compare :: Sum a -&gt; Sum a -&gt; Ordering
+$c&lt; :: forall a. Ord a =&gt; Sum a -&gt; Sum a -&gt; Bool
+&lt; :: Sum a -&gt; Sum a -&gt; Bool
+$c&lt;= :: forall a. Ord a =&gt; Sum a -&gt; Sum a -&gt; Bool
+&lt;= :: Sum a -&gt; Sum a -&gt; Bool
+$c&gt; :: forall a. Ord a =&gt; Sum a -&gt; Sum a -&gt; Bool
+&gt; :: Sum a -&gt; Sum a -&gt; Bool
+$c&gt;= :: forall a. Ord a =&gt; Sum a -&gt; Sum a -&gt; Bool
+&gt;= :: Sum a -&gt; Sum a -&gt; Bool
+$cmax :: forall a. Ord a =&gt; Sum a -&gt; Sum a -&gt; Sum a
+max :: Sum a -&gt; Sum a -&gt; Sum a
+$cmin :: forall a. Ord a =&gt; Sum a -&gt; Sum a -&gt; Sum a
+min :: Sum a -&gt; Sum a -&gt; Sum a
+</span><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/ghc-prim-0.10.0/src/GHC.Classes.html#Ord"><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Ord</span></a></span></span></span></span></span></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-130"></span><span>    </span><span class="hs-keyword">deriving</span><span> </span><span id="local-6989586621679061927"><span id="local-6989586621679061933"><span id="local-6989586621679061939"><span class="annot"><span class="annottext">Int -&gt; Sum a -&gt; ShowS
+[Sum a] -&gt; ShowS
+Sum a -&gt; String
+(Int -&gt; Sum a -&gt; ShowS)
+-&gt; (Sum a -&gt; String) -&gt; ([Sum a] -&gt; ShowS) -&gt; Show (Sum a)
+forall a. Show a =&gt; Int -&gt; Sum a -&gt; ShowS
+forall a. Show a =&gt; [Sum a] -&gt; ShowS
+forall a. Show a =&gt; Sum a -&gt; String
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+$cshowsPrec :: forall a. Show a =&gt; Int -&gt; Sum a -&gt; ShowS
+showsPrec :: Int -&gt; Sum a -&gt; ShowS
+$cshow :: forall a. Show a =&gt; Sum a -&gt; String
+show :: Sum a -&gt; String
+$cshowList :: forall a. Show a =&gt; [Sum a] -&gt; ShowS
+showList :: [Sum a] -&gt; ShowS
+</span><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Show.html#Show"><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></a></span></span></span></span><span> </span><span class="hs-keyword">via</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Quiet</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Internal.Coin.html#Sum"><span class="hs-identifier hs-type">Sum</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679061672"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-131"></span><span>
+</span><span id="line-132"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679061974"><span id="local-6989586621679061978"><span class="annot"><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Base.html#Monoid"><span class="hs-identifier hs-type">Monoid</span></a></span><span> </span><span class="annot"><a href="Internal.Coin.html#Coin"><span class="hs-identifier hs-type">Coin</span></a></span></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-133"></span><span>    </span><span id="local-6989586621679061981"><span class="annot"><span class="annottext">mempty :: Coin
+</span><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Base.html#mempty"><span class="hs-identifier hs-var hs-var hs-var hs-var">mempty</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Coin
+</span><a href="Internal.Coin.html#zero"><span class="hs-identifier hs-var">zero</span></a></span><span>
+</span><span id="line-134"></span><span>
+</span><span id="line-135"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679061984"><span id="local-6989586621679061987"><span class="annot"><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Base.html#Semigroup"><span class="hs-identifier hs-type">Semigroup</span></a></span><span> </span><span class="annot"><a href="Internal.Coin.html#Coin"><span class="hs-identifier hs-type">Coin</span></a></span></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-136"></span><span>    </span><span id="local-6989586621679061992"><span class="annot"><span class="annottext">&lt;&gt; :: Coin -&gt; Coin -&gt; Coin
+</span><a href="file:///nix/store/wqsa6d2n7mmdrj76zqk4d4pnm4mkjq8g-ghc-9.6.4-doc/share/doc/ghc-9.6.4/html/libraries/base-4.18.2.0/src/GHC.Base.html#%3C%3E"><span class="hs-operator hs-var hs-var hs-var hs-var">(&lt;&gt;)</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Coin -&gt; Coin -&gt; Coin
+</span><a href="Internal.Coin.html#add"><span class="hs-identifier hs-var">add</span></a></span><span>
+</span><span id="line-137"></span></pre></body></html>
