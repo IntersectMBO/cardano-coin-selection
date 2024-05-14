@@ -5,6 +5,6 @@
 
 This repository provides reference implementations of algorithms for coin selection and change generation, as specified by [CIP-2](https://cips.cardano.org/cips/cip2/).
 
-## Documentation
+## Documentation 
 
 API documentation is available [here](https://coin-selection.cardano.intersectmbo.org).
